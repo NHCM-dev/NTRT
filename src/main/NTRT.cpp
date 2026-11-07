@@ -6,40 +6,77 @@
 #include "ui/MainWindow.h"
 #include <QApplication>
 #include <QStyleFactory>
-#include <QFile>
 #include <QString>
 
-using namespace ntrt;
+#include "utils/FileUtils.h"
 
-int main(int argc, char* argv[])
+int main(int argc, char** argv)
 {
     for (int i = 0; i < argc; i++)
     {
-        args.emplace_back(argv[i]);
+        ntrt::args.emplace_back(argv[i]);
     }
 
     int qtArgc = 1;
-    char* qtArgv[] = {argv[0], nullptr};
-    app = new QApplication(qtArgc, qtArgv);
+    char appName[] = "NTRT.exe";
+    char* qtArgv[] = {appName, nullptr};
 
+    ntrt::app = new QApplication(qtArgc, qtArgv);
+
+    return runQtApp();
+}
+
+int runQtApp()
+{
+    initQtApp();
+    initQtStyles();
+    initQtIcon();
+
+    ntrt::mainWindow = new ntrt::MainWindow();
+    ntrt::mainWindow->show();
+
+    int exitCode = QApplication::exec();
+    terminateHook();
+    cleanMem();
+    return exitCode;
+}
+
+void ntrt::quitApp()
+{
+    QApplication::quit();
+}
+
+void cleanMem()
+{
+    delete ntrt::mainWindow;
+    ntrt::mainWindow = nullptr;
+
+    delete ntrt::app;
+    ntrt::app = nullptr;
+}
+
+void terminateHook()
+{
+    // do something
+}
+
+void initQtApp()
+{
     QApplication::setApplicationName("NTRT");
     QApplication::setOrganizationName("NTRT");
-
-    initQtStyles();
-
-    mainWindow = new MainWindow();
-    mainWindow->show();
-    return QApplication::exec();
 }
 
 void initQtStyles()
 {
-    QApplication::setStyle(QStyleFactory::create("Fusion"));
+    QApplication::setStyle("Fusion");
 
-    QFile file("./res/style.qss");
+    QByteArray bytes = trtutils::readAllBytes("./res/style.qss", QIODevice::Text);
 
-    if (file.open(QIODevice::ReadOnly | QIODevice::Text))
-    {
-        app->setStyleSheet(QString::fromUtf8(file.readAll()));
-    }
+    ntrt::app->setStyleSheet(QString::fromUtf8(bytes));
+}
+
+void initQtIcon()
+{
+    QIcon icon = QIcon("./res/icon.ico");
+    QApplication::setWindowIcon(icon);
 }

@@ -12,6 +12,9 @@ qt_add_executable(NTRT
         src/main/NTRT.h
         src/main/ui/MainWindow.cpp
         src/main/ui/MainWindow.h
+        src/main/utils/FileUtils.h
+        src/main/utils/FileUtils.cpp
+        src/main/Ver.h
 )
 target_include_directories(NTRT PRIVATE src)
 target_link_libraries(NTRT PRIVATE Qt6::Widgets)

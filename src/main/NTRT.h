@@ -12,13 +12,22 @@
 
 namespace ntrt
 {
-    static inline QApplication* app = nullptr;
-    static inline MainWindow* mainWindow = nullptr;
-    static inline std::vector<std::string> args;
+    inline QApplication* app = nullptr;
+    inline MainWindow* mainWindow = nullptr;
+    inline std::vector<std::string> args;
+
+    void quitApp();
 }
 
 int main(int argc, char* argv[]);
 
+int runQtApp();
+
+void cleanMem();
+void terminateHook();
+
+void initQtApp();
 void initQtStyles();
+void initQtIcon();
 
 #endif //NTRT_NTRT_H
