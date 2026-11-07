@@ -12,6 +12,11 @@ namespace trtutils
     QByteArray readAllBytes(const char* path);
 
     QByteArray readAllBytes(const char* path, QIODeviceBase::OpenMode flags);
+
+    /**
+     * Return relative path, @param path relative path without / as prefix
+     */
+    QString relativePath(const QString& path);
 }
 
 #endif //NTRT_FILEUTIL_H

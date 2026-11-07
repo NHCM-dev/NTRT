@@ -69,13 +69,16 @@ void initQtStyles()
 {
     QApplication::setStyle("Fusion");
 
-    QByteArray bytes = trtutils::readAllBytes("./res/style.qss", QIODevice::Text);
+    QFile styleFile(trtutils::relativePath("res/style.qss"));
+    if (!styleFile.open(QIODevice::ReadOnly | QIODevice::Text))
+        return;
+    QByteArray bytes = styleFile.readAll();
 
     ntrt::app->setStyleSheet(QString::fromUtf8(bytes));
 }
 
 void initQtIcon()
 {
-    QIcon icon = QIcon("./res/icon.ico");
+    QIcon icon(trtutils::relativePath("res/icon.ico"));
     QApplication::setWindowIcon(icon);
 }

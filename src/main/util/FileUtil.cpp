@@ -3,19 +3,29 @@
 //
 
 #include "FileUtil.h"
+
+#include <QApplication>
 #include <QFile>
 
-QByteArray trtutils::readAllBytes(const char* path)
+namespace trtutils
 {
-    return readAllBytes(path, {});
-}
-
-QByteArray trtutils::readAllBytes(const char* path, QIODeviceBase::OpenMode extra_flags)
-{
-    QFile file(path);
-    if (file.open(QIODevice::ReadOnly | extra_flags))
+    QByteArray readAllBytes(const char* path)
     {
-        return file.readAll();
+        return readAllBytes(path, {});
     }
-    return {};
+
+    QByteArray readAllBytes(const char* path, QIODeviceBase::OpenMode extra_flags)
+    {
+        QFile file(path);
+        if (file.open(QIODevice::ReadOnly | extra_flags))
+        {
+            return file.readAll();
+        }
+        return {};
+    }
+
+    QString relativePath(const QString& path)
+    {
+        return QApplication::applicationDirPath() + "/" + path;
+    }
 }

@@ -1,6 +1,8 @@
 file(MAKE_DIRECTORY "${DEST}/platforms")
 file(COPY "${QT_CORE}" "${QT_GUI}" "${QT_WIDGETS}" DESTINATION "${DEST}")
 file(COPY "${QT_PLATFORM}" DESTINATION "${DEST}/platforms")
+file(MAKE_DIRECTORY "${DEST}/imageformats")
+file(COPY "${QT_ICO}" DESTINATION "${DEST}/imageformats")
 # Scan only these libraries: there is no application executable on a fresh build.
 set(APP "")
 if(MINGW)

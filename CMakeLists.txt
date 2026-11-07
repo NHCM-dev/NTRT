@@ -21,6 +21,9 @@ qt_add_executable(NTRT
 )
 target_include_directories(NTRT PRIVATE src)
 target_link_libraries(NTRT PRIVATE Qt6::Widgets)
+if(WIN32)
+    set_target_properties(NTRT PROPERTIES WIN32_EXECUTABLE TRUE)
+endif()
 add_custom_target(ntrt_resources
     COMMAND "${CMAKE_COMMAND}"
         "-DRESOURCE_SOURCE=${CMAKE_CURRENT_SOURCE_DIR}/src/resources"
@@ -47,10 +50,12 @@ if(WIN32)
             "-DQT_WIDGETS=$<TARGET_FILE:Qt6::Widgets>"
             "-DQT_PLUGINS=${_qt_bin}/../share/qt6/plugins"
             "-DQT_PLATFORM=$<TARGET_FILE:Qt6::QWindowsIntegrationPlugin>"
+            "-DQT_ICO=$<TARGET_FILE:Qt6::QICOPlugin>"
             "-DRUNTIME_BIN=${_compiler_bin}"
             -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/deploy/PrepareRuntime.cmake"
         COMMAND "${CMAKE_COMMAND}" -E touch "${CMAKE_CURRENT_BINARY_DIR}/runtime-$<CONFIG>-ready.stamp"
         DEPENDS Qt6::Core Qt6::Gui Qt6::Widgets
+            Qt6::QICOPlugin
             "${CMAKE_CURRENT_SOURCE_DIR}/cmake/deploy/PrepareRuntime.cmake"
             "${CMAKE_CURRENT_SOURCE_DIR}/cmake/deploy/DeployRuntime.cmake"
         VERBATIM)
