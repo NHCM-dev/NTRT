@@ -5,24 +5,25 @@ Using Qt as dependencies.
 
 ## Build
 
-NTRT requires Qt6 and CMake. By running the building command, script will automatically download Qt and put them 
-in the build directory. Program will dynamic link the Qt library during runtime.  
+NTRT requires CMake 3.21+, Ninja and a C/C++ compiler with C++23 support.
+The default presets prefer MinGW / MSYS2 UCRT64. Build results will be in directory `build/`.
+
+The build script will use an existing Qt installation, or download and build Qt in the build directory.
+Program will dynamically link the Qt library during runtime. Building Qt for the first time may take a while and require additional tools.
 
 Clone the repository:
 
 ```shell
 git clone https://github.com/NHCM-dev/NTRT.git ./NTRT
+cd ./NTRT
 ```
 
 Build using CMake:
 
 ```shell
-cd ./NTRT
-cmake --preset windows-msys2-release
+cmake --preset release
 cmake --build --preset release
 ```
 
-The distribution files will be available at directory `./build/release/dist`, executable file will be 
-at `./build/release/dist/NTRT.exe`
-
-
+Distribution files will be available at `./build/release/dist/NTRT`, including the executable,
+required DLLs and resources. This directory is cleared when the Release program is rebuilt.

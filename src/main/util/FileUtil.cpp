@@ -2,7 +2,7 @@
 // Created by NHCM on 2026/11/6.
 //
 
-#include "FileUtils.h"
+#include "FileUtil.h"
 #include <QFile>
 
 QByteArray trtutils::readAllBytes(const char* path)

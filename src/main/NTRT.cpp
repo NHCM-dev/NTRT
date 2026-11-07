@@ -7,7 +7,7 @@
 #include <QApplication>
 #include <QString>
 
-#include "utils/FileUtils.h"
+#include "util/FileUtil.h"
 
 int main(int argc, char** argv)
 {
