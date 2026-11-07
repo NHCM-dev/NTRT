@@ -13,7 +13,7 @@
 namespace ntrt
 {
     inline QApplication* app = nullptr;
-    inline MainWindow* mainWindow = nullptr;
+    inline trtui::MainWindow* mainWindow = nullptr;
     inline std::vector<std::string> args;
 
     void quitApp();

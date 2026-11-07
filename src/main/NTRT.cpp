@@ -5,7 +5,6 @@
 #include "NTRT.h"
 #include "ui/MainWindow.h"
 #include <QApplication>
-#include <QStyleFactory>
 #include <QString>
 
 #include "utils/FileUtils.h"
@@ -18,7 +17,7 @@ int main(int argc, char** argv)
     }
 
     int qtArgc = 1;
-    char appName[] = "NTRT.exe";
+    char* appName = argv[0];
     char* qtArgv[] = {appName, nullptr};
 
     ntrt::app = new QApplication(qtArgc, qtArgv);
@@ -32,7 +31,7 @@ int runQtApp()
     initQtStyles();
     initQtIcon();
 
-    ntrt::mainWindow = new ntrt::MainWindow();
+    ntrt::mainWindow = new trtui::MainWindow();
     ntrt::mainWindow->show();
 
     int exitCode = QApplication::exec();
