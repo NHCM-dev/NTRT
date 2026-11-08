@@ -81,12 +81,16 @@ namespace trtui
 
                     const QString instId = QString::fromStdString(data.instId);
                     const bool spot = data.instType == trtdata::InstType::Spot || data.instType == trtdata::InstType::Margin;
-                    const QString unit = spot ? instId.section('-', 0, 0) : "contracts";
-                    QTableWidgetItem* volume = new QTableWidgetItem(locale.toString(data.vol24h, 'f', 2) + " " + unit);
-                    if (spot)
-                        volume->setToolTip(locale.toString(data.volCcy24h, 'f', 2) + " " + instId.section('-', 1, 1));
+                    const QString unit = instId.section('-', 0, 0);
+
+                    double baseVol = spot ? data.vol24h : data.volCcy24h;
+                    double quoteVol = spot ? data.volCcy24h : data.volCcy24h * data.last;
+
+                    QTableWidgetItem* volume = new QTableWidgetItem(locale.toString(baseVol, 'f', 2) + " " + unit);
+                    volume->setToolTip(locale.toString(quoteVol, 'f', 2) + " " + instId.section('-', 1, 1));
                     table->setItem(row, 3, volume);
-                    QString change = "N/A";
+
+                    QString change = "0.00%";
                     if (data.open24h != 0)
                     {
                         const double percent = (data.last - data.open24h) / data.open24h * 100.0;
