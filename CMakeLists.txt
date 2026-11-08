@@ -8,6 +8,7 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 include(cmake/dependencies/EnsureQt.cmake)
+include(cmake/dependencies/EnsureSimdjson.cmake)
 qt_standard_project_setup()
 
 qt_add_executable(NTRT
@@ -18,9 +19,25 @@ qt_add_executable(NTRT
         src/main/util/FileUtil.h
         src/main/util/FileUtil.cpp
         src/main/Ver.h
+        src/main/data/market/abstract/Instrument.h
+        src/main/data/market/abstract/instimpl/OKXInstrument.cpp
+        src/main/data/market/abstract/instimpl/OKXInstrument.h
+        src/main/network/RequestTemplate.cpp
+        src/main/network/RequestTemplate.h
+        src/main/data/parser/OKXParser.cpp
+        src/main/data/parser/OKXParser.h
+        src/main/util/JsonUtil.cpp
+        src/main/util/JsonUtil.h
+        src/main/data/api/OKXApi.cpp
+        src/main/data/api/OKXApi.h
+        src/main/util/NetworkUtil.cpp
+        src/main/util/NetworkUtil.h
+        src/main/data/DataManager.cpp
+        src/main/data/DataManager.h
+        src/main/data/Exchanges.h
 )
 target_include_directories(NTRT PRIVATE src)
-target_link_libraries(NTRT PRIVATE Qt6::Widgets)
+target_link_libraries(NTRT PRIVATE Qt6::Widgets Qt6::Network simdjson::simdjson)
 if(WIN32)
     set_target_properties(NTRT PROPERTIES WIN32_EXECUTABLE TRUE)
 endif()
@@ -48,13 +65,14 @@ if(WIN32)
             "-DMINGW=${MINGW}"
             "-DQT_CORE=$<TARGET_FILE:Qt6::Core>" "-DQT_GUI=$<TARGET_FILE:Qt6::Gui>"
             "-DQT_WIDGETS=$<TARGET_FILE:Qt6::Widgets>"
+            "-DQT_NETWORK=$<TARGET_FILE:Qt6::Network>"
             "-DQT_PLUGINS=${_qt_bin}/../share/qt6/plugins"
             "-DQT_PLATFORM=$<TARGET_FILE:Qt6::QWindowsIntegrationPlugin>"
             "-DQT_ICO=$<TARGET_FILE:Qt6::QICOPlugin>"
             "-DRUNTIME_BIN=${_compiler_bin}"
             -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/deploy/PrepareRuntime.cmake"
         COMMAND "${CMAKE_COMMAND}" -E touch "${CMAKE_CURRENT_BINARY_DIR}/runtime-$<CONFIG>-ready.stamp"
-        DEPENDS Qt6::Core Qt6::Gui Qt6::Widgets
+        DEPENDS Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Network
             Qt6::QICOPlugin
             "${CMAKE_CURRENT_SOURCE_DIR}/cmake/deploy/PrepareRuntime.cmake"
             "${CMAKE_CURRENT_SOURCE_DIR}/cmake/deploy/DeployRuntime.cmake"

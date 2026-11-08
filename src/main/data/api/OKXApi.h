@@ -1,0 +1,38 @@
+//
+// Created by NHCM on 2026/11/7.
+//
+
+#ifndef NTRT_OKXAPI_H
+#define NTRT_OKXAPI_H
+
+#include "main/data/market/abstract/Instrument.h"
+#include "main/network/RequestTemplate.h"
+
+namespace trtdata::okx
+{
+    const trtnet::RequestTemplate TICKERS{
+        trtnet::RequestMethod::GET,
+        QUrl{"https://www.okx.com"},
+        "/api/v5/market/tickers",
+        {"instType"},
+        {"instFamily"}
+    };
+    const trtnet::RequestTemplate TICKER{
+        trtnet::RequestMethod::GET,
+        QUrl{"https://www.okx.com"},
+        "/api/v5/market/ticker",
+        {"instId"}
+    };
+
+    class OKXApi final
+    {
+    public:
+        static QFuture<TickerData> requestTicker(const std::string& instId);
+        /**
+         * @param instFamily the prefix of instId
+         */
+        static QFuture<std::shared_ptr<std::vector<TickerData>>> requestTickers(InstType instType, const std::string& instFamily = {});
+    };
+} // trtdata
+
+#endif //NTRT_OKXAPI_H

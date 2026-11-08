@@ -9,14 +9,21 @@
 
 namespace trtutils
 {
-    QByteArray readAllBytes(const char* path);
+    bool exists(const QString& path);
 
-    QByteArray readAllBytes(const char* path, QIODeviceBase::OpenMode flags);
+    QByteArray readAllBytes(const QString& path);
+
+    QByteArray readAllBytes(const QString& path, QIODeviceBase::OpenMode flags);
+
+    // Overwrites by default. Returns false on open, write, or flush failure.
+    bool writeAllBytes(const QString& path, const QByteArray& data);
+    bool writeAllBytes(const QString& path, const QByteArray& data, QIODeviceBase::OpenMode flags);
 
     /**
      * Return relative path, @param path relative path without / as prefix
      */
     QString relativePath(const QString& path);
+    QString appendPath(const QString& base, const QString& path);
 }
 
 #endif //NTRT_FILEUTIL_H

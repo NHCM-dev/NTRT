@@ -6,7 +6,9 @@
 #include "ui/MainWindow.h"
 #include <QApplication>
 #include <QString>
+#include <QtNetwork/QNetworkAccessManager>
 
+#include "network/RequestTemplate.h"
 #include "util/FileUtil.h"
 
 int main(int argc, char** argv)
@@ -21,12 +23,14 @@ int main(int argc, char** argv)
     char* qtArgv[] = {appName, nullptr};
 
     ntrt::app = new QApplication(qtArgc, qtArgv);
+    ntrt::netManager = new QNetworkAccessManager();
 
     return runQtApp();
 }
 
 int runQtApp()
 {
+    startupHook();
     initQtApp();
     initQtStyles();
     initQtIcon();
@@ -49,14 +53,27 @@ void cleanMem()
 {
     delete ntrt::mainWindow;
     ntrt::mainWindow = nullptr;
-
+    delete ntrt::netManager;
+    ntrt::netManager = nullptr;
     delete ntrt::app;
     ntrt::app = nullptr;
+    delete ntrt::dataManager;
+    ntrt::dataManager = nullptr;
+}
+
+void startupHook()
+{
+    ntrt::dataManager = new trtdata::DataManager();
+    ntrt::dataManager->tryInitOnce();
+    ntrt::configLoaded = ntrt::dataManager->loadAll();
 }
 
 void terminateHook()
 {
-    // do something
+    if (ntrt::configLoaded)
+    {
+        ntrt::dataManager->saveAll();
+    }
 }
 
 void initQtApp()
