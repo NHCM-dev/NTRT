@@ -10,9 +10,14 @@
 #include <QMainWindow>
 #include <QMenuBar>
 #include <QStackedWidget>
+#include <memory>
+#include <unordered_map>
+#include "AbstractPage.h"
+#include <QTimer>
 
 namespace trtui
 {
+
     enum class Navigation : int
     {
         Market = 1,
@@ -36,6 +41,10 @@ namespace trtui
         QWidget* navigationBar = nullptr;
         QButtonGroup* navigationGroup = nullptr;
 
+        std::unordered_map<Navigation, std::unique_ptr<AbstractPage>> widgets;
+
+        QTimer* timer500ms = new QTimer(this);
+
         explicit MainWindow(QWidget* parent = nullptr);
 
     private:
@@ -43,6 +52,10 @@ namespace trtui
         void initMenuBar();
         void initNavigation();
         void initWidgets();
+        void initPages();
+        void init500msSchedules();
+
+        void updateData500ms();
     };
 }
 

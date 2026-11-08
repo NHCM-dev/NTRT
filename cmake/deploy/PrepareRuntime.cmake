@@ -3,6 +3,10 @@ file(COPY "${QT_CORE}" "${QT_GUI}" "${QT_WIDGETS}" "${QT_NETWORK}" DESTINATION "
 file(COPY "${QT_PLATFORM}" DESTINATION "${DEST}/platforms")
 file(MAKE_DIRECTORY "${DEST}/imageformats")
 file(COPY "${QT_ICO}" DESTINATION "${DEST}/imageformats")
+if(QT_TLS)
+    file(MAKE_DIRECTORY "${DEST}/tls")
+    file(COPY "${QT_TLS}" DESTINATION "${DEST}/tls")
+endif()
 # Scan only these libraries: there is no application executable on a fresh build.
 set(APP "")
 if(MINGW)

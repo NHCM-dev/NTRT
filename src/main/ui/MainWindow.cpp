@@ -12,9 +12,11 @@
 #include <QLabel>
 #include <QVBoxLayout>
 #include <QPushButton>
+#include <functional>
 
 #include "main/NTRT.h"
 #include "main/Ver.h"
+#include "pages/MarketPage.h"
 
 namespace trtui
 {
@@ -24,6 +26,8 @@ namespace trtui
         initMenuBar();
         initNavigation();
         initWidgets();
+        initPages();
+        init500msSchedules();
         resize(1000, 500);
     }
 
@@ -83,9 +87,9 @@ namespace trtui
 
         navigationGroup->setExclusive(true);
 
-        auto addButton = [&](const QString& title, Navigation id)
+        const std::function<void(const QString&, Navigation)> addButton = [&](const QString& title, Navigation id)
         {
-            auto* button = new QPushButton(title, navigationBar);
+            QPushButton* button = new QPushButton(title, navigationBar);
 
             button->setCheckable(true);
 
@@ -93,6 +97,11 @@ namespace trtui
 
             navigationGroup->addButton(button, index);
             layout->addWidget(button);
+
+            connect(button, &QPushButton::clicked, this, [this, id]
+            {
+                mainPages->setCurrentWidget(widgets.at(id)->widget);
+            });
         };
 
         addButton("Market", Navigation::Market);
@@ -117,5 +126,41 @@ namespace trtui
     {
         rootLayout->addWidget(navigationBar);
         rootLayout->addWidget(mainPages, 1);
+    }
+
+    void MainWindow::initPages()
+    {
+        std::unique_ptr<MarketPage> marketPage = std::make_unique<MarketPage>(mainPages);
+        mainPages->addWidget(marketPage->widget);
+        mainPages->setCurrentWidget(marketPage->widget);
+        widgets.emplace(Navigation::Market, std::move(marketPage));
+
+        for (QAbstractButton* button : navigationGroup->buttons())
+        {
+            const int id = navigationGroup->id(button);
+            if (button->isCheckable())
+            {
+                button->setEnabled(widgets.contains(static_cast<Navigation>(id)));
+            }
+        }
+        navigationGroup->button(static_cast<int>(Navigation::Market))->setChecked(true);
+    }
+
+    void MainWindow::init500msSchedules()
+    {
+        connect(timer500ms, &QTimer::timeout, this, [this] {
+            updateData500ms();
+        });
+
+        updateData500ms();
+        timer500ms->start(500);
+    }
+
+    void MainWindow::updateData500ms()
+    {
+        for (const auto& [key, value] : widgets)
+        {
+            value->update();
+        }
     }
 }

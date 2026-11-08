@@ -86,6 +86,8 @@ namespace trtdata
 
         Exchange getExchange();
         void setExchange(Exchange exchange);
+
+        int instrumentsCount();
     };
 } // trtdata
 

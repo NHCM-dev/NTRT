@@ -218,7 +218,7 @@ namespace trtdata
     bool DataManager::removeInstrument(const Instrument& instrument)
     {
         const std::span<const std::unique_ptr<Instrument>> instruments = getInstruments();
-        for (std::size_t index = 0; index < instruments.size(); ++index)
+        for (std::size_t index = 0; index < instruments.size(); index++)
         {
             const Instrument& candidate = *instruments[index];
             if (candidate.instId == instrument.instId && candidate.instType == instrument.instType && candidate.exchange == instrument.exchange)
@@ -230,7 +230,7 @@ namespace trtdata
     bool DataManager::removeInstrument(const std::string& instId)
     {
         const std::span<const std::unique_ptr<Instrument>> instruments = getInstruments();
-        for (std::size_t index = 0; index < instruments.size(); ++index)
+        for (std::size_t index = 0; index < instruments.size(); index++)
         {
             if (instruments[index]->instId == instId)
                 return removeInstrument(static_cast<int>(index));
@@ -266,5 +266,10 @@ namespace trtdata
     void DataManager::setExchange(Exchange exchange)
     {
         exchangeConfig.current = exchange;
+    }
+
+    int DataManager::instrumentsCount()
+    {
+        return marketConfig.instruments.size();
     }
 } // trtdata

@@ -24,6 +24,7 @@ int main(int argc, char** argv)
 
     ntrt::app = new QApplication(qtArgc, qtArgv);
     ntrt::netManager = new QNetworkAccessManager();
+    ntrt::netManager->setTransferTimeout(10000);
 
     return runQtApp();
 }

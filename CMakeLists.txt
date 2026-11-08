@@ -35,6 +35,9 @@ qt_add_executable(NTRT
         src/main/data/DataManager.cpp
         src/main/data/DataManager.h
         src/main/data/Exchanges.h
+        src/main/ui/AbstractPage.h
+        src/main/ui/pages/MarketPage.cpp
+        src/main/ui/pages/MarketPage.h
 )
 target_include_directories(NTRT PRIVATE src)
 target_link_libraries(NTRT PRIVATE Qt6::Widgets Qt6::Network simdjson::simdjson)
@@ -59,6 +62,10 @@ if(WIN32)
     find_program(NTRT_WINDEPLOYQT NAMES windeployqt6 windeployqt
         HINTS "${_qt_bin}" REQUIRED)
     get_filename_component(_compiler_bin "${CMAKE_CXX_COMPILER}" DIRECTORY)
+    set(_qt_tls "")
+    if(TARGET Qt6::QSchannelBackendPlugin)
+        set(_qt_tls "$<TARGET_FILE:Qt6::QSchannelBackendPlugin>")
+    endif()
     # Deploy development DLLs once per Qt installation, rather than every relink.
     add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/runtime-$<CONFIG>-ready.stamp"
         COMMAND "${CMAKE_COMMAND}" "-DDEST=$<TARGET_FILE_DIR:NTRT>"
@@ -68,6 +75,7 @@ if(WIN32)
             "-DQT_NETWORK=$<TARGET_FILE:Qt6::Network>"
             "-DQT_PLUGINS=${_qt_bin}/../share/qt6/plugins"
             "-DQT_PLATFORM=$<TARGET_FILE:Qt6::QWindowsIntegrationPlugin>"
+            "-DQT_TLS=${_qt_tls}"
             "-DQT_ICO=$<TARGET_FILE:Qt6::QICOPlugin>"
             "-DRUNTIME_BIN=${_compiler_bin}"
             -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/deploy/PrepareRuntime.cmake"
