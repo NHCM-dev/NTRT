@@ -10,7 +10,7 @@
 #include <map>
 #include <memory>
 #include <optional>
-#include <span>
+#include <utility>
 #include <vector>
 
 namespace trtcore
@@ -24,19 +24,32 @@ namespace trtcore
 
     class MarketData final : public QObject
     {
-        using InstrumentPtr = std::shared_ptr<trtdata::Instrument>;
-
-        std::vector<InstrumentPtr> instruments;
-        std::map<InstrumentPtr, MarketSnapshot> snapshots;
-        QElapsedTimer lastRequest;
-        std::size_t nextInstrument = 0;
-        int requestInterval = 200;
-        bool pending = false;
-
     public:
-        void setInstruments(std::span<const InstrumentPtr> instruments);
+        using Identifier2SnapshotMap = std::map<trtdata::InstIdentifier, MarketSnapshot>;
+        static constexpr int requestInterval = 200;
+
+        MarketData();
         void updateNext();
-        const MarketSnapshot* getSnapshot(const InstrumentPtr& instrument) const;
+        const MarketSnapshot* getSnapshot(const trtdata::InstIdentifier& identifier) const;
+        const Identifier2SnapshotMap* getSnapshots(trtdata::InstType instType) const;
+
+    private:
+        using Market = std::pair<trtdata::Exchange, trtdata::InstType>;
+
+        struct RequestState
+        {
+            QElapsedTimer lastRequest;
+            int delay = requestInterval;
+            bool pending = false;
+        };
+
+        std::vector<Market> markets;
+        std::map<trtdata::Exchange, RequestState> requests;
+        std::map<trtdata::InstType, Identifier2SnapshotMap> tickersData;
+        std::map<Market, MarketSnapshot> failures;
+        std::size_t nextMarket = 0;
+
+        void requestMarket(const Market& market);
     };
 }
 

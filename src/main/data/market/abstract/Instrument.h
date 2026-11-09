@@ -4,6 +4,7 @@
 
 #ifndef NTRT_INSTRUMENT_H
 #define NTRT_INSTRUMENT_H
+#include <compare>
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -16,11 +17,11 @@ namespace trtdata
     enum class InstType : uint8_t
     {
         Spot = 0,   // Currency vs Currency
-        Margin,     // Leverage Currency vs Currency
-        Swap,       // Perpetual Swap Contract
-        Futures,    // Futures Contract
-        Option,     // Option
-        Events      // Events Contract
+        Margin = 1,     // Leverage Currency vs Currency
+        Swap = 2,       // Perpetual Swap Contract
+        Futures = 3,    // Futures Contract
+        Option = 4,     // Option
+        Events = 5      // Events Contract
     };
 
     constexpr std::string_view instrumentTypeName(InstType type)
@@ -50,21 +51,43 @@ namespace trtdata
         std::int64_t ts;
     };
 
+    struct InstIdentifier
+    {
+        Exchange exchange;
+        InstType type;
+        std::string id;
+
+        std::strong_ordering operator<=>(const InstIdentifier&) const = default;
+    };
+
     class Instrument
     {
+        const InstIdentifier uniqueIdentifier;
+
     public:
-        virtual ~Instrument() = default;
-
-        Instrument(const std::string& instId, InstType type, Exchange exchange)
-            : instId(std::move(instId)), instType(type), exchange(exchange)
-        {}
-
         const std::string instId;
         const InstType instType;
         const Exchange exchange;
 
+        virtual ~Instrument() = default;
+
+        Instrument(const std::string& instId, InstType type, Exchange exchange)
+            : uniqueIdentifier{exchange, type, instId}, instId(instId), instType(type), exchange(exchange)
+        {
+        }
+
         virtual QFuture<TickerData> requestTicker() = 0;
         virtual std::string getInstTypeStr() const = 0;
+
+        const InstIdentifier& getUniqueIdentifier() const
+        {
+            return uniqueIdentifier;
+        }
+
+        virtual bool operator=(Instrument& other)
+        {
+            return this->getUniqueIdentifier() == other.getUniqueIdentifier();
+        }
     };
 } // trtdata
 

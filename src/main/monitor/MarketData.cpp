@@ -3,68 +3,114 @@
 //
 
 #include "MarketData.h"
+#include "main/data/api/AbstractApi.h"
 #include <QFutureWatcher>
 #include <algorithm>
 #include <exception>
 
 namespace trtcore
 {
-    void MarketData::setInstruments(std::span<const InstrumentPtr> collection)
+    MarketData::MarketData()
     {
-        if (std::ranges::equal(instruments, collection))
-            return;
-
-        instruments.assign(collection.begin(), collection.end());
-        std::erase_if(snapshots, [this](const std::pair<const InstrumentPtr, MarketSnapshot>& entry)
+        for (trtdata::Exchange exchange : registeredExchanges())
         {
-            return std::ranges::find(instruments, entry.first) == instruments.end();
-        });
-        nextInstrument = 0;
+            for (trtdata::InstType type : exchangeApi(exchange).instrumentTypes())
+                markets.emplace_back(exchange, type);
+        }
     }
 
     void MarketData::updateNext()
     {
-        // OKX permits 20 ticker requests per 2 seconds per IP.
-        if (pending || instruments.empty() || (lastRequest.isValid() && lastRequest.elapsed() < requestInterval))
-            return;
-
-        const InstrumentPtr instrument = instruments[nextInstrument];
-        nextInstrument = (nextInstrument + 1) % instruments.size();
-        snapshots.try_emplace(instrument);
-        QFutureWatcher<trtdata::TickerData>* watcher = new QFutureWatcher<trtdata::TickerData>(this);
-        pending = true;
-        lastRequest.start();
-
-        connect(watcher, &QFutureWatcher<trtdata::TickerData>::finished, this, [this, watcher, instrument]
+        for (std::size_t index = 0; index < markets.size(); index++)
         {
-            pending = false;
+            const Market& market = markets[nextMarket];
+            nextMarket = (nextMarket + 1) % markets.size();
+            RequestState& state = requests[market.first];
+            if (state.pending || (state.lastRequest.isValid() && state.lastRequest.elapsed() < state.delay))
+                continue;
+
+            requestMarket(market);
+            return;
+        }
+    }
+
+    void MarketData::requestMarket(const Market& market)
+    {
+        using Batch = std::shared_ptr<std::vector<trtdata::TickerData>>;
+        const AbstractApi& api = exchangeApi(market.first);
+        const int interval = std::max(requestInterval, api.getRequestInterval());
+        RequestState& state = requests[market.first];
+        state.pending = true;
+        state.delay = interval;
+        state.lastRequest.start();
+
+        QFutureWatcher<Batch>* watcher = new QFutureWatcher<Batch>(this);
+        connect(watcher, &QFutureWatcher<Batch>::finished, this, [this, watcher, market]
+        {
+            RequestState& state = requests.at(market.first);
+            state.pending = false;
             watcher->deleteLater();
 
-            const std::map<InstrumentPtr, MarketSnapshot>::iterator entry = snapshots.find(instrument);
-            if (entry == snapshots.end())
-                return;
-            MarketSnapshot& current = entry->second;
             try
             {
-                trtdata::TickerData ticker = watcher->result();
-                if (!current.ticker || ticker.ts >= current.ticker->ts)
-                    current.ticker = std::move(ticker);
-                current.error.clear();
-                requestInterval = 200;
+                const Batch batch = watcher->result();
+                for (trtdata::TickerData& ticker : *batch)
+                {
+                    const trtdata::InstIdentifier identifier{market.first, ticker.instType, ticker.instId};
+                    MarketSnapshot& snapshot = tickersData[ticker.instType][identifier];
+                    snapshot.exchange = market.first;
+                    if (!snapshot.ticker || ticker.ts >= snapshot.ticker->ts)
+                        snapshot.ticker = std::move(ticker);
+                    snapshot.error.clear();
+                }
+                failures.erase(market);
+                const std::map<trtdata::InstType, Identifier2SnapshotMap>::iterator group = tickersData.find(market.second);
+                if (group != tickersData.end())
+                {
+                    for (std::pair<const trtdata::InstIdentifier, MarketSnapshot>& entry : group->second)
+                    {
+                        if (entry.first.exchange == market.first)
+                            entry.second.error.clear();
+                    }
+                }
             }
             catch (const std::exception& error)
             {
-                current.error = QString::fromUtf8(error.what());
-                requestInterval = 2000;
-                lastRequest.restart();
+                const QString message = QString::fromUtf8(error.what());
+                failures.insert_or_assign(market, MarketSnapshot{market.first, std::nullopt, message});
+                const std::map<trtdata::InstType, Identifier2SnapshotMap>::iterator group = tickersData.find(market.second);
+                if (group != tickersData.end())
+                {
+                    for (std::pair<const trtdata::InstIdentifier, MarketSnapshot>& entry : group->second)
+                    {
+                        if (entry.first.exchange == market.first)
+                            entry.second.error = message;
+                    }
+                }
+                state.delay = std::max(state.delay, 2000);
+                state.lastRequest.restart();
             }
         });
-        watcher->setFuture(instrument->requestTicker());
+        watcher->setFuture(api.fetchTickers(market.second));
     }
 
-    const MarketSnapshot* MarketData::getSnapshot(const InstrumentPtr& instrument) const
+    const MarketSnapshot* MarketData::getSnapshot(const trtdata::InstIdentifier& identifier) const
     {
-        const std::map<InstrumentPtr, MarketSnapshot>::const_iterator entry = snapshots.find(instrument);
-        return entry == snapshots.end() ? nullptr : &entry->second;
+        const Identifier2SnapshotMap* snapshots = getSnapshots(identifier.type);
+        if (snapshots)
+        {
+            const Identifier2SnapshotMap::const_iterator entry = snapshots->find(identifier);
+            if (entry != snapshots->end())
+                return &entry->second;
+        }
+
+        const std::map<Market, MarketSnapshot>::const_iterator failure = failures.find({identifier.exchange, identifier.type});
+        return failure == failures.end() ? nullptr : &failure->second;
+    }
+
+    const MarketData::Identifier2SnapshotMap* MarketData::getSnapshots(trtdata::InstType instType) const
+    {
+        const std::map<trtdata::InstType, Identifier2SnapshotMap>::const_iterator entry = tickersData.find(instType);
+        return entry == tickersData.end() ? nullptr : &entry->second;
     }
 }

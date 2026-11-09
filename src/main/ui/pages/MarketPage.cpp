@@ -118,7 +118,7 @@ namespace trtui
             table->setItem(row, 1, new QTableWidgetItem(QString::fromUtf8(trtdata::instrumentTypeName(instrument->instType))));
             table->setItem(row, 2, new QTableWidgetItem(symbol));
 
-            const trtcore::MarketSnapshot* snapshot = marketData.getSnapshot(instrument);
+            const trtcore::MarketSnapshot* snapshot = marketData.getSnapshot(instrument->getUniqueIdentifier());
             if (!snapshot || !snapshot->ticker)
             {
                 QTableWidgetItem* status = new QTableWidgetItem("No data");

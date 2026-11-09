@@ -93,8 +93,21 @@ namespace trtdata::OKXParser
         std::shared_ptr<std::vector<TickerData>> tickers = std::make_shared<std::vector<TickerData>>();
         for (const jsonElement& element : data)
         {
-            tickers->push_back(parseTickerFromElement(element));
+            try
+            {
+                tickers->push_back(parseTickerFromElement(element));
+            }
+            catch (const simdjson::simdjson_error&)
+            {
+                // A ticker can omit quote fields before its first trade.
+            }
+            catch (const std::runtime_error&)
+            {
+                // Skip invalid quote fields without dropping the rest of the market.
+            }
         }
+        if (data.size() != 0 && tickers->empty())
+            throw std::runtime_error("OKX returned no usable tickers");
         return tickers;
     }
 } // trtdata

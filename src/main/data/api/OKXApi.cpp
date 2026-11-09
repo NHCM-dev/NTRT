@@ -42,6 +42,11 @@ namespace trtdata::okx
         return {InstType::Spot, InstType::Swap, InstType::Futures, InstType::Option};
     }
 
+    QFuture<std::shared_ptr<std::vector<TickerData>>> OKXApi::fetchTickers(InstType type) const
+    {
+        return requestTickers(type);
+    }
+
     QFuture<std::vector<std::shared_ptr<Instrument>>> OKXApi::fetchInstruments(InstType type) const
     {
         QUrlQuery query;
