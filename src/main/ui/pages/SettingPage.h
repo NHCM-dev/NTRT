@@ -11,6 +11,11 @@ class QListWidget;
 class QStackedWidget;
 class QVBoxLayout;
 
+namespace trtdata
+{
+    enum class EnumTheme;
+}
+
 namespace trtui
 {
     class SettingPage final : public AbstractPage
@@ -28,8 +33,11 @@ namespace trtui
 
         void initSidebar(QFrame* page, QHBoxLayout* layout);
         void initGeneralSection();
+        void initAppearanceSection();
         void initAboutSection();
         void initSearch();
+        void updateCategoryPalette();
+        bool saveAppearance(trtdata::EnumTheme theme);
 
         QVBoxLayout* addSection(const QString& title, const QString& group, const QString& keywords = {});
         void addRow(QVBoxLayout* rows, const QString& name, const QString& description, QWidget* control);

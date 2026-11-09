@@ -76,6 +76,8 @@ void initQtApp()
 void initQtStyles()
 {
     QApplication::setStyle("Fusion");
+    const trtdata::AppearanceManager* appearance = ntrt::configManager->getAppearanceManager();
+    trtdata::AppearanceManager::applyPalette(appearance->getCurrentTheme());
 
     QFile styleFile(trtutils::relativePath("res/style.qss"));
     if (!styleFile.open(QIODevice::ReadOnly | QIODevice::Text))

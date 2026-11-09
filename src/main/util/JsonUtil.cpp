@@ -3,6 +3,9 @@
 //
 
 #include "JsonUtil.h"
+#include <QDir>
+#include <QFileInfo>
+#include <QSaveFile>
 #include <cstdint>
 
 namespace trtdata
@@ -64,4 +67,14 @@ namespace trtdata
 
         return simdjson::prettify(element);
     }
+    bool writeJsonFile(const QString& path, std::string_view json)
+    {
+        const std::string formatted = prettyJson(json);
+        if (!QDir().mkpath(QFileInfo(path).absolutePath()))
+            return false;
+        QSaveFile file(path);
+        const qint64 size = static_cast<qint64>(formatted.size());
+        return file.open(QIODevice::WriteOnly) && file.write(formatted.data(), size) == size && file.commit();
+    }
+
 } // trtutils

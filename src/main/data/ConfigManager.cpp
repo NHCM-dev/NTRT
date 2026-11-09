@@ -7,10 +7,7 @@
 #include "main/util/JsonUtil.h"
 #include "main/util/FileUtil.h"
 #include "main/data/api/AbstractApi.h"
-#include <QSaveFile>
 #include <algorithm>
-#include <QDir>
-#include <QFileInfo>
 
 namespace trtdata
 {
@@ -22,16 +19,6 @@ namespace trtdata
                 return exchange;
         }
         throw std::invalid_argument("Unknown exchange: " + std::string(name));
-    }
-
-    bool ConfigManager::writeConfig(const QString& path, std::string_view json)
-    {
-        const std::string formatted = prettyJson(json);
-        if (!QDir().mkpath(QFileInfo(path).absolutePath()))
-            return false;
-        QSaveFile file(path);
-        const qint64 size = static_cast<qint64>(formatted.size());
-        return file.open(QIODevice::WriteOnly) && file.write(formatted.data(), size) == size && file.commit();
     }
 
     MarketConfig ConfigManager::defaultMarketConfig()
@@ -48,6 +35,7 @@ namespace trtdata
         bool success = true;
         success &= loadMarketConfig();
         success &= loadExchangeConfig();
+        success &= appearanceManager.loadConfig();
         return success;
     }
 
@@ -56,6 +44,7 @@ namespace trtdata
         bool success = true;
         success &= saveMarketConfig();
         success &= saveExchangeConfig();
+        success &= appearanceManager.saveConfig();
         return success;
     }
 
@@ -78,6 +67,7 @@ namespace trtdata
             this->exchangeConfig = defaultExchangeConfig();
             saveExchangeConfig(exchangeFileName);
         }
+        notExist |= appearanceManager.tryInitOnce();
         return notExist;
     }
 
@@ -163,7 +153,7 @@ namespace trtdata
         }
         builder.end_array();
         builder.end_object();
-        return writeConfig(path, builder.view());
+        return writeJsonFile(path, builder.view());
     }
 
     bool ConfigManager::saveExchangeConfig(const QString& fileName)
@@ -178,7 +168,7 @@ namespace trtdata
             return false;
         }
         builder.end_object();
-        return writeConfig(trtutils::appendPath(dataPath, fileName), builder.view());
+        return writeJsonFile(trtutils::appendPath(dataPath, fileName), builder.view());
     }
 
     std::span<const std::shared_ptr<Instrument>> ConfigManager::getInstruments() const
@@ -276,6 +266,11 @@ namespace trtdata
     void ConfigManager::setExchange(Exchange exchange)
     {
         exchangeConfig.current = exchange;
+    }
+
+    AppearanceManager* ConfigManager::getAppearanceManager()
+    {
+        return &appearanceManager;
     }
 
     int ConfigManager::instrumentsCount()

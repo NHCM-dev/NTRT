@@ -34,6 +34,7 @@ namespace trtui
         sections = new QStackedWidget(page);
         layout->addWidget(sections, 1);
         initGeneralSection();
+        initAppearanceSection();
         initAboutSection();
         initSearch();
         return page;
@@ -58,16 +59,7 @@ namespace trtui
         categories = new QListWidget(sidebar);
         categories->setFrameShape(QFrame::NoFrame);
         categories->setSpacing(2);
-        QPalette colors = categories->palette();
-        const QColor base = colors.color(QPalette::Base);
-        const QColor text = colors.color(QPalette::Text);
-        const QColor selection = QColor::fromRgbF(
-            base.redF() * 0.88 + text.redF() * 0.12,
-            base.greenF() * 0.88 + text.greenF() * 0.12,
-            base.blueF() * 0.88 + text.blueF() * 0.12);
-        colors.setColor(QPalette::Highlight, selection);
-        colors.setColor(QPalette::HighlightedText, text);
-        categories->setPalette(colors);
+        updateCategoryPalette();
         navigation->addWidget(categories, 1);
         layout->addWidget(sidebar);
         QFrame* sidebarDivider = new QFrame(page);
@@ -101,6 +93,47 @@ namespace trtui
                 config.setExchange(previous);
                 return false;
             });
+    }
+
+    void SettingPage::initAppearanceSection()
+    {
+        QVBoxLayout* rows = addSection("Appearance", "Theme", "light dark");
+        const trtdata::AppearanceManager* appearance = ntrt::configManager->getAppearanceManager();
+        const int selected = appearance->getCurrentTheme() == trtdata::EnumTheme::Dark ? 1 : 0;
+        addDropdown(rows, "Theme", "Choose a light or dark interface.", {"Light", "Dark"}, selected, [this](int index)
+        {
+            return saveAppearance(index == 0 ? trtdata::EnumTheme::Light : trtdata::EnumTheme::Dark);
+        });
+    }
+
+    bool SettingPage::saveAppearance(trtdata::EnumTheme theme)
+    {
+        trtdata::AppearanceManager* appearance = ntrt::configManager->getAppearanceManager();
+        const trtdata::EnumTheme previous = appearance->getCurrentTheme();
+        appearance->setTheme(theme);
+        if (!appearance->saveConfig())
+        {
+            appearance->setTheme(previous);
+            return false;
+        }
+
+        trtdata::AppearanceManager::applyPalette(theme);
+        updateCategoryPalette();
+        return true;
+    }
+
+    void SettingPage::updateCategoryPalette()
+    {
+        QPalette colors = QApplication::palette();
+        const QColor base = colors.color(QPalette::Base);
+        const QColor text = colors.color(QPalette::Text);
+        const QColor selection = QColor::fromRgbF(
+            base.redF() * 0.88 + text.redF() * 0.12,
+            base.greenF() * 0.88 + text.greenF() * 0.12,
+            base.blueF() * 0.88 + text.blueF() * 0.12);
+        colors.setColor(QPalette::Highlight, selection);
+        colors.setColor(QPalette::HighlightedText, text);
+        categories->setPalette(colors);
     }
 
     void SettingPage::initAboutSection()

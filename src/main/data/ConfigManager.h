@@ -8,6 +8,7 @@
 #include <span>
 #include <vector>
 
+#include "AppearanceManager.h"
 #include "main/util/FileUtil.h"
 #include "market/abstract/Instrument.h"
 
@@ -35,15 +36,15 @@ namespace trtdata
 
         MarketConfig marketConfig;
         ExchangeConfig exchangeConfig;
+        AppearanceManager appearanceManager;
 
         Exchange readExchange(std::string_view name);
-        bool writeConfig(const QString& path, std::string_view json);
 
         MarketConfig defaultMarketConfig();
         ExchangeConfig defaultExchangeConfig();
     public:
         ConfigManager(QString dataPath = trtutils::relativePath(DEFAULT_DATA_PATH))
-            : dataPath(dataPath)
+            : dataPath(dataPath), appearanceManager(dataPath)
         {
         }
 
@@ -87,6 +88,8 @@ namespace trtdata
 
         Exchange getExchange();
         void setExchange(Exchange exchange);
+
+        AppearanceManager* getAppearanceManager();
 
         int instrumentsCount();
     };

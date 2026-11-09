@@ -5,7 +5,7 @@
 #ifndef NTRT_JSONUTIL_H
 #define NTRT_JSONUTIL_H
 
-#include <QByteArray>
+#include <QString>
 
 #include "simdjson.h"
 
@@ -43,6 +43,7 @@ namespace trtdata
     jsonResult<Element> parseJson(const QByteArray& json);
 
     std::string prettyJson(std::string_view json);
+    bool writeJsonFile(const QString& path, std::string_view json);
 } // trtutils
 
 #endif //NTRT_JSONUTIL_H
