@@ -2,7 +2,7 @@
 // Created by NHCM on 2026/11/7.
 //
 
-#include "DataManager.h"
+#include "ConfigManager.h"
 
 #include "main/util/JsonUtil.h"
 #include "main/util/FileUtil.h"
@@ -14,9 +14,9 @@
 
 namespace trtdata
 {
-    Exchange DataManager::readExchange(std::string_view name)
+    Exchange ConfigManager::readExchange(std::string_view name)
     {
-        for (Exchange exchange : {Exchange::Binance, Exchange::Bybit, Exchange::OKX})
+        for (Exchange exchange : {Exchange::OKX})
         {
             if (getExchangeStr(exchange) == name)
                 return exchange;
@@ -24,7 +24,7 @@ namespace trtdata
         throw std::invalid_argument("Unknown exchange: " + std::string(name));
     }
 
-    bool DataManager::writeConfig(const QString& path, std::string_view json)
+    bool ConfigManager::writeConfig(const QString& path, std::string_view json)
     {
         const std::string formatted = prettyJson(json);
         if (!QDir().mkpath(QFileInfo(path).absolutePath()))
@@ -32,16 +32,16 @@ namespace trtdata
         return trtutils::writeAllBytes(path, QByteArray(formatted.data(), static_cast<qsizetype>(formatted.size())));
     }
 
-    MarketConfig DataManager::defaultMarketConfig()
+    MarketConfig ConfigManager::defaultMarketConfig()
     {
         return {};
     }
-    ExchangeConfig DataManager::defaultExchangeConfig()
+    ExchangeConfig ConfigManager::defaultExchangeConfig()
     {
         return {DEFAULT_EXCHANGE_CONFIG.toStdString(), Exchange::OKX};
     }
 
-    bool DataManager::loadAll()
+    bool ConfigManager::loadAll()
     {
         bool success = true;
         success &= loadMarketConfig();
@@ -49,7 +49,7 @@ namespace trtdata
         return success;
     }
 
-    bool DataManager::saveAll()
+    bool ConfigManager::saveAll()
     {
         bool success = true;
         success &= saveMarketConfig();
@@ -57,7 +57,7 @@ namespace trtdata
         return success;
     }
 
-    bool DataManager::tryInitOnce(
+    bool ConfigManager::tryInitOnce(
         const QString& marketFileName,
         const QString& exchangeFileName)
     {
@@ -79,7 +79,7 @@ namespace trtdata
         return notExist;
     }
 
-    bool DataManager::loadMarketConfig(const QString& fileName)
+    bool ConfigManager::loadMarketConfig(const QString& fileName)
     {
         QString path = trtutils::appendPath(dataPath, fileName);
         QByteArray bytes = trtutils::readAllBytes(path);
@@ -103,7 +103,7 @@ namespace trtdata
                 default:
                     {
                         const InstType type = OKXParser::readType(readString(entry, "instType"));
-                        loaded.instruments.push_back(std::make_unique<okx::OKXInstrument>(id, type));
+                        loaded.instruments.push_back(std::make_shared<okx::OKXInstrument>(id, type));
                     }
                 }
             }
@@ -116,7 +116,7 @@ namespace trtdata
         return false;
     }
 
-    bool DataManager::loadExchangeConfig(const QString& fileName)
+    bool ConfigManager::loadExchangeConfig(const QString& fileName)
     {
         QString path = trtutils::appendPath(dataPath, fileName);
         QByteArray bytes = trtutils::readAllBytes(path);
@@ -136,7 +136,7 @@ namespace trtdata
         return false;
     }
 
-    bool DataManager::saveMarketConfig(const QString& fileName)
+    bool ConfigManager::saveMarketConfig(const QString& fileName)
     {
         QString path = trtutils::appendPath(dataPath, fileName);
         jsonBuilder builder = newBuilder();
@@ -149,7 +149,7 @@ namespace trtdata
         bool first = true;
         try
         {
-            for (const std::unique_ptr<Instrument>& instrument : marketConfig.instruments)
+            for (const std::shared_ptr<Instrument>& instrument : marketConfig.instruments)
             {
                 if (!first)
                     builder.append_comma();
@@ -171,7 +171,7 @@ namespace trtdata
         return writeConfig(path, builder.view());
     }
 
-    bool DataManager::saveExchangeConfig(const QString& fileName)
+    bool ConfigManager::saveExchangeConfig(const QString& fileName)
     {
         jsonBuilder builder = newBuilder();
         builder.start_object();
@@ -186,38 +186,38 @@ namespace trtdata
         return writeConfig(trtutils::appendPath(dataPath, fileName), builder.view());
     }
 
-    std::span<const std::unique_ptr<Instrument>> DataManager::getInstruments() const
+    std::span<const std::shared_ptr<Instrument>> ConfigManager::getInstruments() const
     {
         return marketConfig.instruments;
     }
 
-    std::span<const std::unique_ptr<Instrument>> DataManager::getInstruments(int from, int to) const
+    std::span<const std::shared_ptr<Instrument>> ConfigManager::getInstruments(int from, int to) const
     {
         return getInstruments().subspan(from, to - from);
     }
 
-    Instrument& DataManager::getInstrument(int index)
+    Instrument& ConfigManager::getInstrument(int index)
     {
         return *marketConfig.instruments[index];
     }
 
-    const ExchangeConfig* DataManager::getExchangeConfig()
+    const ExchangeConfig* ConfigManager::getExchangeConfig()
     {
         return &exchangeConfig;
     }
 
-    int DataManager::addInstrument(const Instrument& instrument)
+    int ConfigManager::addInstrument(const Instrument& instrument)
     {
         if (instrument.exchange != Exchange::OKX)
             return -1;
         const int index = static_cast<int>(marketConfig.instruments.size());
-        marketConfig.instruments.push_back(std::make_unique<okx::OKXInstrument>(instrument.instId, instrument.instType));
+        marketConfig.instruments.push_back(std::make_shared<okx::OKXInstrument>(instrument.instId, instrument.instType));
         return index;
     }
 
-    bool DataManager::removeInstrument(const Instrument& instrument)
+    bool ConfigManager::removeInstrument(const Instrument& instrument)
     {
-        const std::span<const std::unique_ptr<Instrument>> instruments = getInstruments();
+        const std::span<const std::shared_ptr<Instrument>> instruments = getInstruments();
         for (std::size_t index = 0; index < instruments.size(); index++)
         {
             const Instrument& candidate = *instruments[index];
@@ -227,9 +227,9 @@ namespace trtdata
         return false;
     }
 
-    bool DataManager::removeInstrument(const std::string& instId)
+    bool ConfigManager::removeInstrument(const std::string& instId)
     {
-        const std::span<const std::unique_ptr<Instrument>> instruments = getInstruments();
+        const std::span<const std::shared_ptr<Instrument>> instruments = getInstruments();
         for (std::size_t index = 0; index < instruments.size(); index++)
         {
             if (instruments[index]->instId == instId)
@@ -238,7 +238,7 @@ namespace trtdata
         return false;
     }
 
-    bool DataManager::removeInstrument(int index)
+    bool ConfigManager::removeInstrument(int index)
     {
         if (index < 0 || static_cast<std::size_t>(index) >= marketConfig.instruments.size())
             return false;
@@ -246,9 +246,9 @@ namespace trtdata
         return true;
     }
 
-    bool DataManager::moveInstrument(int from, int to)
+    bool ConfigManager::moveInstrument(int from, int to)
     {
-        std::vector<std::unique_ptr<Instrument>>& instruments = marketConfig.instruments;
+        std::vector<std::shared_ptr<Instrument>>& instruments = marketConfig.instruments;
         if (from < 0 || to < 0 || static_cast<std::size_t>(std::max(from, to)) >= instruments.size())
             return false;
         if (from < to)
@@ -258,17 +258,17 @@ namespace trtdata
         return true;
     }
 
-    Exchange DataManager::getExchange()
+    Exchange ConfigManager::getExchange()
     {
         return exchangeConfig.current;
     }
 
-    void DataManager::setExchange(Exchange exchange)
+    void ConfigManager::setExchange(Exchange exchange)
     {
         exchangeConfig.current = exchange;
     }
 
-    int DataManager::instrumentsCount()
+    int ConfigManager::instrumentsCount()
     {
         return marketConfig.instruments.size();
     }

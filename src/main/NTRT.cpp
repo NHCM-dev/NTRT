@@ -22,7 +22,7 @@ int main(int argc, char** argv)
     char* appName = argv[0];
     char* qtArgv[] = {appName, nullptr};
 
-    ntrt::app = new QApplication(qtArgc, qtArgv);
+    ntrt::app = std::make_shared<QApplication>(qtArgc, qtArgv);
     ntrt::netManager = new QNetworkAccessManager();
     ntrt::netManager->setTransferTimeout(10000);
 
@@ -36,12 +36,11 @@ int runQtApp()
     initQtStyles();
     initQtIcon();
 
-    ntrt::mainWindow = new trtui::MainWindow();
+    ntrt::mainWindow = std::make_shared<trtui::MainWindow>();
     ntrt::mainWindow->show();
 
     int exitCode = QApplication::exec();
     terminateHook();
-    cleanMem();
     return exitCode;
 }
 
@@ -50,31 +49,22 @@ void ntrt::quitApp()
     QApplication::quit();
 }
 
-void cleanMem()
-{
-    delete ntrt::mainWindow;
-    ntrt::mainWindow = nullptr;
-    delete ntrt::netManager;
-    ntrt::netManager = nullptr;
-    delete ntrt::app;
-    ntrt::app = nullptr;
-    delete ntrt::dataManager;
-    ntrt::dataManager = nullptr;
-}
-
 void startupHook()
 {
-    ntrt::dataManager = new trtdata::DataManager();
-    ntrt::dataManager->tryInitOnce();
-    ntrt::configLoaded = ntrt::dataManager->loadAll();
+    ntrt::configManager = std::make_shared<trtdata::ConfigManager>();
+    ntrt::configManager->tryInitOnce();
+    ntrt::configLoaded = ntrt::configManager->loadAll();
+    ntrt::dataMonitor = std::make_shared<trtcore::DataMonitor>();
+    ntrt::dataMonitor->start();
 }
 
 void terminateHook()
 {
     if (ntrt::configLoaded)
     {
-        ntrt::dataManager->saveAll();
+        ntrt::configManager->saveAll();
     }
+    ntrt::dataMonitor->stop();
 }
 
 void initQtApp()

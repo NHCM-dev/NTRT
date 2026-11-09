@@ -16,7 +16,7 @@ namespace trtdata
     struct MarketConfig
     {
         std::string fileName;
-        std::vector<std::unique_ptr<Instrument>> instruments;
+        std::vector<std::shared_ptr<Instrument>> instruments;
     };
 
     struct ExchangeConfig
@@ -29,7 +29,7 @@ namespace trtdata
     inline static const QString DEFAULT_EXCHANGE_CONFIG = "exchange.json";
     inline static const QString DEFAULT_DATA_PATH = "data/";
 
-    class DataManager final
+    class ConfigManager final
     {
         QString dataPath;
 
@@ -42,7 +42,7 @@ namespace trtdata
         MarketConfig defaultMarketConfig();
         ExchangeConfig defaultExchangeConfig();
     public:
-        DataManager(QString dataPath = trtutils::relativePath(DEFAULT_DATA_PATH))
+        ConfigManager(QString dataPath = trtutils::relativePath(DEFAULT_DATA_PATH))
             : dataPath(dataPath)
         {
         }
@@ -67,8 +67,8 @@ namespace trtdata
         bool saveMarketConfig(const QString& fileName = DEFAULT_MARKET_CONFIG);
         bool saveExchangeConfig(const QString& fileName = DEFAULT_EXCHANGE_CONFIG);
 
-        std::span<const std::unique_ptr<Instrument>> getInstruments() const;
-        std::span<const std::unique_ptr<Instrument>> getInstruments(int from, int to) const;
+        std::span<const std::shared_ptr<Instrument>> getInstruments() const;
+        std::span<const std::shared_ptr<Instrument>> getInstruments(int from, int to) const;
         Instrument& getInstrument(int index);
 
         const ExchangeConfig* getExchangeConfig();

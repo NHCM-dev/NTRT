@@ -13,7 +13,6 @@ namespace trtui
     class MarketPage final : public AbstractPage
     {
         QTableWidget* table = nullptr;
-        int pendingRequests = 0;
     public:
 
         explicit MarketPage(QWidget* parent = nullptr)

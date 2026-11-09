@@ -10,8 +10,6 @@ namespace trtdata
 {
    enum class Exchange
    {
-      Binance,
-      Bybit,
       OKX
    };
 
@@ -19,8 +17,6 @@ namespace trtdata
    {
       switch (exchange)
       {
-         case Exchange::Binance: return "Binance";
-         case Exchange::Bybit: return "Bybit";
          case Exchange::OKX: return "OKX";
       }
 

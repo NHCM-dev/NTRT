@@ -8,8 +8,6 @@
 #include <QHeaderView>
 #include <QLocale>
 
-#include <QFutureWatcher>
-#include <exception>
 
 namespace trtui
 {
@@ -24,19 +22,6 @@ namespace trtui
             "24H Change"};
         table->setColumnCount(headers.count());
         table->setHorizontalHeaderLabels(headers);
-
-        int instCounts = ntrt::dataManager->instrumentsCount();
-        table->setRowCount(instCounts);
-
-        for (int row = 0; row < instCounts; row++)
-        {
-            trtdata::Instrument& instrument = ntrt::dataManager->getInstrument(row);
-            table->setItem(row, 0, new QTableWidgetItem(trtdata::getExchangeStr(instrument.exchange).data()));
-            table->setItem(row, 1, new QTableWidgetItem(instrument.instId.data()));
-            table->setItem(row, 2, new QTableWidgetItem("No data"));
-            table->setItem(row, 3, new QTableWidgetItem("No data"));
-            table->setItem(row, 4, new QTableWidgetItem("No data"));
-        }
 
         // Auto adjust column size
         table->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
@@ -57,61 +42,56 @@ namespace trtui
 
     void MarketPage::update()
     {
-        if (pendingRequests != 0)
-            return;
-
-        const int count = ntrt::dataManager->instrumentsCount();
+        const std::span<const std::shared_ptr<trtdata::Instrument>> instruments = ntrt::configManager->getInstruments();
+        const trtcore::MarketData& marketData = ntrt::dataMonitor->getMarketData();
+        const int count = static_cast<int>(instruments.size());
+        const QLocale locale(QLocale::English);
         table->setRowCount(count);
         for (int row = 0; row < count; row++)
         {
-            trtdata::Instrument& instrument = ntrt::dataManager->getInstrument(row);
-            table->setItem(row, 0, new QTableWidgetItem(trtdata::getExchangeStr(instrument.exchange).data()));
-            table->setItem(row, 1, new QTableWidgetItem(QString::fromStdString(instrument.instId)));
-            QFutureWatcher<trtdata::TickerData>* watcher = new QFutureWatcher<trtdata::TickerData>(table);
-            pendingRequests++;
+            const std::shared_ptr<trtdata::Instrument>& instrument = instruments[row];
+            table->setItem(row, 0, new QTableWidgetItem(trtdata::getExchangeStr(instrument->exchange).data()));
+            table->setItem(row, 1, new QTableWidgetItem(QString::fromStdString(instrument->instId)));
 
-            QObject::connect(watcher, &QFutureWatcher<trtdata::TickerData>::finished, table, [this, watcher, row]
+            const trtcore::MarketSnapshot* snapshot = marketData.getSnapshot(instrument);
+            if (!snapshot || !snapshot->ticker)
             {
-                try
+                QTableWidgetItem* status = new QTableWidgetItem("No data");
+                if (snapshot && !snapshot->error.isEmpty())
                 {
-                    const trtdata::TickerData data = watcher->result();
-                    const QLocale locale(QLocale::English);
-                    const QString price = data.last >= 1 ? locale.toString(data.last, 'f', 2) : locale.toString(data.last, 'g', 4);
-                    table->setItem(row, 2, new QTableWidgetItem(price));
-
-                    const QString instId = QString::fromStdString(data.instId);
-                    const bool spot = data.instType == trtdata::InstType::Spot || data.instType == trtdata::InstType::Margin;
-                    const QString unit = instId.section('-', 0, 0);
-
-                    double baseVol = spot ? data.vol24h : data.volCcy24h;
-                    double quoteVol = spot ? data.volCcy24h : data.volCcy24h * data.last;
-
-                    QTableWidgetItem* volume = new QTableWidgetItem(locale.toString(baseVol, 'f', 2) + " " + unit);
-                    volume->setToolTip(locale.toString(quoteVol, 'f', 2) + " " + instId.section('-', 1, 1));
-                    table->setItem(row, 3, volume);
-
-                    QString change = "0.00%";
-                    if (data.open24h != 0)
-                    {
-                        const double percent = (data.last - data.open24h) / data.open24h * 100.0;
-                        change = QString::number(percent, 'f', 2) + "%";
-                        if (percent > 0)
-                            change.prepend('+');
-                    }
-                    table->setItem(row, 4, new QTableWidgetItem(change));
+                    status->setText("Request failed");
+                    status->setToolTip(snapshot->error);
                 }
-                catch (const std::exception& error)
-                {
-                    QTableWidgetItem* status = new QTableWidgetItem("Request failed");
-                    status->setToolTip(QString::fromUtf8(error.what()));
-                    table->setItem(row, 2, status);
-                    table->setItem(row, 3, new QTableWidgetItem("-"));
-                    table->setItem(row, 4, new QTableWidgetItem("-"));
-                }
-                pendingRequests--;
-                watcher->deleteLater();
-            });
-            watcher->setFuture(instrument.requestTicker());
+                table->setItem(row, 2, status);
+                table->setItem(row, 3, new QTableWidgetItem("-"));
+                table->setItem(row, 4, new QTableWidgetItem("-"));
+                continue;
+            }
+
+            const trtdata::TickerData& data = *snapshot->ticker;
+            const QString price = data.last >= 1 ? locale.toString(data.last, 'f', 2) : locale.toString(data.last, 'g', 4);
+            QTableWidgetItem* priceItem = new QTableWidgetItem(price);
+            if (!snapshot->error.isEmpty())
+                priceItem->setToolTip("Last successful quote: " + snapshot->error);
+            table->setItem(row, 2, priceItem);
+
+            const QString instId = QString::fromStdString(data.instId);
+            const bool spot = data.instType == trtdata::InstType::Spot || data.instType == trtdata::InstType::Margin;
+            const double baseVol = spot ? data.vol24h : data.volCcy24h;
+            const double quoteVol = spot ? data.volCcy24h : data.volCcy24h * data.last;
+            QTableWidgetItem* volume = new QTableWidgetItem(locale.toString(baseVol, 'f', 2) + " " + instId.section('-', 0, 0));
+            volume->setToolTip(locale.toString(quoteVol, 'f', 2) + " " + instId.section('-', 1, 1));
+            table->setItem(row, 3, volume);
+
+            QString change = "N/A";
+            if (data.open24h != 0)
+            {
+                const double percent = (data.last - data.open24h) / data.open24h * 100.0;
+                change = QString::number(percent, 'f', 2) + "%";
+                if (percent > 0)
+                    change.prepend('+');
+            }
+            table->setItem(row, 4, new QTableWidgetItem(change));
         }
     }
 } // trtui

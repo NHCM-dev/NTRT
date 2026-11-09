@@ -5,11 +5,15 @@
 #ifndef NTRT_OKXAPI_H
 #define NTRT_OKXAPI_H
 
+#include "AbstractApi.h"
 #include "main/data/market/abstract/Instrument.h"
 #include "main/network/RequestTemplate.h"
 
 namespace trtdata::okx
 {
+    // 20 times per 2 seconds
+    const int RATE_LIMIT_2S = 20;
+
     const trtnet::RequestTemplate TICKERS{
         trtnet::RequestMethod::GET,
         QUrl{"https://www.okx.com"},
@@ -24,7 +28,7 @@ namespace trtdata::okx
         {"instId"}
     };
 
-    class OKXApi final
+    class OKXApi final : public trtcore::AbstractApi
     {
     public:
         static QFuture<TickerData> requestTicker(const std::string& instId);
@@ -32,6 +36,11 @@ namespace trtdata::okx
          * @param instFamily the prefix of instId
          */
         static QFuture<std::shared_ptr<std::vector<TickerData>>> requestTickers(InstType instType, const std::string& instFamily = {});
+
+        int getRateInternal()
+        {
+            return 2000 / RATE_LIMIT_2S;
+        }
     };
 } // trtdata
 

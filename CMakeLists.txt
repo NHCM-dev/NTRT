@@ -32,12 +32,20 @@ qt_add_executable(NTRT
         src/main/data/api/OKXApi.h
         src/main/util/NetworkUtil.cpp
         src/main/util/NetworkUtil.h
-        src/main/data/DataManager.cpp
-        src/main/data/DataManager.h
+        src/main/data/ConfigManager.cpp
+        src/main/data/ConfigManager.h
         src/main/data/Exchanges.h
         src/main/ui/AbstractPage.h
         src/main/ui/pages/MarketPage.cpp
         src/main/ui/pages/MarketPage.h
+        src/main/monitor/MarketData.cpp
+        src/main/monitor/MarketData.h
+        src/main/monitor/Datamonitor.cpp
+        src/main/monitor/Datamonitor.h
+        src/main/monitor/DataMonitor.cpp
+        src/main/util/StdUtil.cpp
+        src/main/util/StdUtil.h
+        src/main/data/api/AbstractApi.h
 )
 target_include_directories(NTRT PRIVATE src)
 target_link_libraries(NTRT PRIVATE Qt6::Widgets Qt6::Network simdjson::simdjson)

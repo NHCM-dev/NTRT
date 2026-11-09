@@ -8,18 +8,20 @@
 #include <vector>
 #include <QApplication>
 
-#include "data/DataManager.h"
+#include "data/ConfigManager.h"
+#include "monitor/DataMonitor.h"
 #include "ui/MainWindow.h"
 
 namespace ntrt
 {
     inline bool configLoaded = false;
 
-    inline QApplication* app = nullptr;
-    inline trtui::MainWindow* mainWindow = nullptr;
+    inline std::shared_ptr<QApplication> app = nullptr;
+    inline std::shared_ptr<trtui::MainWindow> mainWindow = nullptr;
     inline std::vector<std::string> args;
 
-    inline trtdata::DataManager* dataManager = nullptr;
+    inline std::shared_ptr<trtdata::ConfigManager> configManager = nullptr;
+    inline std::shared_ptr<trtcore::DataMonitor> dataMonitor = nullptr;
 
     void quitApp();
 }
@@ -27,8 +29,6 @@ namespace ntrt
 int main(int argc, char* argv[]);
 
 int runQtApp();
-
-void cleanMem();
 
 void startupHook();
 void terminateHook();
