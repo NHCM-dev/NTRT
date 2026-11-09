@@ -15,6 +15,8 @@
 #include "main/NTRT.h"
 #include "main/Ver.h"
 #include "pages/MarketPage.h"
+#include <QStatusBar>
+#include <QDateTime>
 
 namespace trtui
 {
@@ -23,6 +25,7 @@ namespace trtui
         initLayouts();
         initMenuBar();
         initNavigation();
+        initStatusBar();
         initWidgets();
         initPages();
         init200msSchedules();
@@ -118,6 +121,44 @@ namespace trtui
         {
             ntrt::quitApp();
         });
+    }
+
+    void MainWindow::initStatusBar()
+    {
+        QStatusBar* bar = statusBar();
+
+        QWidget* container = new QWidget(bar);
+        QHBoxLayout* layout = new QHBoxLayout(container);
+
+        layout->setContentsMargins(8, 0, 8, 0);
+
+        QLabel* software = new QLabel(
+            QString("%1 %2").arg(
+                QString::fromStdString(NTRT_NAME), QString::fromStdString(NTRT_FULL_VER))
+        );
+
+        layout->addWidget(software);
+        software->setMinimumWidth(software->sizeHint().width());
+
+        // Left
+        bar->addWidget(container, 1);
+
+        // Right
+        QLabel* clock = new QLabel();
+        bar->addPermanentWidget(clock);
+
+        // Time update
+        const std::function<void()> updateClock = [clock]()
+        {
+            clock->setText(QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss t (UTCtt)"));
+            clock->setMinimumWidth(clock->sizeHint().width());
+        };
+
+        QTimer* timer = new QTimer(this);
+        connect(timer, &QTimer::timeout, this, updateClock);
+
+        updateClock();
+        timer->start(1000);
     }
 
     void MainWindow::initWidgets()

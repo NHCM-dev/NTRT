@@ -1,0 +1,4 @@
+QStatusBar {
+        border-top: 2px solid #D0D0D0;
+        background-color: #F0F0F0;
+    }

@@ -51,6 +51,7 @@ namespace trtui
         void initLayouts();
         void initMenuBar();
         void initNavigation();
+        void initStatusBar();
         void initWidgets();
         void initPages();
         void init200msSchedules();

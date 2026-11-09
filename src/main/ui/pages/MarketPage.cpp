@@ -12,6 +12,7 @@
 #include <QObject>
 #include <QComboBox>
 #include <QLineEdit>
+#include <QScrollBar>
 #include <QVBoxLayout>
 
 #include "main/util/QtUtil.h"
@@ -46,12 +47,24 @@ namespace trtui
         header->setSectionResizeMode(4, QHeaderView::Interactive);
         header->setSectionResizeMode(5, QHeaderView::Interactive);
         header->setSectionResizeMode(1, QHeaderView::Fixed);
+
+        header->setMinimumSectionSize(100);
+        header->setSectionResizeMode(2, QHeaderView::Stretch);
+        table->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+
         table->setColumnWidth(0, 100);
         table->setColumnWidth(1, 100);
         table->setColumnWidth(3, 110);
         table->setColumnWidth(4, 130);
         table->setColumnWidth(5, 100);
         table->verticalHeader()->hide();
+        int minimumWidth = header->minimumSectionSize() + table->verticalScrollBar()->sizeHint().width();
+        for (int column = 0; column < header->count(); column++)
+        {
+            if (header->sectionResizeMode(column) != QHeaderView::Stretch)
+                minimumWidth += header->sectionSize(column);
+        }
+        table->setMinimumWidth(minimumWidth + 2 * table->frameWidth());
         table->setEditTriggers(QAbstractItemView::NoEditTriggers);
         table->setSelectionMode(QAbstractItemView::NoSelection);
         table->setFocusPolicy(Qt::NoFocus);
