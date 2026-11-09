@@ -82,13 +82,13 @@ namespace trtui
         QObject::connect(typeFilter, &QComboBox::currentIndexChanged, page, [this] { update(); });
         QObject::connect(addButton, &QPushButton::clicked, page, [this, page]
         {
-            InstrumentDialog dialog(*ntrt::configManager, InstrumentDialog::Mode::Add, page);
+            InstrumentDialog dialog(InstrumentDialog::Mode::Add, page);
             if (dialog.exec() == QDialog::Accepted)
                 update();
         });
         QObject::connect(manageButton, &QPushButton::clicked, page, [this, page]
         {
-            InstrumentDialog dialog(*ntrt::configManager, InstrumentDialog::Mode::Manage, page);
+            InstrumentDialog dialog(InstrumentDialog::Mode::Manage, page);
             if (dialog.exec() == QDialog::Accepted)
                 update();
         });

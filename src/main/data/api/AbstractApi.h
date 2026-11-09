@@ -24,7 +24,7 @@ namespace trtcore
         virtual trtdata::InstType parseInstrumentType(std::string_view name) const = 0;
     };
     const AbstractApi& exchangeApi(trtdata::Exchange exchange);
-    std::vector<trtdata::Exchange> registeredExchanges();
+    std::vector<trtdata::Exchange> availableExchanges();
 }
 
 #endif //NTRT_ABSTRACTAPI_H

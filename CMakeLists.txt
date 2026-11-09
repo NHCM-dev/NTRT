@@ -51,8 +51,8 @@ qt_add_executable(NTRT
         src/main/ui/dialog/InstrumentDialog.h
         src/main/util/QtUtil.cpp
         src/main/util/QtUtil.h
-        src/main/ui/SettingWindow.cpp
-        src/main/ui/SettingWindow.h
+        src/main/ui/pages/SettingPage.cpp
+        src/main/ui/pages/SettingPage.h
 )
 target_include_directories(NTRT PRIVATE src)
 target_link_libraries(NTRT PRIVATE Qt6::Widgets Qt6::Network simdjson::simdjson)

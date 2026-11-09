@@ -18,6 +18,8 @@
 #include <QStatusBar>
 #include <QDateTime>
 
+#include "pages/SettingPage.h"
+
 namespace trtui
 {
     MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
@@ -115,7 +117,6 @@ namespace trtui
         addButton("Settings", Navigation::Settings);
 
         QPushButton* exitButton = new QPushButton("Exit", navigationBar);
-        navigationGroup->addButton(exitButton, -999);
         layout->addWidget(exitButton);
         connect(exitButton, &QPushButton::clicked, this, []
         {
@@ -174,15 +175,21 @@ namespace trtui
         mainPages->setCurrentWidget(marketPage->widget);
         widgets.emplace(Navigation::Market, std::move(marketPage));
 
+        std::unique_ptr<SettingPage> settingPage = std::make_unique<SettingPage>(mainPages);
+        mainPages->addWidget(settingPage->widget);
+        widgets.emplace(Navigation::Settings, std::move(settingPage));
+
         for (QAbstractButton* button : navigationGroup->buttons())
         {
             const int id = navigationGroup->id(button);
+            Navigation navigation = static_cast<Navigation>(id);
             if (button->isCheckable())
             {
-                button->setEnabled(widgets.contains(static_cast<Navigation>(id)));
+                button->setEnabled(widgets.contains(navigation));
             }
         }
         navigationGroup->button(static_cast<int>(Navigation::Market))->setChecked(true);
+
     }
 
     void MainWindow::init200msSchedules()

@@ -13,10 +13,12 @@
 #include <algorithm>
 #include <exception>
 
+#include "main/NTRT.h"
+
 namespace trtui
 {
-    InstrumentDialog::InstrumentDialog(trtdata::ConfigManager& config, Mode mode, QWidget* parent)
-        : QDialog(parent), config(config), mode(mode)
+    InstrumentDialog::InstrumentDialog(Mode mode, QWidget* parent)
+        : QDialog(parent), mode(mode)
     {
         const bool adding = mode == Mode::Add;
         setWindowTitle(adding ? "Add Trading Pairs" : "Manage Trading Pairs");
@@ -27,9 +29,9 @@ namespace trtui
             QHBoxLayout* selectors = new QHBoxLayout;
             exchange = new QComboBox(this);
             type = new QComboBox(this);
-            for (trtdata::Exchange item : trtcore::registeredExchanges())
+            for (trtdata::Exchange item : trtcore::availableExchanges())
                 exchange->addItem(QString::fromUtf8(trtdata::getExchangeStr(item)), static_cast<int>(item));
-            exchange->setCurrentIndex(exchange->findData(static_cast<int>(config.getExchange())));
+            exchange->setCurrentIndex(exchange->findData(static_cast<int>(ntrt::configManager->getExchange())));
             if (exchange->currentIndex() < 0)
                 exchange->setCurrentIndex(0);
             selectors->addWidget(exchange);
@@ -111,7 +113,7 @@ namespace trtui
         }
         else
         {
-            const std::span<const InstrumentPtr> saved = config.getInstruments();
+            const std::span<const InstrumentPtr> saved = ntrt::configManager->getInstruments();
             entries.assign(saved.begin(), saved.end());
             populate();
             status->setText("Check rows and click Remove Selected. Click Apply to save.");
@@ -151,7 +153,7 @@ namespace trtui
             try
             {
                 const Catalog catalog = watcher->result();
-                const std::span<const InstrumentPtr> saved = config.getInstruments();
+                const std::span<const InstrumentPtr> saved = ntrt::configManager->getInstruments();
                 for (const InstrumentPtr& candidate : catalog)
                 {
                     const bool exists = std::ranges::any_of(saved, [&candidate](const InstrumentPtr& instrument)
@@ -238,7 +240,7 @@ namespace trtui
         std::vector<InstrumentPtr> updated;
         if (mode == Mode::Add)
         {
-            const std::span<const InstrumentPtr> saved = config.getInstruments();
+            const std::span<const InstrumentPtr> saved = ntrt::configManager->getInstruments();
             updated.assign(saved.begin(), saved.end());
         }
 
@@ -249,12 +251,12 @@ namespace trtui
                 updated.push_back(entries[row]);
         }
 
-        const std::span<const InstrumentPtr> saved = config.getInstruments();
+        const std::span<const InstrumentPtr> saved = ntrt::configManager->getInstruments();
         if (!std::ranges::equal(saved, updated))
         {
             try
             {
-                if (!config.replaceInstruments(std::move(updated)))
+                if (!ntrt::configManager->replaceInstruments(std::move(updated)))
                 {
                     status->setText("Could not save the market configuration.");
                     return;

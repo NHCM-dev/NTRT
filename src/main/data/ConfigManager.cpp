@@ -16,7 +16,7 @@ namespace trtdata
 {
     Exchange ConfigManager::readExchange(std::string_view name)
     {
-        for (Exchange exchange : trtcore::registeredExchanges())
+        for (Exchange exchange : trtcore::availableExchanges())
         {
             if (getExchangeStr(exchange) == name)
                 return exchange;
@@ -40,7 +40,7 @@ namespace trtdata
     }
     ExchangeConfig ConfigManager::defaultExchangeConfig()
     {
-        return {DEFAULT_EXCHANGE_CONFIG.toStdString(), trtcore::registeredExchanges().front()};
+        return {DEFAULT_EXCHANGE_CONFIG.toStdString(), trtcore::availableExchanges().front()};
     }
 
     bool ConfigManager::loadAll()

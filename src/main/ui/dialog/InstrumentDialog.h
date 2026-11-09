@@ -16,11 +16,10 @@ namespace trtui
     {
     public:
         enum class Mode { Add, Manage };
-        InstrumentDialog(trtdata::ConfigManager& config, Mode mode, QWidget* parent);
+        InstrumentDialog(Mode mode, QWidget* parent);
 
     private:
         using InstrumentPtr = std::shared_ptr<trtdata::Instrument>;
-        trtdata::ConfigManager& config;
         const Mode mode;
         std::vector<InstrumentPtr> entries;
         QTableWidget* table;

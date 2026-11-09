@@ -12,7 +12,7 @@ namespace trtcore
 {
     MarketData::MarketData()
     {
-        for (trtdata::Exchange exchange : registeredExchanges())
+        for (trtdata::Exchange exchange : availableExchanges())
         {
             for (trtdata::InstType type : exchangeApi(exchange).instrumentTypes())
                 markets.emplace_back(exchange, type);

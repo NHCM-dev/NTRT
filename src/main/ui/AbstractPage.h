@@ -4,7 +4,8 @@
 
 #ifndef NTRT_ABSTRACTPAGE_H
 #define NTRT_ABSTRACTPAGE_H
-#include <qwidget.h>
+
+#include <QFrame>
 
 namespace trtui
 {
