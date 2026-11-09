@@ -82,6 +82,7 @@ namespace trtdata
         bool removeInstrument(const std::string& instId);
         bool removeInstrument(int index);
 
+        bool replaceInstruments(std::vector<std::shared_ptr<Instrument>> instruments);
         bool moveInstrument(int from, int to);
 
         Exchange getExchange();

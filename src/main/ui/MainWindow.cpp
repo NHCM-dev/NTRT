@@ -6,8 +6,6 @@
 #include <QAction>
 #include <QMessageBox>
 #include <QMenuBar>
-#include <QStatusBar>
-#include <QTableWidget>
 #include <QButtonGroup>
 #include <QLabel>
 #include <QVBoxLayout>
@@ -27,7 +25,7 @@ namespace trtui
         initNavigation();
         initWidgets();
         initPages();
-        init500msSchedules();
+        init200msSchedules();
         resize(1000, 500);
     }
 
@@ -146,17 +144,17 @@ namespace trtui
         navigationGroup->button(static_cast<int>(Navigation::Market))->setChecked(true);
     }
 
-    void MainWindow::init500msSchedules()
+    void MainWindow::init200msSchedules()
     {
-        connect(timer500ms, &QTimer::timeout, this, [this] {
-            updateData500ms();
+        connect(timer200ms, &QTimer::timeout, this, [this] {
+            updateData200ms();
         });
 
-        updateData500ms();
-        timer500ms->start(500);
+        updateData200ms();
+        timer200ms->start(200);
     }
 
-    void MainWindow::updateData500ms()
+    void MainWindow::updateData200ms()
     {
         for (const auto& [key, value] : widgets)
         {

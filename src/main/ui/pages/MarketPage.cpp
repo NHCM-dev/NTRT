@@ -3,55 +3,94 @@
 //
 
 #include "MarketPage.h"
+#include "InstrumentDialog.h"
 #include <QTableWidget>
 #include "main/NTRT.h"
 #include <QHeaderView>
 #include <QLocale>
+#include <QPushButton>
+#include <QObject>
+#include <QComboBox>
+#include <QLineEdit>
+#include <QVBoxLayout>
 
+#include "main/util/QtUtil.h"
 
 namespace trtui
 {
-    QWidget* MarketPage::generateWidget(QWidget* parent)
+    QFrame* MarketPage::generateWidget(QWidget* parent)
     {
-        table = new QTableWidget(parent);
-        QStringList headers = {
-            "Exchange",
-            "Instrument",
-            "Last Price",
-            "24H Volume",
-            "24H Change"};
-        table->setColumnCount(headers.count());
-        table->setHorizontalHeaderLabels(headers);
+        QFrame* page = new QFrame(parent);
 
-        // Auto adjust column size
-        table->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+        page->setBackgroundRole(QPalette::Base);
+        page->setAutoFillBackground(true);
 
-        // Hide vertical header
+        QVBoxLayout* layout = new QVBoxLayout(page);
+        QHBoxLayout* filters = new QHBoxLayout;
+        search = new QLineEdit(page);
+        search->setPlaceholderText("Search instruments");
+        typeFilter = new QComboBox(page);
+        typeFilter->addItem("All types", -1);
+        for (trtdata::InstType type : {trtdata::InstType::Spot, trtdata::InstType::Margin, trtdata::InstType::Swap,
+                                     trtdata::InstType::Futures, trtdata::InstType::Option, trtdata::InstType::Events})
+            typeFilter->addItem(QString::fromUtf8(trtdata::instrumentTypeName(type)), static_cast<int>(type));
+        filters->addWidget(search, 1);
+        filters->addWidget(typeFilter);
+        layout->addLayout(filters);
+
+        table = trtutils::createHeaderTable(page, {"Exchange", "Instrument", "Last Price", "24H Volume", "24H Change"});
         table->verticalHeader()->hide();
-
-        // Disable editing
         table->setEditTriggers(QAbstractItemView::NoEditTriggers);
-
         table->setSelectionMode(QAbstractItemView::NoSelection);
         table->setFocusPolicy(Qt::NoFocus);
+        layout->addWidget(table, 1);
 
-        // Do not display grids
-        table->setShowGrid(false);
-        return table;
+        QHBoxLayout* actions = new QHBoxLayout;
+        actions->addStretch();
+        QPushButton* manageButton = new QPushButton("Manage", page);
+        QPushButton* addButton = new QPushButton("Add", page);
+        actions->addWidget(manageButton);
+        actions->addWidget(addButton);
+        layout->addLayout(actions);
+
+        QObject::connect(search, &QLineEdit::textChanged, page, [this] { update(); });
+        QObject::connect(typeFilter, &QComboBox::currentIndexChanged, page, [this] { update(); });
+        QObject::connect(addButton, &QPushButton::clicked, page, [this, page]
+        {
+            InstrumentDialog dialog(*ntrt::configManager, InstrumentDialog::Mode::Add, page);
+            if (dialog.exec() == QDialog::Accepted)
+                update();
+        });
+        QObject::connect(manageButton, &QPushButton::clicked, page, [this, page]
+        {
+            InstrumentDialog dialog(*ntrt::configManager, InstrumentDialog::Mode::Manage, page);
+            if (dialog.exec() == QDialog::Accepted)
+                update();
+        });
+
+        return page;
     }
 
     void MarketPage::update()
     {
         const std::span<const std::shared_ptr<trtdata::Instrument>> instruments = ntrt::configManager->getInstruments();
         const trtcore::MarketData& marketData = ntrt::dataMonitor->getMarketData();
-        const int count = static_cast<int>(instruments.size());
+        const QString query = search->text().trimmed();
+        const int filter = typeFilter->currentData().toInt();
         const QLocale locale(QLocale::English);
-        table->setRowCount(count);
-        for (int row = 0; row < count; row++)
+        int row = 0;
+        for (const std::shared_ptr<trtdata::Instrument>& instrument : instruments)
         {
-            const std::shared_ptr<trtdata::Instrument>& instrument = instruments[row];
-            table->setItem(row, 0, new QTableWidgetItem(trtdata::getExchangeStr(instrument->exchange).data()));
-            table->setItem(row, 1, new QTableWidgetItem(QString::fromStdString(instrument->instId)));
+            const QString exchange = QString::fromUtf8(trtdata::getExchangeStr(instrument->exchange));
+            const QString symbol = QString::fromStdString(instrument->instId);
+            if ((filter >= 0 && filter != static_cast<int>(instrument->instType)) ||
+                (!symbol.contains(query, Qt::CaseInsensitive) && !exchange.contains(query, Qt::CaseInsensitive)))
+                continue;
+
+            if (row == table->rowCount())
+                table->insertRow(row);
+            table->setItem(row, 0, new QTableWidgetItem(exchange));
+            table->setItem(row, 1, new QTableWidgetItem(symbol));
 
             const trtcore::MarketSnapshot* snapshot = marketData.getSnapshot(instrument);
             if (!snapshot || !snapshot->ticker)
@@ -65,6 +104,7 @@ namespace trtui
                 table->setItem(row, 2, status);
                 table->setItem(row, 3, new QTableWidgetItem("-"));
                 table->setItem(row, 4, new QTableWidgetItem("-"));
+                row++;
                 continue;
             }
 
@@ -83,15 +123,22 @@ namespace trtui
             volume->setToolTip(locale.toString(quoteVol, 'f', 2) + " " + instId.section('-', 1, 1));
             table->setItem(row, 3, volume);
 
-            QString change = "N/A";
+            QTableWidgetItem* change = new QTableWidgetItem("N/A");
             if (data.open24h != 0)
             {
                 const double percent = (data.last - data.open24h) / data.open24h * 100.0;
-                change = QString::number(percent, 'f', 2) + "%";
-                if (percent > 0)
-                    change.prepend('+');
+                const QString text = QString::number(percent, 'f', 2);
+                if (text == "0.00" || text == "-0.00")
+                    change->setText("0.00%");
+                else
+                {
+                    change->setText((percent > 0 ? "+" : "") + text + "%");
+                    change->setForeground(percent >= 0 ? QColor(0x15803d) : QColor(0xb91c1c));
+                }
             }
-            table->setItem(row, 4, new QTableWidgetItem(change));
+            table->setItem(row, 4, change);
+            row++;
         }
+        table->setRowCount(row);
     }
 } // trtui

@@ -43,7 +43,7 @@ namespace trtui
 
         std::unordered_map<Navigation, std::unique_ptr<AbstractPage>> widgets;
 
-        QTimer* timer500ms = new QTimer(this);
+        QTimer* timer200ms = new QTimer(this);
 
         explicit MainWindow(QWidget* parent = nullptr);
 
@@ -53,9 +53,9 @@ namespace trtui
         void initNavigation();
         void initWidgets();
         void initPages();
-        void init500msSchedules();
+        void init200msSchedules();
 
-        void updateData500ms();
+        void updateData200ms();
     };
 }
 

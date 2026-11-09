@@ -5,6 +5,10 @@
 #ifndef NTRT_ABSTRACTAPI_H
 #define NTRT_ABSTRACTAPI_H
 
+#include "main/data/market/abstract/Instrument.h"
+#include <memory>
+#include <vector>
+
 namespace trtcore
 {
     class AbstractApi
@@ -12,8 +16,14 @@ namespace trtcore
     public:
         virtual ~AbstractApi() = default;
 
-        virtual int getRequestInterval() = 0;
+        virtual int getRequestInterval() const = 0;
+        virtual std::vector<trtdata::InstType> instrumentTypes() const = 0;
+        virtual QFuture<std::vector<std::shared_ptr<trtdata::Instrument>>> fetchInstruments(trtdata::InstType type) const = 0;
+        virtual std::shared_ptr<trtdata::Instrument> createInstrument(const std::string& id, trtdata::InstType type) const = 0;
+        virtual trtdata::InstType parseInstrumentType(std::string_view name) const = 0;
     };
+    const AbstractApi& exchangeApi(trtdata::Exchange exchange);
+    std::vector<trtdata::Exchange> registeredExchanges();
 }
 
 #endif //NTRT_ABSTRACTAPI_H

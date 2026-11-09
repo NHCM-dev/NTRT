@@ -45,7 +45,12 @@ qt_add_executable(NTRT
         src/main/monitor/DataMonitor.cpp
         src/main/util/StdUtil.cpp
         src/main/util/StdUtil.h
+        src/main/data/api/AbstractApi.cpp
         src/main/data/api/AbstractApi.h
+        src/main/ui/pages/InstrumentDialog.cpp
+        src/main/ui/pages/InstrumentDialog.h
+        src/main/util/QtUtil.cpp
+        src/main/util/QtUtil.h
 )
 target_include_directories(NTRT PRIVATE src)
 target_link_libraries(NTRT PRIVATE Qt6::Widgets Qt6::Network simdjson::simdjson)

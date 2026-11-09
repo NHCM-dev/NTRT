@@ -6,6 +6,7 @@
 #define NTRT_INSTRUMENT_H
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <QFuture>
 
 #include "main/data/Exchanges.h"
@@ -21,6 +22,20 @@ namespace trtdata
         Option,     // Option
         Events      // Events Contract
     };
+
+    constexpr std::string_view instrumentTypeName(InstType type)
+    {
+        switch (type)
+        {
+        case InstType::Spot: return "Spot";
+        case InstType::Margin: return "Margin";
+        case InstType::Swap: return "Perpetual";
+        case InstType::Futures: return "Futures";
+        case InstType::Option: return "Options";
+        case InstType::Events: return "Events";
+        }
+        return {};
+    }
 
     struct TickerData
     {

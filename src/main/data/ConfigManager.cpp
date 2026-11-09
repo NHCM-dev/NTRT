@@ -6,8 +6,8 @@
 
 #include "main/util/JsonUtil.h"
 #include "main/util/FileUtil.h"
-#include "main/data/market/abstract/instimpl/OKXInstrument.h"
-#include "main/data/parser/OKXParser.h"
+#include "main/data/api/AbstractApi.h"
+#include <QSaveFile>
 #include <algorithm>
 #include <QDir>
 #include <QFileInfo>
@@ -16,7 +16,7 @@ namespace trtdata
 {
     Exchange ConfigManager::readExchange(std::string_view name)
     {
-        for (Exchange exchange : {Exchange::OKX})
+        for (Exchange exchange : trtcore::registeredExchanges())
         {
             if (getExchangeStr(exchange) == name)
                 return exchange;
@@ -29,7 +29,9 @@ namespace trtdata
         const std::string formatted = prettyJson(json);
         if (!QDir().mkpath(QFileInfo(path).absolutePath()))
             return false;
-        return trtutils::writeAllBytes(path, QByteArray(formatted.data(), static_cast<qsizetype>(formatted.size())));
+        QSaveFile file(path);
+        const qint64 size = static_cast<qint64>(formatted.size());
+        return file.open(QIODevice::WriteOnly) && file.write(formatted.data(), size) == size && file.commit();
     }
 
     MarketConfig ConfigManager::defaultMarketConfig()
@@ -38,7 +40,7 @@ namespace trtdata
     }
     ExchangeConfig ConfigManager::defaultExchangeConfig()
     {
-        return {DEFAULT_EXCHANGE_CONFIG.toStdString(), Exchange::OKX};
+        return {DEFAULT_EXCHANGE_CONFIG.toStdString(), trtcore::registeredExchanges().front()};
     }
 
     bool ConfigManager::loadAll()
@@ -96,16 +98,9 @@ namespace trtdata
             {
                 const std::string id(readString(entry, "instId"));
                 Exchange exchange = readExchange(readString(entry, "exchange"));
-                switch (exchange)
-                {
-                    //TODO: Implementation for other exchanges are pending
-                case Exchange::OKX:
-                default:
-                    {
-                        const InstType type = OKXParser::readType(readString(entry, "instType"));
-                        loaded.instruments.push_back(std::make_shared<okx::OKXInstrument>(id, type));
-                    }
-                }
+                const trtcore::AbstractApi& api = trtcore::exchangeApi(exchange);
+                const InstType type = api.parseInstrumentType(readString(entry, "instType"));
+                loaded.instruments.push_back(api.createInstrument(id, type));
             }
             marketConfig = std::move(loaded);
             return true;
@@ -208,10 +203,8 @@ namespace trtdata
 
     int ConfigManager::addInstrument(const Instrument& instrument)
     {
-        if (instrument.exchange != Exchange::OKX)
-            return -1;
         const int index = static_cast<int>(marketConfig.instruments.size());
-        marketConfig.instruments.push_back(std::make_shared<okx::OKXInstrument>(instrument.instId, instrument.instType));
+        marketConfig.instruments.push_back(trtcore::exchangeApi(instrument.exchange).createInstrument(instrument.instId, instrument.instType));
         return index;
     }
 
@@ -244,6 +237,23 @@ namespace trtdata
             return false;
         marketConfig.instruments.erase(marketConfig.instruments.begin() + index);
         return true;
+    }
+
+    bool ConfigManager::replaceInstruments(std::vector<std::shared_ptr<Instrument>> instruments)
+    {
+        marketConfig.instruments.swap(instruments);
+        try
+        {
+            if (saveMarketConfig())
+                return true;
+        }
+        catch (...)
+        {
+            marketConfig.instruments.swap(instruments);
+            throw;
+        }
+        marketConfig.instruments.swap(instruments);
+        return false;
     }
 
     bool ConfigManager::moveInstrument(int from, int to)

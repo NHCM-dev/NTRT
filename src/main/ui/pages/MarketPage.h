@@ -8,11 +8,18 @@
 
 #include "main/ui/AbstractPage.h"
 
+class QComboBox;
+class QLineEdit;
+
 namespace trtui
 {
     class MarketPage final : public AbstractPage
     {
         QTableWidget* table = nullptr;
+        QLineEdit* search = nullptr;
+        QComboBox* typeFilter = nullptr;
+
+
     public:
 
         explicit MarketPage(QWidget* parent = nullptr)
@@ -20,7 +27,7 @@ namespace trtui
             initialize(parent);
         }
 
-        QWidget* generateWidget(QWidget* parent) override;
+        QFrame* generateWidget(QWidget* parent) override;
 
         void update() override;
     };

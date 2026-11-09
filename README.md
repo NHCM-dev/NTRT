@@ -1,5 +1,7 @@
 # NTRT
 
+(Credit to GPT 6.1)
+
 N Trading Research Terminal is a local C++ program designed to let user trade and analyze the market.
 Using Qt as dependencies.
 

@@ -11,7 +11,7 @@ namespace trtui
     class AbstractPage
     {
     public:
-        QWidget* widget = nullptr;
+        QFrame* widget = nullptr;
 
         virtual ~AbstractPage() = default;
 
@@ -20,7 +20,7 @@ namespace trtui
             widget = generateWidget(parent);
         }
 
-        virtual QWidget* generateWidget(QWidget* parent) = 0;
+        virtual QFrame* generateWidget(QWidget* parent) = 0;
         virtual void update() = 0;
     };
 } // trtui

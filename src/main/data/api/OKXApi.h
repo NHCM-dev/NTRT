@@ -37,7 +37,12 @@ namespace trtdata::okx
          */
         static QFuture<std::shared_ptr<std::vector<TickerData>>> requestTickers(InstType instType, const std::string& instFamily = {});
 
-        int getRateInternal()
+        std::vector<InstType> instrumentTypes() const override;
+        QFuture<std::vector<std::shared_ptr<Instrument>>> fetchInstruments(InstType type) const override;
+        std::shared_ptr<Instrument> createInstrument(const std::string& id, InstType type) const override;
+        InstType parseInstrumentType(std::string_view name) const override;
+
+        int getRequestInterval() const override
         {
             return 2000 / RATE_LIMIT_2S;
         }
