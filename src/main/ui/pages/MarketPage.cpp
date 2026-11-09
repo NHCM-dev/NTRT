@@ -3,7 +3,7 @@
 //
 
 #include "MarketPage.h"
-#include "InstrumentDialog.h"
+#include "../dialog/InstrumentDialog.h"
 #include <QTableWidget>
 #include "main/NTRT.h"
 #include <QHeaderView>
@@ -38,7 +38,19 @@ namespace trtui
         filters->addWidget(typeFilter);
         layout->addLayout(filters);
 
-        table = trtutils::createHeaderTable(page, {"Exchange", "Instrument", "Last Price", "24H Volume", "24H Change"});
+        table = trtutils::createHeaderTable(page, {"Exchange", "Type", "Instrument", "Last Price", "24H Volume", "24H Change"});
+
+        QHeaderView* header = table->horizontalHeader();
+        header->setSectionResizeMode(0, QHeaderView::Interactive);
+        header->setSectionResizeMode(3, QHeaderView::Interactive);
+        header->setSectionResizeMode(4, QHeaderView::Interactive);
+        header->setSectionResizeMode(5, QHeaderView::Interactive);
+        header->setSectionResizeMode(1, QHeaderView::Fixed);
+        table->setColumnWidth(0, 100);
+        table->setColumnWidth(1, 100);
+        table->setColumnWidth(3, 110);
+        table->setColumnWidth(4, 130);
+        table->setColumnWidth(5, 100);
         table->verticalHeader()->hide();
         table->setEditTriggers(QAbstractItemView::NoEditTriggers);
         table->setSelectionMode(QAbstractItemView::NoSelection);
@@ -90,7 +102,8 @@ namespace trtui
             if (row == table->rowCount())
                 table->insertRow(row);
             table->setItem(row, 0, new QTableWidgetItem(exchange));
-            table->setItem(row, 1, new QTableWidgetItem(symbol));
+            table->setItem(row, 1, new QTableWidgetItem(QString::fromUtf8(trtdata::instrumentTypeName(instrument->instType))));
+            table->setItem(row, 2, new QTableWidgetItem(symbol));
 
             const trtcore::MarketSnapshot* snapshot = marketData.getSnapshot(instrument);
             if (!snapshot || !snapshot->ticker)
@@ -101,9 +114,11 @@ namespace trtui
                     status->setText("Request failed");
                     status->setToolTip(snapshot->error);
                 }
-                table->setItem(row, 2, status);
-                table->setItem(row, 3, new QTableWidgetItem("-"));
+                table->setItem(row, 3, status);
                 table->setItem(row, 4, new QTableWidgetItem("-"));
+                QTableWidgetItem* change = new QTableWidgetItem("-");
+                change->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+                table->setItem(row, 5, change);
                 row++;
                 continue;
             }
@@ -113,7 +128,7 @@ namespace trtui
             QTableWidgetItem* priceItem = new QTableWidgetItem(price);
             if (!snapshot->error.isEmpty())
                 priceItem->setToolTip("Last successful quote: " + snapshot->error);
-            table->setItem(row, 2, priceItem);
+            table->setItem(row, 3, priceItem);
 
             const QString instId = QString::fromStdString(data.instId);
             const bool spot = data.instType == trtdata::InstType::Spot || data.instType == trtdata::InstType::Margin;
@@ -121,7 +136,7 @@ namespace trtui
             const double quoteVol = spot ? data.volCcy24h : data.volCcy24h * data.last;
             QTableWidgetItem* volume = new QTableWidgetItem(locale.toString(baseVol, 'f', 2) + " " + instId.section('-', 0, 0));
             volume->setToolTip(locale.toString(quoteVol, 'f', 2) + " " + instId.section('-', 1, 1));
-            table->setItem(row, 3, volume);
+            table->setItem(row, 4, volume);
 
             QTableWidgetItem* change = new QTableWidgetItem("N/A");
             if (data.open24h != 0)
@@ -135,8 +150,9 @@ namespace trtui
                     change->setText((percent > 0 ? "+" : "") + text + "%");
                     change->setForeground(percent >= 0 ? QColor(0x15803d) : QColor(0xb91c1c));
                 }
+                change->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
             }
-            table->setItem(row, 4, change);
+            table->setItem(row, 5, change);
             row++;
         }
         table->setRowCount(row);

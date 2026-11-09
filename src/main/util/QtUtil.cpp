@@ -20,9 +20,6 @@ namespace trtutils
         // Auto adjust column size
         table->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
 
-        // Do not display grids
-        table->setShowGrid(false);
-
         return table;
     }
 } // trtutils

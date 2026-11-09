@@ -43,12 +43,18 @@ namespace trtui
         search = new QLineEdit(this);
         search->setPlaceholderText("Search instruments");
         layout->addWidget(search);
-        table = trtutils::createHeaderTable(this, {adding ? "Add" : "Remove", "Exchange", "Instrument", "Type"});
+        table = trtutils::createHeaderTable(this, {adding ? "Add" : "Select", "Exchange", "Type", "Instrument"});
         table->verticalHeader()->hide();
         table->setEditTriggers(QAbstractItemView::NoEditTriggers);
         table->setSelectionMode(adding ? QAbstractItemView::NoSelection : QAbstractItemView::SingleSelection);
         table->setSelectionBehavior(QAbstractItemView::SelectRows);
-        table->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+        table->setFocusPolicy(Qt::NoFocus);
+        QHeaderView* header = table->horizontalHeader();
+        header->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+        header->setSectionResizeMode(1, QHeaderView::Fixed);
+        header->setSectionResizeMode(2, QHeaderView::Fixed);
+        table->setColumnWidth(1, 100);
+        table->setColumnWidth(2, 100);
         layout->addWidget(table, 1);
         connect(search, &QLineEdit::textChanged, this, &InstrumentDialog::filterRows);
 
@@ -71,8 +77,29 @@ namespace trtui
         layout->addWidget(status);
         QDialogButtonBox* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
         applyButton = buttons->button(QDialogButtonBox::Ok);
-        applyButton->setText(adding ? "Add Checked" : "Apply Changes");
-        layout->addWidget(buttons);
+        applyButton->setText(adding ? "Add Checked" : "Apply");
+        QHBoxLayout* footer = new QHBoxLayout;
+        footer->addStretch();
+        if (!adding)
+        {
+            QPushButton* removeButton = new QPushButton("Remove Selected", this);
+            removeButton->setAutoDefault(false);
+            footer->addWidget(removeButton);
+            connect(removeButton, &QPushButton::clicked, this, [this]
+            {
+                for (int row = table->rowCount() - 1; row >= 0; row--)
+                {
+                    if (table->item(row, 0)->checkState() == Qt::Checked)
+                    {
+                        entries.erase(entries.begin() + row);
+                        table->removeRow(row);
+                    }
+                }
+                updateMoveButtons();
+            });
+        }
+        footer->addWidget(buttons);
+        layout->addLayout(footer);
         connect(buttons, &QDialogButtonBox::accepted, this, &InstrumentDialog::accept);
         connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
 
@@ -87,7 +114,7 @@ namespace trtui
             const std::span<const InstrumentPtr> saved = config.getInstruments();
             entries.assign(saved.begin(), saved.end());
             populate();
-            status->setText("Check rows to remove. Clear search to reorder the full list.");
+            status->setText("Check rows and click Remove Selected. Click Apply to save.");
         }
     }
 
@@ -163,8 +190,8 @@ namespace trtui
             check->setCheckState(Qt::Unchecked);
             table->setItem(row, 0, check);
             table->setItem(row, 1, new QTableWidgetItem(QString::fromUtf8(trtdata::getExchangeStr(instrument->exchange))));
-            table->setItem(row, 2, new QTableWidgetItem(QString::fromStdString(instrument->instId)));
-            table->setItem(row, 3, new QTableWidgetItem(QString::fromUtf8(trtdata::instrumentTypeName(instrument->instType))));
+            table->setItem(row, 2, new QTableWidgetItem(QString::fromUtf8(trtdata::instrumentTypeName(instrument->instType))));
+            table->setItem(row, 3, new QTableWidgetItem(QString::fromStdString(instrument->instId)));
         }
         filterRows();
     }
@@ -192,7 +219,7 @@ namespace trtui
             table->setItem(row, column, destination);
             table->setItem(target, column, source);
         }
-        table->setCurrentCell(target, 2);
+        table->setCurrentCell(target, 3);
         updateMoveButtons();
     }
 
@@ -218,7 +245,7 @@ namespace trtui
         for (int row = 0; row < table->rowCount(); row++)
         {
             const bool checked = table->item(row, 0)->checkState() == Qt::Checked;
-            if (checked == (mode == Mode::Add))
+            if (mode == Mode::Manage || checked)
                 updated.push_back(entries[row]);
         }
 

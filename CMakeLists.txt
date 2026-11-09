@@ -47,8 +47,8 @@ qt_add_executable(NTRT
         src/main/util/StdUtil.h
         src/main/data/api/AbstractApi.cpp
         src/main/data/api/AbstractApi.h
-        src/main/ui/pages/InstrumentDialog.cpp
-        src/main/ui/pages/InstrumentDialog.h
+        src/main/ui/dialog/InstrumentDialog.cpp
+        src/main/ui/dialog/InstrumentDialog.h
         src/main/util/QtUtil.cpp
         src/main/util/QtUtil.h
 )
