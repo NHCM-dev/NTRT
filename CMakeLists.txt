@@ -51,6 +51,8 @@ qt_add_executable(NTRT
         src/main/ui/dialog/InstrumentDialog.h
         src/main/util/QtUtil.cpp
         src/main/util/QtUtil.h
+        src/main/ui/SettingWindow.cpp
+        src/main/ui/SettingWindow.h
 )
 target_include_directories(NTRT PRIVATE src)
 target_link_libraries(NTRT PRIVATE Qt6::Widgets Qt6::Network simdjson::simdjson)
@@ -72,9 +74,15 @@ add_dependencies(NTRT ntrt_resources)
 if(WIN32)
     get_target_property(_qt_qmake Qt6::qmake IMPORTED_LOCATION)
     get_filename_component(_qt_bin "${_qt_qmake}" DIRECTORY)
-    find_program(NTRT_WINDEPLOYQT NAMES windeployqt6 windeployqt
-        HINTS "${_qt_bin}" REQUIRED)
+    find_program(_ntrt_deploy_tool NAMES windeployqt6 windeployqt
+        HINTS "${_qt_bin}" NO_DEFAULT_PATH NO_CACHE REQUIRED)
     get_filename_component(_compiler_bin "${CMAKE_CXX_COMPILER}" DIRECTORY)
+    set(_vc_install_dir "${NTRT_VC_INSTALL_DIR}")
+    if(CMAKE_VS_INSTALLATION_PATH)
+        set(_vc_install_dir "${CMAKE_VS_INSTALLATION_PATH}/VC")
+    elseif(NOT _vc_install_dir)
+        set(_vc_install_dir "$ENV{VCINSTALLDIR}")
+    endif()
     set(_qt_tls "")
     if(TARGET Qt6::QSchannelBackendPlugin)
         set(_qt_tls "$<TARGET_FILE:Qt6::QSchannelBackendPlugin>")
@@ -86,7 +94,7 @@ if(WIN32)
             "-DQT_CORE=$<TARGET_FILE:Qt6::Core>" "-DQT_GUI=$<TARGET_FILE:Qt6::Gui>"
             "-DQT_WIDGETS=$<TARGET_FILE:Qt6::Widgets>"
             "-DQT_NETWORK=$<TARGET_FILE:Qt6::Network>"
-            "-DQT_PLUGINS=${_qt_bin}/../share/qt6/plugins"
+            "-DQT_BIN=$<TARGET_FILE_DIR:Qt6::Core>"
             "-DQT_PLATFORM=$<TARGET_FILE:Qt6::QWindowsIntegrationPlugin>"
             "-DQT_TLS=${_qt_tls}"
             "-DQT_ICO=$<TARGET_FILE:Qt6::QICOPlugin>"
@@ -104,7 +112,9 @@ if(WIN32)
         COMMAND "${CMAKE_COMMAND}" "-DCONFIG=$<CONFIG>"
             "-DAPP=$<TARGET_FILE:NTRT>" "-DBUILD_ROOT=${CMAKE_BINARY_DIR}"
             "-DRESOURCE_SOURCE=${CMAKE_CURRENT_SOURCE_DIR}/src/resources"
-            "-DMINGW=${MINGW}" "-DDEPLOY_TOOL=${NTRT_WINDEPLOYQT}" "-DRUNTIME_BIN=${_compiler_bin}"
+            "-DQT_BIN=$<TARGET_FILE_DIR:Qt6::Core>"
+            "-DVC_INSTALL_DIR=${_vc_install_dir}"
+            "-DMINGW=${MINGW}" "-DDEPLOY_TOOL=${_ntrt_deploy_tool}" "-DRUNTIME_BIN=${_compiler_bin}"
             -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/deploy/PackageRelease.cmake"
         VERBATIM)
 endif()
