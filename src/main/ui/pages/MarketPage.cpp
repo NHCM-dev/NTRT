@@ -18,11 +18,17 @@
 #include <QLineEdit>
 #include <QScrollBar>
 #include <QVBoxLayout>
+#include <QVariant>
+#include <QColor>
+#include <QMetaType>
 
 #include "main/util/QtUtil.h"
 
 namespace trtui
 {
+    inline const int fullFlashMs = 500;
+    inline const int digitHighlightMs = 1000;
+
     class ExchangeColumnDelegate final : public QStyledItemDelegate
     {
     public:
@@ -47,7 +53,11 @@ namespace trtui
 
         static void setMovement(QTableWidgetItem* item, const trtcore::MarketSnapshot& snapshot, const QPalette& palette, bool flashEnabled)
         {
-            if (!flashEnabled)
+            if (!flashEnabled || !snapshot.priceChangeAge.isValid())
+                return;
+
+            const qint64 age = snapshot.priceChangeAge.elapsed();
+            if (age >= fullFlashMs + digitHighlightMs)
                 return;
 
             const trtdata::TickerData& ticker = *snapshot.ticker;
@@ -57,14 +67,8 @@ namespace trtui
             const double difference = ticker.last - *ticker.previousLast;
             const bool dark = palette.color(QPalette::Base).lightness() < 128;
             const QColor color = difference > 0 ? QColor(dark ? 0x4ade80 : 0x15803d) : QColor(dark ? 0xfb7185 : 0xb91c1c);
-            if (snapshot.quoteAge.isValid() && snapshot.quoteAge.elapsed() < 350)
-            {
-                item->setForeground(color);
-                return;
-            }
-
             const QString price = item->text();
-            const qsizetype start = changedDigitOffset(price, std::abs(difference));
+            const qsizetype start = age < fullFlashMs ? 0 : changedDigitOffset(price, std::abs(difference));
             if (start < price.size())
             {
                 item->setData(Qt::UserRole, start);
@@ -259,7 +263,7 @@ namespace trtui
                 QTableWidgetItem* status = new QTableWidgetItem("No data");
                 if (snapshot && !snapshot->error.isEmpty())
                 {
-                    status->setText("Request failed");
+                    status->setText("Market feed unavailable");
                     status->setToolTip(snapshot->error);
                 }
                 table->setItem(row, 3, status);

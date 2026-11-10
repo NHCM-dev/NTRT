@@ -59,6 +59,7 @@ namespace trtdata
             notExist = true;
             this->marketConfig = defaultMarketConfig();
             saveMarketConfig(marketFileName);
+            emit instrumentsChanged();
         }
         QString exchangePath = trtutils::appendPath(dataPath, exchangeFileName);
         if (!trtutils::exists(exchangePath))
@@ -93,12 +94,12 @@ namespace trtdata
                 loaded.instruments.push_back(api.createInstrument(id, type));
             }
             marketConfig = std::move(loaded);
-            return true;
         } catch (...)
         {
             return false;
         }
-        return false;
+        emit instrumentsChanged();
+        return true;
     }
 
     bool ConfigManager::loadExchangeConfig(const QString& fileName)
@@ -195,6 +196,7 @@ namespace trtdata
     {
         const int index = static_cast<int>(marketConfig.instruments.size());
         marketConfig.instruments.push_back(trtcore::exchangeApi(instrument.exchange).createInstrument(instrument.instId, instrument.instType));
+        emit instrumentsChanged();
         return index;
     }
 
@@ -226,21 +228,27 @@ namespace trtdata
         if (index < 0 || static_cast<std::size_t>(index) >= marketConfig.instruments.size())
             return false;
         marketConfig.instruments.erase(marketConfig.instruments.begin() + index);
+        emit instrumentsChanged();
         return true;
     }
 
     bool ConfigManager::replaceInstruments(std::vector<std::shared_ptr<Instrument>> instruments)
     {
         marketConfig.instruments.swap(instruments);
+        bool saved;
         try
         {
-            if (saveMarketConfig())
-                return true;
+            saved = saveMarketConfig();
         }
         catch (...)
         {
             marketConfig.instruments.swap(instruments);
             throw;
+        }
+        if (saved)
+        {
+            emit instrumentsChanged();
+            return true;
         }
         marketConfig.instruments.swap(instruments);
         return false;

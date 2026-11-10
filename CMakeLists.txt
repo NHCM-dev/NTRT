@@ -7,6 +7,7 @@ project(NTRT VERSION 0.1.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
 include(cmake/dependencies/EnsureQt.cmake)
 include(cmake/dependencies/EnsureSimdjson.cmake)
 qt_standard_project_setup()
@@ -22,14 +23,21 @@ qt_add_executable(NTRT
         src/main/data/market/abstract/Instrument.h
         src/main/data/market/abstract/instimpl/OKXInstrument.cpp
         src/main/data/market/abstract/instimpl/OKXInstrument.h
-        src/main/network/RequestTemplate.cpp
-        src/main/network/RequestTemplate.h
+        src/main/network/RestAPITemplate.cpp
+        src/main/network/RestAPITemplate.h
+        src/main/network/WebSocketAPITemplate.cpp
+        src/main/network/WebSocketAPITemplate.h
+        src/main/network/WebSocketClient.cpp
+        src/main/network/WebSocketClient.h
         src/main/data/parser/OKXParser.cpp
         src/main/data/parser/OKXParser.h
         src/main/util/JsonUtil.cpp
         src/main/util/JsonUtil.h
         src/main/data/api/OKXApi.cpp
         src/main/data/api/OKXApi.h
+        src/main/data/api/OKXTickerStream.cpp
+        src/main/data/api/OKXTickerStream.h
+        src/main/data/api/TickerStream.h
         src/main/util/NetworkUtil.cpp
         src/main/util/NetworkUtil.h
         src/main/data/ConfigManager.cpp
@@ -40,9 +48,8 @@ qt_add_executable(NTRT
         src/main/ui/pages/MarketPage.h
         src/main/monitor/MarketData.cpp
         src/main/monitor/MarketData.h
-        src/main/monitor/Datamonitor.cpp
-        src/main/monitor/Datamonitor.h
         src/main/monitor/DataMonitor.cpp
+        src/main/monitor/DataMonitor.h
         src/main/util/StdUtil.cpp
         src/main/util/StdUtil.h
         src/main/data/api/AbstractApi.cpp
@@ -55,9 +62,10 @@ qt_add_executable(NTRT
         src/main/ui/pages/SettingPage.h
         src/main/data/AppearanceManager.cpp
         src/main/data/AppearanceManager.h
+        src/test/test.cpp
 )
 target_include_directories(NTRT PRIVATE src)
-target_link_libraries(NTRT PRIVATE Qt6::Widgets Qt6::Network simdjson::simdjson)
+target_link_libraries(NTRT PRIVATE Qt6::Widgets Qt6::Network Qt6::WebSockets simdjson::simdjson)
 if(WIN32)
     set_target_properties(NTRT PROPERTIES WIN32_EXECUTABLE TRUE)
 endif()
@@ -96,6 +104,7 @@ if(WIN32)
             "-DQT_CORE=$<TARGET_FILE:Qt6::Core>" "-DQT_GUI=$<TARGET_FILE:Qt6::Gui>"
             "-DQT_WIDGETS=$<TARGET_FILE:Qt6::Widgets>"
             "-DQT_NETWORK=$<TARGET_FILE:Qt6::Network>"
+            "-DQT_WEBSOCKETS=$<TARGET_FILE:Qt6::WebSockets>"
             "-DQT_BIN=$<TARGET_FILE_DIR:Qt6::Core>"
             "-DQT_PLATFORM=$<TARGET_FILE:Qt6::QWindowsIntegrationPlugin>"
             "-DQT_TLS=${_qt_tls}"
@@ -103,7 +112,7 @@ if(WIN32)
             "-DRUNTIME_BIN=${_compiler_bin}"
             -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/deploy/PrepareRuntime.cmake"
         COMMAND "${CMAKE_COMMAND}" -E touch "${CMAKE_CURRENT_BINARY_DIR}/runtime-$<CONFIG>-ready.stamp"
-        DEPENDS Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Network
+        DEPENDS Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Network Qt6::WebSockets
             Qt6::QICOPlugin
             "${CMAKE_CURRENT_SOURCE_DIR}/cmake/deploy/PrepareRuntime.cmake"
             "${CMAKE_CURRENT_SOURCE_DIR}/cmake/deploy/DeployRuntime.cmake"

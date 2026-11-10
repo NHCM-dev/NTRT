@@ -7,6 +7,7 @@
 #include <memory>
 #include <span>
 #include <vector>
+#include <QObject>
 
 #include "AppearanceManager.h"
 #include "main/util/FileUtil.h"
@@ -30,8 +31,10 @@ namespace trtdata
     inline static const QString DEFAULT_EXCHANGE_CONFIG = "exchange.json";
     inline static const QString DEFAULT_DATA_PATH = "data/";
 
-    class ConfigManager final
+    class ConfigManager final : public QObject
     {
+        Q_OBJECT
+
         QString dataPath;
 
         MarketConfig marketConfig;
@@ -92,6 +95,9 @@ namespace trtdata
         AppearanceManager* getAppearanceManager();
 
         int instrumentsCount();
+
+    signals:
+        void instrumentsChanged();
     };
 } // trtdata
 

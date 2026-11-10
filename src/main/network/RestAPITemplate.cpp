@@ -2,11 +2,11 @@
 // Created by NHCM on 2026/11/7.
 //
 
-#include "RequestTemplate.h"
+#include "RestAPITemplate.h"
 
 namespace trtnet
 {
-    QNetworkReply* RequestTemplate::request(
+    QNetworkReply* RestAPITemplate::request(
         const QUrlQuery& parameters
     ) const
     {
@@ -59,34 +59,34 @@ namespace trtnet
         QNetworkRequest req(url);
 
         // Execute request
-        switch (requestMethod)
+        switch (httpMethod)
         {
-        case RequestMethod::GET:
+        case HTTPMethod::GET:
             return ntrt::netManager->get(req);
 
-        case RequestMethod::POST:
+        case HTTPMethod::POST:
             return ntrt::netManager->post(req, QByteArray{});
 
-        case RequestMethod::PUT:
+        case HTTPMethod::PUT:
             return ntrt::netManager->put(req, QByteArray{});
 
-        case RequestMethod::PATCH:
+        case HTTPMethod::PATCH:
             return ntrt::netManager->sendCustomRequest(
                 req, "PATCH", QByteArray{}
             );
 
-        case RequestMethod::DELETE:
+        case HTTPMethod::DELETE:
             return ntrt::netManager->deleteResource(req);
 
-        case RequestMethod::HEAD:
+        case HTTPMethod::HEAD:
             return ntrt::netManager->head(req);
 
-        case RequestMethod::OPTIONS:
+        case HTTPMethod::OPTIONS:
             return ntrt::netManager->sendCustomRequest(
                 req, "OPTIONS", QByteArray{}
             );
 
-        case RequestMethod::TRACE:
+        case HTTPMethod::TRACE:
             return ntrt::netManager->sendCustomRequest(
                 req, "TRACE", QByteArray{}
             );

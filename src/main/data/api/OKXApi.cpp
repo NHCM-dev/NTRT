@@ -3,6 +3,7 @@
 //
 
 #include "OKXApi.h"
+#include "OKXTickerStream.h"
 #include "main/data/parser/OKXParser.h"
 #include "main/data/market/abstract/instimpl/OKXInstrument.h"
 #include "main/util/NetworkUtil.h"
@@ -40,6 +41,11 @@ namespace trtdata::okx
     std::vector<InstType> OKXApi::instrumentTypes() const
     {
         return {InstType::Spot, InstType::Swap, InstType::Futures, InstType::Option};
+    }
+
+    std::unique_ptr<trtcore::TickerStream> OKXApi::createTickerStream() const
+    {
+        return std::make_unique<OKXTickerStream>();
     }
 
     QFuture<std::shared_ptr<std::vector<TickerData>>> OKXApi::fetchTickers(InstType type) const

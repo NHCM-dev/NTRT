@@ -3,26 +3,40 @@
 //
 
 #include "DataMonitor.h"
+#include "main/data/ConfigManager.h"
 
 namespace trtcore
 {
-    DataMonitor::DataMonitor()
+    DataMonitor::DataMonitor(const trtdata::ConfigManager& configManager)
+        : configManager(configManager)
     {
-        QObject::connect(&marketDataTimer, &QTimer::timeout, &marketData, [this]
+        subscriptionTimer.setSingleShot(true);
+        subscriptionTimer.setInterval(150);
+        QObject::connect(&configManager, &trtdata::ConfigManager::instrumentsChanged, &marketData, [this]
         {
-            marketData.updateNext();
+            if (running)
+                subscriptionTimer.start();
+        });
+        QObject::connect(&subscriptionTimer, &QTimer::timeout, &marketData, [this]
+        {
+            marketData.setInstruments(this->configManager.getInstruments());
         });
     }
 
     void DataMonitor::start()
     {
-        marketData.updateNext();
-        marketDataTimer.start(MarketData::requestInterval);
+        if (running)
+            return;
+
+        running = true;
+        marketData.setInstruments(configManager.getInstruments());
     }
 
     void DataMonitor::stop()
     {
-        marketDataTimer.stop();
+        running = false;
+        subscriptionTimer.stop();
+        marketData.stop();
     }
 
     const MarketData& DataMonitor::getMarketData() const

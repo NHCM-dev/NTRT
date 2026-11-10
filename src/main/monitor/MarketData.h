@@ -5,52 +5,42 @@
 #ifndef NTRT_MARKETDATA_H
 #define NTRT_MARKETDATA_H
 
-#include "main/data/market/abstract/Instrument.h"
+#include "main/data/api/TickerStream.h"
 #include <QElapsedTimer>
 #include <map>
 #include <memory>
 #include <optional>
-#include <utility>
-#include <vector>
+#include <span>
 
 namespace trtcore
 {
     struct MarketSnapshot
     {
         trtdata::Exchange exchange;
-        std::optional<trtdata::TickerData> ticker;
-        QString error;
-        QElapsedTimer quoteAge{};
+        std::optional<trtdata::TickerData> ticker{};
+        QString error{};
+        QElapsedTimer priceChangeAge{};
     };
 
     class MarketData final : public QObject
     {
     public:
         using Identifier2SnapshotMap = std::map<trtdata::InstIdentifier, MarketSnapshot>;
-        static constexpr int requestInterval = 200;
-
         MarketData();
-        void updateNext();
+        void setInstruments(std::span<const std::shared_ptr<trtdata::Instrument>> instruments);
+        void stop();
         const MarketSnapshot* getSnapshot(const trtdata::InstIdentifier& identifier) const;
         const Identifier2SnapshotMap* getSnapshots(trtdata::InstType instType) const;
 
     private:
-        using Market = std::pair<trtdata::Exchange, trtdata::InstType>;
-
-        struct RequestState
-        {
-            QElapsedTimer lastRequest;
-            int delay = requestInterval;
-            bool pending = false;
-        };
-
-        std::vector<Market> markets;
-        std::map<trtdata::Exchange, RequestState> requests;
         std::map<trtdata::InstType, Identifier2SnapshotMap> tickersData;
-        std::map<Market, MarketSnapshot> failures;
-        std::size_t nextMarket = 0;
+        std::map<trtdata::Exchange, MarketSnapshot> failures;
+        std::map<trtdata::Exchange, std::unique_ptr<TickerStream>> streams;
 
-        void requestMarket(const Market& market);
+        void initStream(trtdata::Exchange exchange);
+        void updateTicker(trtdata::Exchange exchange, trtdata::TickerData ticker);
+        void updateConnection(trtdata::Exchange exchange, const QString& error);
+        void updateError(const trtdata::InstIdentifier& identifier, const QString& error);
     };
 }
 

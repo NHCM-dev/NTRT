@@ -16,7 +16,7 @@ namespace ntrt
 
 namespace trtnet
 {
-    enum class RequestMethod : uint8_t
+    enum class HTTPMethod : uint8_t
     {
         GET,
         POST,
@@ -28,10 +28,10 @@ namespace trtnet
         TRACE
     };
 
-    class RequestTemplate
+    class RestAPITemplate
     {
     public:
-        const RequestMethod requestMethod;
+        const HTTPMethod httpMethod;
 
         // Example "www.okx.com"
         const QUrl domain;
@@ -41,8 +41,8 @@ namespace trtnet
         const QSet<QString> requiredParameters;
         const QSet<QString> optionalParameters;
 
-        RequestTemplate(RequestMethod method, QUrl domain, QString endpoint, QSet<QString> required, QSet<QString> optional = {})
-            : requestMethod(method), domain(std::move(domain)), endpoint(std::move(endpoint)),
+        RestAPITemplate(HTTPMethod method, QUrl domain, QString endpoint, QSet<QString> required, QSet<QString> optional = {})
+            : httpMethod(method), domain(std::move(domain)), endpoint(std::move(endpoint)),
               requiredParameters(std::move(required)), optionalParameters(std::move(optional))
         {
         }

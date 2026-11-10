@@ -17,11 +17,13 @@ namespace trtcore
 {
     class DataMonitor final
     {
+        const trtdata::ConfigManager& configManager;
         MarketData marketData;
-        QTimer marketDataTimer;
+        QTimer subscriptionTimer;
+        bool running = false;
 
     public:
-        explicit DataMonitor();
+        explicit DataMonitor(const trtdata::ConfigManager& configManager);
         void start();
         void stop();
         const MarketData& getMarketData() const;

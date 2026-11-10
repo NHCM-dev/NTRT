@@ -10,7 +10,7 @@
 #include <QtNetwork/QNetworkAccessManager>
 
 #include "Ver.h"
-#include "network/RequestTemplate.h"
+#include "network/RestAPITemplate.h"
 #include "util/FileUtil.h"
 
 int main(int argc, char** argv)
@@ -73,7 +73,7 @@ void startupHook()
     ntrt::configManager = std::make_shared<trtdata::ConfigManager>();
     ntrt::configManager->tryInitOnce();
     ntrt::configLoaded = ntrt::configManager->loadAll();
-    ntrt::dataMonitor = std::make_shared<trtcore::DataMonitor>();
+    ntrt::dataMonitor = std::make_shared<trtcore::DataMonitor>(*ntrt::configManager);
     ntrt::dataMonitor->start();
 }
 
