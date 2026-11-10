@@ -20,6 +20,7 @@ namespace trtcore
         trtdata::Exchange exchange;
         std::optional<trtdata::TickerData> ticker;
         QString error;
+        QElapsedTimer quoteAge{};
     };
 
     class MarketData final : public QObject

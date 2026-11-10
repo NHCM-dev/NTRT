@@ -5,9 +5,11 @@
 #include "NTRT.h"
 #include "ui/MainWindow.h"
 #include <QApplication>
+#include <QMessageBox>
 #include <QString>
 #include <QtNetwork/QNetworkAccessManager>
 
+#include "Ver.h"
 #include "network/RequestTemplate.h"
 #include "util/FileUtil.h"
 
@@ -29,6 +31,28 @@ int main(int argc, char** argv)
     return runQtApp();
 }
 
+namespace ntrt
+{
+    void quitApp()
+    {
+        QApplication::quit();
+    }
+
+    void displayAbout(QWidget* parent)
+    {
+        std::string aboutString = "About "+ NTRT_NAME + "\n\n" +
+            NTRT_DESCRIPTION + "\n" +
+            "Version " + NTRT_VERSION + " " + NTRT_RELEASE + " " + NTRT_BUILD + "\n\n" +
+            "Made by " + NTRT_AUTHOR + "\n\n" +
+                "Build date " + NTRT_DATE + "\n";
+        QMessageBox::about(
+                parent,
+                "About",
+                QString::fromStdString(aboutString)
+                );
+    }
+}
+
 int runQtApp()
 {
     startupHook();
@@ -42,11 +66,6 @@ int runQtApp()
     int exitCode = QApplication::exec();
     terminateHook();
     return exitCode;
-}
-
-void ntrt::quitApp()
-{
-    QApplication::quit();
 }
 
 void startupHook()

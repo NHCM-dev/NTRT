@@ -9,6 +9,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QMessageBox>
 #include <QSignalBlocker>
 #include <QScrollArea>
 #include <QStackedWidget>
@@ -35,6 +36,7 @@ namespace trtui
         layout->addWidget(sections, 1);
         initGeneralSection();
         initAppearanceSection();
+        initTradingSection();
         initAboutSection();
         initSearch();
         return page;
@@ -136,10 +138,21 @@ namespace trtui
         categories->setPalette(colors);
     }
 
+    void SettingPage::initTradingSection()
+    {
+        QVBoxLayout* rows = addSection("Trading", "Market display", "price flash color");
+        trtdata::AppearanceManager* appearance = ntrt::configManager->getAppearanceManager();
+        addToggle(rows, "Flash on price change", "Briefly color the full price when it moves.",
+            appearance->isPriceFlashEnabled(), [appearance](bool enabled)
+            {
+                return appearance->setPriceFlashEnabled(enabled);
+            });
+    }
+
     void SettingPage::initAboutSection()
     {
         QVBoxLayout* rows = addSection("About", "Application", "app version");
-        addRow(rows, QString::fromStdString(NTRT_NAME), "Installed version", new QLabel(QString::fromStdString(NTRT_FULL_VER)));
+        addButton(rows, QString::fromStdString("About " + NTRT_NAME), QString::fromStdString(NTRT_NAME + " " + NTRT_FULL_VER), "About", [this]{ntrt::displayAbout(this->widget);});
     }
 
     void SettingPage::initSearch()
@@ -282,12 +295,19 @@ namespace trtui
             });
     }
 
-    void SettingPage::addToggle(QVBoxLayout* rows, const QString& name, const QString& description, bool checked, std::function<void(bool)> onChange)
+    void SettingPage::addToggle(QVBoxLayout* rows, const QString& name, const QString& description, bool checked, std::function<bool(bool)> onChange)
     {
         QCheckBox* control = new QCheckBox(rows->parentWidget());
         control->setChecked(checked);
         addRow(rows, name, description, control);
-        QObject::connect(control, &QCheckBox::toggled, control, std::move(onChange));
+        QObject::connect(control, &QCheckBox::toggled, control, [control, onChange = std::move(onChange)](bool enabled)
+        {
+            if (onChange(enabled))
+                return;
+            const QSignalBlocker blocker(control);
+            control->setChecked(!enabled);
+            QMessageBox::warning(control, "Settings", "Could not save settings.");
+        });
     }
 
     void SettingPage::addText(QVBoxLayout* rows, const QString& name, const QString& description, const QString& value,

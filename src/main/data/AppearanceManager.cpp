@@ -31,7 +31,12 @@ namespace trtdata
             if (theme != "light" && theme != "dark")
                 return false;
 
-            setTheme(theme == "dark" ? EnumTheme::Dark : EnumTheme::Light);
+            bool priceFlash = true;
+            const simdjson::error_code error = json["priceFlash"].get_bool().get(priceFlash);
+            if (error != simdjson::SUCCESS && error != simdjson::NO_SUCH_FIELD)
+                return false;
+
+            appearanceConfig = {theme == "dark" ? EnumTheme::Dark : EnumTheme::Light, priceFlash};
             return true;
         }
         catch (const simdjson::simdjson_error&)
@@ -45,6 +50,8 @@ namespace trtdata
         jsonBuilder builder = newBuilder();
         builder.start_object();
         builder.append_key_value("theme", appearanceConfig.currentTheme == EnumTheme::Dark ? "dark" : "light");
+        builder.append_comma();
+        builder.append_key_value("priceFlash", appearanceConfig.priceFlash);
         builder.end_object();
         return writeJsonFile(trtutils::appendPath(dataPath, "appearance.json"), builder.view());
     }
@@ -59,16 +66,50 @@ namespace trtdata
         appearanceConfig.currentTheme = theme;
     }
 
+    bool AppearanceManager::isPriceFlashEnabled() const
+    {
+        return appearanceConfig.priceFlash;
+    }
+
+    bool AppearanceManager::setPriceFlashEnabled(bool enabled)
+    {
+        const bool previous = appearanceConfig.priceFlash;
+        appearanceConfig.priceFlash = enabled;
+        if (saveConfig())
+            return true;
+        appearanceConfig.priceFlash = previous;
+        return false;
+    }
+
     QPalette AppearanceManager::generatePalette(EnumTheme theme)
     {
-        const bool dark = theme == EnumTheme::Dark;
-        const QColor window(dark ? 0x282b30 : 0xf0f0f0);
-        const QColor base(dark ? 0x202227 : 0xffffff);
-        const QColor text(dark ? 0xe8eaed : 0x202124);
-        const QColor button(dark ? 0x383c43 : 0xf0f0f0);
-        const QColor muted(dark ? 0xa8afb9 : 0x686e75);
+        QColor window(0xf0f0f0);
+        QColor base(0xffffff);
+        QColor text(0x202124);
+        QColor muted(0x686e75);
+        QPalette palette(window, window);
+        palette.setColor(QPalette::Highlight, QColor(0x3478c0));
 
-        QPalette palette(button, window);
+        switch (theme)
+        {
+        case EnumTheme::Light:
+            break;
+        case EnumTheme::Dark:
+            window = QColor(0x282b30);
+            base = QColor(0x202227);
+            text = QColor(0xe8eaed);
+            muted = QColor(0xa8afb9);
+            palette = QPalette(QColor(0x383c43), window);
+            palette.setColor(QPalette::Highlight, QColor(0x345d92));
+            palette.setColor(QPalette::Light, QColor(0x68717e));
+            palette.setColor(QPalette::Midlight, QColor(0x555d69));
+            palette.setColor(QPalette::Mid, QColor(0x4b535f));
+            palette.setColor(QPalette::Dark, QColor(0x3d444f));
+            palette.setColor(QPalette::Shadow, QColor(0x14161a));
+            palette.setColor(QPalette::Link, QColor(0x8ab8f3));
+            break;
+        }
+
         palette.setColor(QPalette::WindowText, text);
         palette.setColor(QPalette::Base, base);
         palette.setColor(QPalette::AlternateBase, window);
@@ -77,17 +118,7 @@ namespace trtdata
         palette.setColor(QPalette::PlaceholderText, muted);
         palette.setColor(QPalette::ToolTipBase, window);
         palette.setColor(QPalette::ToolTipText, text);
-        palette.setColor(QPalette::Highlight, QColor(dark ? 0x345d92 : 0x3478c0));
         palette.setColor(QPalette::HighlightedText, Qt::white);
-        if (dark)
-        {
-            palette.setColor(QPalette::Light, QColor(0x68717e));
-            palette.setColor(QPalette::Midlight, QColor(0x555d69));
-            palette.setColor(QPalette::Mid, QColor(0x4b535f));
-            palette.setColor(QPalette::Dark, QColor(0x3d444f));
-            palette.setColor(QPalette::Shadow, QColor(0x14161a));
-            palette.setColor(QPalette::Link, QColor(0x8ab8f3));
-        }
         palette.setColor(QPalette::Disabled, QPalette::Text, muted);
         palette.setColor(QPalette::Disabled, QPalette::WindowText, muted);
         palette.setColor(QPalette::Disabled, QPalette::ButtonText, muted);

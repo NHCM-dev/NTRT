@@ -59,8 +59,14 @@ namespace trtcore
                     const trtdata::InstIdentifier identifier{market.first, ticker.instType, ticker.instId};
                     MarketSnapshot& snapshot = tickersData[ticker.instType][identifier];
                     snapshot.exchange = market.first;
-                    if (!snapshot.ticker || ticker.ts >= snapshot.ticker->ts)
+                    if (!snapshot.ticker || ticker.ts > snapshot.ticker->ts ||
+                        (ticker.ts == snapshot.ticker->ts && ticker.last != snapshot.ticker->last))
+                    {
+                        if (snapshot.ticker)
+                            ticker.previousLast = snapshot.ticker->last;
                         snapshot.ticker = std::move(ticker);
+                        snapshot.quoteAge.start();
+                    }
                     snapshot.error.clear();
                 }
                 failures.erase(market);

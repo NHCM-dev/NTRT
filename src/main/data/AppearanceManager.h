@@ -19,6 +19,7 @@ namespace trtdata
     struct AppearanceConfig
     {
         EnumTheme currentTheme = EnumTheme::Light;
+        bool priceFlash = true;
     };
 
     class AppearanceManager final
@@ -35,6 +36,8 @@ namespace trtdata
 
         EnumTheme getCurrentTheme() const;
         void setTheme(EnumTheme theme);
+        bool isPriceFlashEnabled() const;
+        bool setPriceFlashEnabled(bool enabled);
         static QPalette generatePalette(EnumTheme theme);
         static void applyPalette(EnumTheme theme);
     };

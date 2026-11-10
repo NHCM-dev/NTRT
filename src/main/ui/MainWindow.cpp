@@ -31,7 +31,7 @@ namespace trtui
         initWidgets();
         initPages();
         init200msSchedules();
-        resize(1000, 500);
+        resize(800, 680);
     }
 
     void MainWindow::initLayouts()
@@ -61,18 +61,9 @@ namespace trtui
         std::string aboutActionStr = "About " + NTRT_NAME;
         QAction* about = aboutMenu->addAction(QString::fromStdString(aboutActionStr));
         aboutMenu->addAction(about);
-        std::string aboutString = "About "+ NTRT_NAME + "\n\n" +
-            NTRT_DESCRIPTION + "\n" +
-            "Version " + NTRT_VERSION + " " + NTRT_RELEASE + " " + NTRT_BUILD + "\n\n" +
-            "Made by " + NTRT_AUTHOR + "\n\n" +
-                "Build date " + NTRT_DATE + "\n";
-        connect(about, &QAction::triggered, this, [this, aboutString]
+        connect(about, &QAction::triggered, this, [this]
         {
-            QMessageBox::about(
-                this,
-                "About",
-                QString::fromStdString(aboutString)
-                );
+            ntrt::displayAbout(this);
         });
 
         menuBar->addMenu(fileMenu);

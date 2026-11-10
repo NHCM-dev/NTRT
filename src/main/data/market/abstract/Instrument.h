@@ -6,6 +6,7 @@
 #define NTRT_INSTRUMENT_H
 #include <compare>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <QFuture>
@@ -49,6 +50,7 @@ namespace trtdata
         double volCcy24h;
         double vol24h;
         std::int64_t ts;
+        std::optional<double> previousLast{};
     };
 
     struct InstIdentifier

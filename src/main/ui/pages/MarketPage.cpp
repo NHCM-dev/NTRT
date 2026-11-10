@@ -8,6 +8,10 @@
 #include "main/NTRT.h"
 #include <QHeaderView>
 #include <QLocale>
+#include <QPainter>
+#include <QStyledItemDelegate>
+#include <QTextLayout>
+#include <cmath>
 #include <QPushButton>
 #include <QObject>
 #include <QComboBox>
@@ -19,6 +23,99 @@
 
 namespace trtui
 {
+    class PriceDelegate final : public QStyledItemDelegate
+    {
+    public:
+        explicit PriceDelegate(QObject* parent) : QStyledItemDelegate(parent) {}
+
+        static void setMovement(QTableWidgetItem* item, const trtcore::MarketSnapshot& snapshot, const QPalette& palette, bool flashEnabled)
+        {
+            const trtdata::TickerData& ticker = *snapshot.ticker;
+            if (!ticker.previousLast || ticker.last == *ticker.previousLast)
+                return;
+
+            const double difference = ticker.last - *ticker.previousLast;
+            const bool dark = palette.color(QPalette::Base).lightness() < 128;
+            const QColor color = difference > 0 ? QColor(dark ? 0x4ade80 : 0x15803d) : QColor(dark ? 0xfb7185 : 0xb91c1c);
+            if (flashEnabled && snapshot.quoteAge.isValid() && snapshot.quoteAge.elapsed() < 350)
+            {
+                item->setForeground(color);
+                return;
+            }
+
+            const QString price = item->text();
+            const qsizetype start = changedDigitOffset(price, std::abs(difference));
+            if (start < price.size())
+            {
+                item->setData(Qt::UserRole, start);
+                item->setData(Qt::UserRole + 1, color);
+            }
+        }
+
+        void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override
+        {
+            const QVariant start = index.data(Qt::UserRole);
+            QStyleOptionViewItem styled(option);
+            initStyleOption(&styled, index);
+            QStyle* style = styled.widget ? styled.widget->style() : QApplication::style();
+            const QRect textRect = style->subElementRect(QStyle::SE_ItemViewItemText, &styled, styled.widget);
+            const QString price = styled.fontMetrics.elidedText(styled.text, styled.textElideMode, textRect.width());
+            if (price.isEmpty())
+            {
+                QStyledItemDelegate::paint(painter, option, index);
+                return;
+            }
+            styled.text.clear();
+            style->drawControl(QStyle::CE_ItemViewItem, &styled, painter, styled.widget);
+
+            QTextLayout text(price, styled.font);
+            if (start.isValid() && start.toInt() < price.size())
+            {
+                QTextLayout::FormatRange suffix;
+                suffix.start = start.toInt();
+                suffix.length = static_cast<int>(price.size()) - suffix.start;
+                suffix.format.setForeground(index.data(Qt::UserRole + 1).value<QColor>());
+                text.setFormats({suffix});
+            }
+            text.beginLayout();
+            QTextLine line = text.createLine();
+            line.setLineWidth(textRect.width());
+            text.endLayout();
+
+            painter->save();
+            painter->setClipRect(textRect, Qt::IntersectClip);
+            painter->setPen(styled.palette.color(QPalette::Text));
+            text.draw(painter, QPointF(textRect.left(), textRect.top() + (textRect.height() - line.height()) / 2.0));
+            painter->restore();
+        }
+
+    private:
+        static qsizetype changedDigitOffset(const QString& price, double difference)
+        {
+            const int changedPower = static_cast<int>(std::floor(std::log10(difference) + 1e-9));
+            const qsizetype exponentPosition = price.indexOf('e', 0, Qt::CaseInsensitive);
+            const qsizetype end = exponentPosition < 0 ? price.size() : exponentPosition;
+            const int exponent = exponentPosition < 0 ? 0 : price.mid(exponentPosition + 1).toInt();
+            const qsizetype decimal = price.indexOf('.');
+            const qsizetype integerEnd = decimal < 0 ? end : decimal;
+            int power = exponent - 1;
+            for (qsizetype index = 0; index < integerEnd; index++)
+            {
+                if (price[index].isDigit())
+                    power++;
+            }
+            for (qsizetype index = 0; index < end; index++)
+            {
+                if (!price[index].isDigit())
+                    continue;
+                if (power <= changedPower)
+                    return index;
+                power--;
+            }
+            return price.size();
+        }
+    };
+
     QFrame* MarketPage::generateWidget(QWidget* parent)
     {
         QFrame* page = new QFrame(parent);
@@ -40,6 +137,7 @@ namespace trtui
         layout->addLayout(filters);
 
         table = trtutils::createHeaderTable(page, {"Exchange", "Type", "Instrument", "Last Price", "24H Volume", "24H Change"});
+        table->setItemDelegateForColumn(3, new PriceDelegate(table));
 
         QHeaderView* header = table->horizontalHeader();
         header->setSectionResizeMode(0, QHeaderView::Interactive);
@@ -103,6 +201,7 @@ namespace trtui
         const QString query = search->text().trimmed();
         const int filter = typeFilter->currentData().toInt();
         const QLocale locale(QLocale::English);
+        const bool flashEnabled = ntrt::configManager->getAppearanceManager()->isPriceFlashEnabled();
         int row = 0;
         for (const std::shared_ptr<trtdata::Instrument>& instrument : instruments)
         {
@@ -139,6 +238,7 @@ namespace trtui
             const trtdata::TickerData& data = *snapshot->ticker;
             const QString price = data.last >= 1 ? locale.toString(data.last, 'f', 2) : locale.toString(data.last, 'g', 4);
             QTableWidgetItem* priceItem = new QTableWidgetItem(price);
+            PriceDelegate::setMovement(priceItem, *snapshot, table->palette(), flashEnabled);
             if (!snapshot->error.isEmpty())
                 priceItem->setToolTip("Last successful quote: " + snapshot->error);
             table->setItem(row, 3, priceItem);

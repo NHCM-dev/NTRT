@@ -34,6 +34,7 @@ namespace trtui
         void initSidebar(QFrame* page, QHBoxLayout* layout);
         void initGeneralSection();
         void initAppearanceSection();
+        void initTradingSection();
         void initAboutSection();
         void initSearch();
         void updateCategoryPalette();
@@ -43,7 +44,7 @@ namespace trtui
         void addRow(QVBoxLayout* rows, const QString& name, const QString& description, QWidget* control);
         void addDropdown(QVBoxLayout* rows, const QString& name, const QString& description, const QStringList& options,
             int selected, std::function<bool(int)> onChange);
-        void addToggle(QVBoxLayout* rows, const QString& name, const QString& description, bool checked, std::function<void(bool)> onChange);
+        void addToggle(QVBoxLayout* rows, const QString& name, const QString& description, bool checked, std::function<bool(bool)> onChange);
         void addText(QVBoxLayout* rows, const QString& name, const QString& description, const QString& value,
             std::function<void(const QString&)> onEdit);
         void addButton(QVBoxLayout* rows, const QString& name, const QString& description, const QString& caption,

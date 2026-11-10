@@ -24,6 +24,7 @@ namespace ntrt
     inline std::shared_ptr<trtcore::DataMonitor> dataMonitor = nullptr;
 
     void quitApp();
+    void displayAbout(QWidget* parent);
 }
 
 int main(int argc, char* argv[]);
