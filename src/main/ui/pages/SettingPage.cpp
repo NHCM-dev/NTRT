@@ -142,7 +142,7 @@ namespace trtui
     {
         QVBoxLayout* rows = addSection("Trading", "Market display", "price flash color");
         trtdata::AppearanceManager* appearance = ntrt::configManager->getAppearanceManager();
-        addToggle(rows, "Flash on price change", "Briefly color the full price when it moves.",
+        addToggle(rows, "Flash on price change", "Flash the latest price and highlight the changed digits.",
             appearance->isPriceFlashEnabled(), [appearance](bool enabled)
             {
                 return appearance->setPriceFlashEnabled(enabled);

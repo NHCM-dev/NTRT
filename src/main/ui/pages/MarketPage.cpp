@@ -23,6 +23,23 @@
 
 namespace trtui
 {
+    class ExchangeColumnDelegate final : public QStyledItemDelegate
+    {
+    public:
+        explicit ExchangeColumnDelegate(QObject* parent) : QStyledItemDelegate(parent) {}
+
+        void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override
+        {
+            QStyledItemDelegate::paint(painter, option, index);
+            const QStyle* style = option.widget ? option.widget->style() : QApplication::style();
+            const int gridColor = style->styleHint(QStyle::SH_Table_GridLineColor, &option, option.widget);
+            painter->save();
+            painter->setPen(QColor::fromRgb(static_cast<QRgb>(gridColor)));
+            painter->drawLine(option.rect.topLeft(), option.rect.bottomLeft());
+            painter->restore();
+        }
+    };
+
     class PriceDelegate final : public QStyledItemDelegate
     {
     public:
@@ -30,6 +47,9 @@ namespace trtui
 
         static void setMovement(QTableWidgetItem* item, const trtcore::MarketSnapshot& snapshot, const QPalette& palette, bool flashEnabled)
         {
+            if (!flashEnabled)
+                return;
+
             const trtdata::TickerData& ticker = *snapshot.ticker;
             if (!ticker.previousLast || ticker.last == *ticker.previousLast)
                 return;
@@ -37,7 +57,7 @@ namespace trtui
             const double difference = ticker.last - *ticker.previousLast;
             const bool dark = palette.color(QPalette::Base).lightness() < 128;
             const QColor color = difference > 0 ? QColor(dark ? 0x4ade80 : 0x15803d) : QColor(dark ? 0xfb7185 : 0xb91c1c);
-            if (flashEnabled && snapshot.quoteAge.isValid() && snapshot.quoteAge.elapsed() < 350)
+            if (snapshot.quoteAge.isValid() && snapshot.quoteAge.elapsed() < 350)
             {
                 item->setForeground(color);
                 return;
@@ -58,7 +78,8 @@ namespace trtui
             QStyleOptionViewItem styled(option);
             initStyleOption(&styled, index);
             QStyle* style = styled.widget ? styled.widget->style() : QApplication::style();
-            const QRect textRect = style->subElementRect(QStyle::SE_ItemViewItemText, &styled, styled.widget);
+            const int margin = style->pixelMetric(QStyle::PM_FocusFrameHMargin, &styled, styled.widget) + 1;
+            const QRect textRect = style->subElementRect(QStyle::SE_ItemViewItemText, &styled, styled.widget).adjusted(margin, 0, -margin, 0);
             const QString price = styled.fontMetrics.elidedText(styled.text, styled.textElideMode, textRect.width());
             if (price.isEmpty())
             {
@@ -85,7 +106,9 @@ namespace trtui
             painter->save();
             painter->setClipRect(textRect, Qt::IntersectClip);
             painter->setPen(styled.palette.color(QPalette::Text));
-            text.draw(painter, QPointF(textRect.left(), textRect.top() + (textRect.height() - line.height()) / 2.0));
+            const QSize textSize(static_cast<int>(std::ceil(line.naturalTextWidth())), static_cast<int>(std::ceil(line.height())));
+            const QRect aligned = QStyle::alignedRect(styled.direction, styled.displayAlignment, textSize, textRect);
+            text.draw(painter, aligned.topLeft());
             painter->restore();
         }
 
@@ -137,6 +160,7 @@ namespace trtui
         layout->addLayout(filters);
 
         table = trtutils::createHeaderTable(page, {"Exchange", "Type", "Instrument", "Last Price", "24H Volume", "24H Change"});
+        table->setItemDelegateForColumn(0, new ExchangeColumnDelegate(table));
         table->setItemDelegateForColumn(3, new PriceDelegate(table));
 
         QHeaderView* header = table->horizontalHeader();
