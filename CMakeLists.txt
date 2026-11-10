@@ -62,7 +62,6 @@ qt_add_executable(NTRT
         src/main/ui/pages/SettingPage.h
         src/main/data/AppearanceManager.cpp
         src/main/data/AppearanceManager.h
-        src/test/test.cpp
 )
 target_include_directories(NTRT PRIVATE src)
 target_link_libraries(NTRT PRIVATE Qt6::Widgets Qt6::Network Qt6::WebSockets simdjson::simdjson)
