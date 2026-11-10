@@ -140,12 +140,33 @@ namespace trtui
 
     void SettingPage::initTradingSection()
     {
-        QVBoxLayout* rows = addSection("Trading", "Market display", "price flash color");
+        QVBoxLayout* rows = addSection("Trading", "Market", "price flash color exchange type volume columns");
         trtdata::AppearanceManager* appearance = ntrt::configManager->getAppearanceManager();
         addToggle(rows, "Flash on price change", "Flash the latest price and highlight the changed digits.",
             appearance->isPriceFlashEnabled(), [appearance](bool enabled)
             {
                 return appearance->setPriceFlashEnabled(enabled);
+            });
+        addToggle(rows, "Show Exchange", "Show the exchange for each instrument.", appearance->getMarketColumns().exchange,
+            [appearance](bool enabled)
+            {
+                trtdata::MarketColumnVisibility columns = appearance->getMarketColumns();
+                columns.exchange = enabled;
+                return appearance->setMarketColumns(columns);
+            });
+        addToggle(rows, "Show Type", "Show the instrument type.", appearance->getMarketColumns().type,
+            [appearance](bool enabled)
+            {
+                trtdata::MarketColumnVisibility columns = appearance->getMarketColumns();
+                columns.type = enabled;
+                return appearance->setMarketColumns(columns);
+            });
+        addToggle(rows, "Show 24H Volume", "Show each instrument's 24-hour trading volume.", appearance->getMarketColumns().volume24h,
+            [appearance](bool enabled)
+            {
+                trtdata::MarketColumnVisibility columns = appearance->getMarketColumns();
+                columns.volume24h = enabled;
+                return appearance->setMarketColumns(columns);
             });
     }
 

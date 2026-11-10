@@ -16,10 +16,18 @@ namespace trtdata
         Dark
     };
 
+    struct MarketColumnVisibility
+    {
+        bool exchange = true;
+        bool type = true;
+        bool volume24h = true;
+    };
+
     struct AppearanceConfig
     {
         EnumTheme currentTheme = EnumTheme::Light;
         bool priceFlash = true;
+        MarketColumnVisibility marketColumns{};
     };
 
     class AppearanceManager final
@@ -38,6 +46,8 @@ namespace trtdata
         void setTheme(EnumTheme theme);
         bool isPriceFlashEnabled() const;
         bool setPriceFlashEnabled(bool enabled);
+        const MarketColumnVisibility& getMarketColumns() const;
+        bool setMarketColumns(const MarketColumnVisibility& columns);
         static QPalette generatePalette(EnumTheme theme);
         static void applyPalette(EnumTheme theme);
     };

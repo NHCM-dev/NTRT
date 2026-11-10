@@ -19,6 +19,7 @@ namespace trtui
         QLineEdit* search = nullptr;
         QComboBox* typeFilter = nullptr;
 
+        void updateColumnVisibility();
 
     public:
 

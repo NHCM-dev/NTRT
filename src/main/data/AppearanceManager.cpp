@@ -36,7 +36,17 @@ namespace trtdata
             if (error != simdjson::SUCCESS && error != simdjson::NO_SUCH_FIELD)
                 return false;
 
-            appearanceConfig = {theme == "dark" ? EnumTheme::Dark : EnumTheme::Light, priceFlash};
+            MarketColumnVisibility columns;
+            elementResult marketColumns = json["marketColumns"];
+            if (marketColumns.error() != simdjson::NO_SUCH_FIELD)
+            {
+                const jsonElement saved = marketColumns.value();
+                columns.exchange = saved["exchange"].get_bool().value();
+                columns.type = saved["type"].get_bool().value();
+                columns.volume24h = saved["volume24h"].get_bool().value();
+            }
+
+            appearanceConfig = {theme == "dark" ? EnumTheme::Dark : EnumTheme::Light, priceFlash, columns};
             return true;
         }
         catch (const simdjson::simdjson_error&)
@@ -52,6 +62,16 @@ namespace trtdata
         builder.append_key_value("theme", appearanceConfig.currentTheme == EnumTheme::Dark ? "dark" : "light");
         builder.append_comma();
         builder.append_key_value("priceFlash", appearanceConfig.priceFlash);
+        builder.append_comma();
+        builder.escape_and_append_with_quotes("marketColumns");
+        builder.append_colon();
+        builder.start_object();
+        builder.append_key_value("exchange", appearanceConfig.marketColumns.exchange);
+        builder.append_comma();
+        builder.append_key_value("type", appearanceConfig.marketColumns.type);
+        builder.append_comma();
+        builder.append_key_value("volume24h", appearanceConfig.marketColumns.volume24h);
+        builder.end_object();
         builder.end_object();
         return writeJsonFile(trtutils::appendPath(dataPath, "appearance.json"), builder.view());
     }
@@ -78,6 +98,21 @@ namespace trtdata
         if (saveConfig())
             return true;
         appearanceConfig.priceFlash = previous;
+        return false;
+    }
+
+    const MarketColumnVisibility& AppearanceManager::getMarketColumns() const
+    {
+        return appearanceConfig.marketColumns;
+    }
+
+    bool AppearanceManager::setMarketColumns(const MarketColumnVisibility& columns)
+    {
+        const MarketColumnVisibility previous = appearanceConfig.marketColumns;
+        appearanceConfig.marketColumns = columns;
+        if (saveConfig())
+            return true;
+        appearanceConfig.marketColumns = previous;
         return false;
     }
 

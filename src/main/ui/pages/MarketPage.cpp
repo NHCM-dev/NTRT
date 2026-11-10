@@ -180,13 +180,7 @@ namespace trtui
         table->setColumnWidth(4, 130);
         table->setColumnWidth(5, 100);
         table->verticalHeader()->hide();
-        int minimumWidth = header->minimumSectionSize() + table->verticalScrollBar()->sizeHint().width();
-        for (int column = 0; column < header->count(); column++)
-        {
-            if (header->sectionResizeMode(column) != QHeaderView::Stretch)
-                minimumWidth += header->sectionSize(column);
-        }
-        table->setMinimumWidth(minimumWidth + 2 * table->frameWidth());
+        updateColumnVisibility();
         table->setEditTriggers(QAbstractItemView::NoEditTriggers);
         table->setSelectionMode(QAbstractItemView::NoSelection);
         table->setFocusPolicy(Qt::NoFocus);
@@ -218,8 +212,26 @@ namespace trtui
         return page;
     }
 
+    void MarketPage::updateColumnVisibility()
+    {
+        const trtdata::MarketColumnVisibility& columns = ntrt::configManager->getAppearanceManager()->getMarketColumns();
+        table->setColumnHidden(0, !columns.exchange);
+        table->setColumnHidden(1, !columns.type);
+        table->setColumnHidden(4, !columns.volume24h);
+
+        const QHeaderView* header = table->horizontalHeader();
+        int minimumWidth = header->minimumSectionSize() + table->verticalScrollBar()->sizeHint().width();
+        for (int column = 0; column < header->count(); column++)
+        {
+            if (!header->isSectionHidden(column) && column != 2)
+                minimumWidth += header->sectionSize(column);
+        }
+        table->setMinimumWidth(minimumWidth + 2 * table->frameWidth());
+    }
+
     void MarketPage::update()
     {
+        updateColumnVisibility();
         const std::span<const std::shared_ptr<trtdata::Instrument>> instruments = ntrt::configManager->getInstruments();
         const trtcore::MarketData& marketData = ntrt::dataMonitor->getMarketData();
         const QString query = search->text().trimmed();
