@@ -2,7 +2,7 @@
 // Created by NHCM on 2026/11/7.
 //
 
-#include "MarketPage.h"
+#include "InstrumentListPanel.h"
 #include "../dialog/InstrumentDialog.h"
 #include <QTableWidget>
 #include "main/NTRT.h"
@@ -21,7 +21,6 @@
 #include <QVariant>
 #include <QColor>
 #include <QLabel>
-#include <QSplitter>
 #include <QMetaType>
 
 #include "main/util/QtUtil.h"
@@ -128,35 +127,22 @@ namespace trtui
         }
     };
 
-    QFrame* MarketPage::generateWidget(QWidget* parent)
+    QFrame* InstrumentListPanel::generateWidget(QWidget* parent)
     {
         QFrame* page = new QFrame(parent);
 
         page->setBackgroundRole(QPalette::Base);
         page->setAutoFillBackground(true);
 
-        QHBoxLayout* layout = new QHBoxLayout(page);
-        layout->setContentsMargins(0, 0, 0, 0);
-        QSplitter* splitter = new QSplitter(Qt::Horizontal, page);
-        splitter->setChildrenCollapsible(false);
-        splitter->setObjectName("marketSplitter");
-        splitter->setHandleWidth(12);
-        layout->addWidget(splitter);
-
-        QFrame* instruments = new QFrame(splitter);
-        QVBoxLayout* instrumentLayout = new QVBoxLayout(instruments);
-        initFilters(instruments, instrumentLayout);
-        initTable(instruments, instrumentLayout);
-        initActions(instruments, instrumentLayout);
-        QFrame* chart = new QFrame(splitter);
-        initChartPlaceholder(chart);
-        splitter->setStretchFactor(0, 0);
-        splitter->setStretchFactor(1, 1);
-        splitter->setSizes({instruments->minimumSizeHint().width(), 10000});
+        QVBoxLayout* layout = new QVBoxLayout(page);
+        layout->setContentsMargins(8, 8, 8, 8);
+        initFilters(page, layout);
+        initTable(page, layout);
+        initActions(page, layout);
         return page;
     }
 
-    void MarketPage::initFilters(QFrame* page, QVBoxLayout* layout)
+    void InstrumentListPanel::initFilters(QFrame* page, QVBoxLayout* layout)
     {
         QHBoxLayout* filters = new QHBoxLayout;
         search = new QLineEdit(page);
@@ -174,7 +160,7 @@ namespace trtui
         QObject::connect(typeFilter, &QComboBox::currentIndexChanged, page, [this] { update(); });
     }
 
-    void MarketPage::initTable(QFrame* page, QVBoxLayout* layout)
+    void InstrumentListPanel::initTable(QFrame* page, QVBoxLayout* layout)
     {
         table = trtutils::createHeaderTable(page, {"Exchange", "Type", "Icon", "Instrument", "Last Price", "Volume", "Change"});
         table->setItemDelegateForColumn(4, new PriceDelegate(table));
@@ -205,7 +191,7 @@ namespace trtui
         layout->addWidget(table, 1);
     }
 
-    void MarketPage::initActions(QFrame* page, QVBoxLayout* layout)
+    void InstrumentListPanel::initActions(QFrame* page, QVBoxLayout* layout)
     {
         QHBoxLayout* actions = new QHBoxLayout;
         actions->addStretch();
@@ -230,19 +216,7 @@ namespace trtui
 
     }
 
-    void MarketPage::initChartPlaceholder(QFrame* page)
-    {
-        page->setMinimumWidth(200);
-        QVBoxLayout* layout = new QVBoxLayout(page);
-        QLabel* title = new QLabel("Chart", page);
-        layout->addWidget(title);
-        QLabel* placeholder = new QLabel("Chart coming soon", page);
-        placeholder->setAlignment(Qt::AlignCenter);
-        placeholder->setForegroundRole(QPalette::PlaceholderText);
-        layout->addWidget(placeholder, 1);
-    }
-
-    void MarketPage::updateColumnVisibility()
+    void InstrumentListPanel::updateColumnVisibility()
     {
         const trtdata::MarketColumnVisibility& columns = ntrt::configManager->getAppearanceManager()->getMarketColumns();
         table->setColumnHidden(0, !columns.exchange);
@@ -260,7 +234,20 @@ namespace trtui
         table->setMinimumWidth(minimumWidth + 2 * table->frameWidth());
     }
 
-    void MarketPage::update()
+    QTableWidgetItem* InstrumentListPanel::updateItem(int row, int column, const QString& text)
+    {
+        QTableWidgetItem* item = table->item(row, column);
+        if (!item)
+        {
+            item = new QTableWidgetItem;
+            table->setItem(row, column, item);
+        }
+        if (item->text() != text)
+            item->setText(text);
+        return item;
+    }
+
+    void InstrumentListPanel::update()
     {
         updateColumnVisibility();
         const std::span<const std::shared_ptr<trtdata::Instrument>> instruments = ntrt::configManager->getInstruments();
@@ -284,8 +271,8 @@ namespace trtui
 
             if (row == table->rowCount())
                 table->insertRow(row);
-            table->setItem(row, 0, new QTableWidgetItem(exchange));
-            table->setItem(row, 1, new QTableWidgetItem(QString::fromUtf8(trttrade::instDisplayStr(instrument->instType))));
+            updateItem(row, 0, exchange);
+            updateItem(row, 1, QString::fromUtf8(trttrade::instDisplayStr(instrument->instType)));
             QLabel* icon = static_cast<QLabel*>(table->cellWidget(row, 2));
             if (!icon)
             {
@@ -294,13 +281,21 @@ namespace trtui
                 icon->setAlignment(Qt::AlignCenter);
                 table->setCellWidget(row, 2, icon);
             }
-            icon->setPixmap(ntrt::dataMonitor->getInstrumentIconManager().getIcon(symbol).pixmap(QSize(20, 20)));
+            const QIcon image = ntrt::dataMonitor->getInstrumentIconManager().getIcon(symbol);
+            if (icon->property("iconCacheKey").toLongLong() != image.cacheKey())
+            {
+                icon->setPixmap(image.pixmap(QSize(20, 20)));
+                icon->setProperty("iconCacheKey", image.cacheKey());
+            }
             icon->setToolTip(symbol);
-            table->setItem(row, 3, new QTableWidgetItem(symbol));
+            updateItem(row, 3, symbol);
 
             const trtdata::InstIdentifier& identifier = instrument->getUniqueIdentifier();
             const trtcore::MarketSnapshot* snapshot = marketData.getSnapshot(identifier);
-            QTableWidgetItem* priceItem = new QTableWidgetItem("No data");
+            QTableWidgetItem* priceItem = updateItem(row, 4, "No data");
+            priceItem->setToolTip(QString());
+            priceItem->setData(Qt::UserRole, QVariant());
+            priceItem->setData(Qt::UserRole + 1, QVariant());
             if (snapshot && snapshot->ticker)
             {
                 const trtdata::TickerData& data = *snapshot->ticker;
@@ -309,12 +304,14 @@ namespace trtui
             }
             if (snapshot && !snapshot->error.isEmpty())
                 priceItem->setToolTip("Market feed: " + snapshot->error);
-            table->setItem(row, 4, priceItem);
 
             const trttrade::CandleData* daily = candles.getDailyCandle(identifier);
             const trtcore::CandleSnapshot* candleSnapshot = candles.getSnapshot(identifier);
-            QTableWidgetItem* volume = new QTableWidgetItem("-");
-            QTableWidgetItem* change = new QTableWidgetItem("-");
+            QTableWidgetItem* volume = updateItem(row, 5, "-");
+            volume->setToolTip(QString());
+            QTableWidgetItem* change = updateItem(row, 6, "-");
+            change->setData(Qt::ForegroundRole, QVariant());
+            change->setToolTip(QString());
             change->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
             if (daily)
             {
@@ -356,8 +353,6 @@ namespace trtui
                 volume->setToolTip(volume->toolTip() + "\n" + error);
                 change->setToolTip(error);
             }
-            table->setItem(row, 5, volume);
-            table->setItem(row, 6, change);
             row++;
         }
         table->setRowCount(row);

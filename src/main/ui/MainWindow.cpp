@@ -1,25 +1,18 @@
-//
-// Created by NHCM on 2026/11/6.
-//
-
 #include "MainWindow.h"
-#include <QAction>
-#include <QMessageBox>
-#include <QMenuBar>
-#include <QButtonGroup>
-#include <QLabel>
-#include <QVBoxLayout>
-#include <QPushButton>
-#include <functional>
-
+#include "Workspace.h"
+#include "dialog/SettingsDialog.h"
 #include "main/NTRT.h"
 #include "main/Ver.h"
-#include "pages/MarketPage.h"
-#include <QStatusBar>
+#include <QAction>
 #include <QDateTime>
+#include <QLabel>
+#include <QMenuBar>
+#include <QPushButton>
 #include <QScreen>
-
-#include "pages/SettingPage.h"
+#include <QStatusBar>
+#include <QTimer>
+#include <QVBoxLayout>
+#include <functional>
 
 namespace trtui
 {
@@ -29,8 +22,6 @@ namespace trtui
         initMenuBar();
         initNavigation();
         initStatusBar();
-        initWidgets();
-        initPages();
         init200msSchedules();
         initWindowGeometry();
     }
@@ -49,84 +40,61 @@ namespace trtui
     void MainWindow::initLayouts()
     {
         root = new QWidget(this);
-        root->setLayout(rootLayout = new QHBoxLayout);
-
+        rootLayout = new QHBoxLayout(root);
         rootLayout->setContentsMargins(0, 0, 0, 0);
         rootLayout->setSpacing(0);
-
         setCentralWidget(root);
-        mainPages = new QStackedWidget(root);
+        workspace = new Workspace(root);
+        rootLayout->addWidget(workspace, 1);
     }
 
     void MainWindow::initMenuBar()
     {
-        menuBar = new QMenuBar(this);
-
-        fileMenu = new QMenu("File", menuBar);
-        QAction* exit = fileMenu->addAction("Exit");
-        connect(exit, &QAction::triggered, this, []
-        {
-            ntrt::quitApp();
-        });
-
-        aboutMenu = new QMenu("About", menuBar);
-        std::string aboutActionStr = "About " + NTRT_NAME;
-        QAction* about = aboutMenu->addAction(QString::fromStdString(aboutActionStr));
-        aboutMenu->addAction(about);
-        connect(about, &QAction::triggered, this, [this]
-        {
-            ntrt::displayAbout(this);
-        });
-
-        menuBar->addMenu(fileMenu);
-        menuBar->addMenu(aboutMenu);
-
-        setMenuBar(menuBar);
+        QMenu* file = menuBar()->addMenu("File");
+        QAction* preferences = file->addAction("Settings...");
+        preferences->setShortcut(QKeySequence("Ctrl+,"));
+        connect(preferences, &QAction::triggered, this, [this] { showSettings(); });
+        file->addSeparator();
+        connect(file->addAction("Exit"), &QAction::triggered, this, [] { ntrt::quitApp(); });
+        QMenu* windows = menuBar()->addMenu("Window");
+        workspace->addWindowActions(windows);
+        QMenu* about = menuBar()->addMenu("About");
+        connect(about->addAction("About NTRT"), &QAction::triggered, this, [this] { ntrt::displayAbout(this); });
     }
 
     void MainWindow::initNavigation()
     {
-        navigationBar = new QWidget(root);
-        navigationBar->setFixedWidth(100);
-        QVBoxLayout* layout = new QVBoxLayout(navigationBar);
-        navigationGroup = new QButtonGroup(navigationBar);
-
-        navigationGroup->setExclusive(true);
-
-        const std::function<void(const QString&, Navigation)> addButton = [&](const QString& title, Navigation id)
+        QWidget* navigation = new QWidget(root);
+        navigation->setObjectName("workspaceNavigation");
+        navigation->setFixedWidth(100);
+        QVBoxLayout* layout = new QVBoxLayout(navigation);
+        QPushButton* market = new QPushButton("Market", navigation);
+        market->setCheckable(true);
+        market->setChecked(true);
+        layout->addWidget(market);
+        for (const QString& name : {QString("Data"), QString("Trade"), QString("Account"), QString("Research"), QString("AI")})
         {
-            QPushButton* button = new QPushButton(title, navigationBar);
-
-            button->setCheckable(true);
-
-            const int index = static_cast<int>(id);
-
-            navigationGroup->addButton(button, index);
+            QPushButton* button = new QPushButton(name, navigation);
+            button->setEnabled(false);
             layout->addWidget(button);
-
-            connect(button, &QPushButton::clicked, this, [this, id]
-            {
-                mainPages->setCurrentWidget(widgets.at(id)->widget);
-            });
-        };
-
-        addButton("Market", Navigation::Market);
-        addButton("Data", Navigation::Data);
-        addButton("Trade", Navigation::Trade);
-        addButton("Account", Navigation::Account);
-        addButton("Research", Navigation::Research);
-        addButton("AI", Navigation::AI);
-
+        }
         layout->addStretch();
+        QPushButton* preferences = new QPushButton("Settings", navigation);
+        connect(preferences, &QPushButton::clicked, this, [this] { showSettings(); });
+        layout->addWidget(preferences);
+        QPushButton* exit = new QPushButton("Exit", navigation);
+        connect(exit, &QPushButton::clicked, this, [] { ntrt::quitApp(); });
+        layout->addWidget(exit);
+        rootLayout->insertWidget(0, navigation);
+    }
 
-        addButton("Settings", Navigation::Settings);
-
-        QPushButton* exitButton = new QPushButton("Exit", navigationBar);
-        layout->addWidget(exitButton);
-        connect(exitButton, &QPushButton::clicked, this, []
-        {
-            ntrt::quitApp();
-        });
+    void MainWindow::showSettings()
+    {
+        if (!settings)
+            settings = new SettingsDialog(this);
+        settings->show();
+        settings->raise();
+        settings->activateWindow();
     }
 
     void MainWindow::initStatusBar()
@@ -167,51 +135,11 @@ namespace trtui
         timer->start(1000);
     }
 
-    void MainWindow::initWidgets()
-    {
-        rootLayout->addWidget(navigationBar);
-        rootLayout->addWidget(mainPages, 1);
-    }
-
-    void MainWindow::initPages()
-    {
-        std::unique_ptr<MarketPage> marketPage = std::make_unique<MarketPage>(mainPages);
-        mainPages->addWidget(marketPage->widget);
-        mainPages->setCurrentWidget(marketPage->widget);
-        widgets.emplace(Navigation::Market, std::move(marketPage));
-
-        std::unique_ptr<SettingPage> settingPage = std::make_unique<SettingPage>(mainPages);
-        mainPages->addWidget(settingPage->widget);
-        widgets.emplace(Navigation::Settings, std::move(settingPage));
-
-        for (QAbstractButton* button : navigationGroup->buttons())
-        {
-            const int id = navigationGroup->id(button);
-            Navigation navigation = static_cast<Navigation>(id);
-            if (button->isCheckable())
-            {
-                button->setEnabled(widgets.contains(navigation));
-            }
-        }
-        navigationGroup->button(static_cast<int>(Navigation::Market))->setChecked(true);
-
-    }
-
     void MainWindow::init200msSchedules()
     {
-        connect(timer200ms, &QTimer::timeout, this, [this] {
-            updateData200ms();
-        });
-
-        updateData200ms();
+        timer200ms = new QTimer(this);
+        connect(timer200ms, &QTimer::timeout, this, [this] { workspace->updateData(); });
+        workspace->updateData();
         timer200ms->start(200);
-    }
-
-    void MainWindow::updateData200ms()
-    {
-        for (const auto& [key, value] : widgets)
-        {
-            value->update();
-        }
     }
 }

@@ -2,8 +2,8 @@
 // Created by NHCM on 2026/11/7.
 //
 
-#ifndef NTRT_MARKETPAGE_H
-#define NTRT_MARKETPAGE_H
+#ifndef NTRT_INSTRUMENTLISTPANEL_H
+#define NTRT_INSTRUMENTLISTPANEL_H
 #include <QTableWidget>
 
 #include "main/ui/AbstractPage.h"
@@ -14,7 +14,7 @@ class QVBoxLayout;
 
 namespace trtui
 {
-    class MarketPage final : public AbstractPage
+    class InstrumentListPanel final : public AbstractPage
     {
         QTableWidget* table = nullptr;
         QLineEdit* search = nullptr;
@@ -23,12 +23,12 @@ namespace trtui
         void initFilters(QFrame* page, QVBoxLayout* layout);
         void initTable(QFrame* page, QVBoxLayout* layout);
         void initActions(QFrame* page, QVBoxLayout* layout);
-        void initChartPlaceholder(QFrame* page);
         void updateColumnVisibility();
+        QTableWidgetItem* updateItem(int row, int column, const QString& text);
 
     public:
 
-        explicit MarketPage(QWidget* parent = nullptr)
+        explicit InstrumentListPanel(QWidget* parent = nullptr)
         {
             initialize(parent);
         }
@@ -39,4 +39,4 @@ namespace trtui
     };
 } // trtui
 
-#endif //NTRT_MARKETPAGE_H
+#endif //NTRT_INSTRUMENTLISTPANEL_H

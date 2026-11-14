@@ -17,6 +17,14 @@ qt_add_executable(NTRT
         src/main/NTRT.h
         src/main/ui/MainWindow.cpp
         src/main/ui/MainWindow.h
+        src/main/ui/Workspace.cpp
+        src/main/ui/Workspace.h
+        src/main/ui/WorkspaceWindow.cpp
+        src/main/ui/WorkspaceWindow.h
+        src/main/ui/panels/ChartPanel.cpp
+        src/main/ui/panels/ChartPanel.h
+        src/main/ui/dialog/SettingsDialog.cpp
+        src/main/ui/dialog/SettingsDialog.h
         src/main/monitor/InstrumentIconManager.cpp
         src/main/monitor/InstrumentIconManager.h
         src/main/util/FileUtil.h
@@ -46,8 +54,8 @@ qt_add_executable(NTRT
         src/main/data/ConfigManager.h
         src/main/data/Exchanges.h
         src/main/ui/AbstractPage.h
-        src/main/ui/pages/MarketPage.cpp
-        src/main/ui/pages/MarketPage.h
+        src/main/ui/panels/InstrumentListPanel.cpp
+        src/main/ui/panels/InstrumentListPanel.h
         src/main/monitor/MarketData.cpp
         src/main/monitor/MarketData.h
         src/main/monitor/DataMonitor.cpp
@@ -76,6 +84,7 @@ target_include_directories(NTRT PRIVATE src)
 target_link_libraries(NTRT PRIVATE Qt6::Widgets Qt6::Network Qt6::WebSockets simdjson::simdjson)
 if(WIN32)
     set_target_properties(NTRT PROPERTIES WIN32_EXECUTABLE TRUE)
+
 endif()
 add_custom_target(ntrt_resources
     COMMAND "${CMAKE_COMMAND}"

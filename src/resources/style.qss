@@ -6,14 +6,34 @@ QLabel#instrumentIcon {
     padding: 2px;
 }
 
-QSplitter#marketSplitter::handle:horizontal {
-    width: 12px;
+QWidget#workspaceNavigation QPushButton {
     background-color: palette(window);
-    border-left: 1px solid palette(mid);
-    border-right: 1px solid palette(mid);
+    color: palette(window-text);
+    border: 1px solid palette(mid);
+    border-radius: 4px;
+    padding: 5px 6px;
+}
+QWidget#workspaceNavigation QPushButton:hover:enabled {
+    background-color: palette(mid);
+    border-color: palette(midlight);
+}
+QWidget#workspaceNavigation QPushButton:checked {
+    background-color: palette(alternate-base);
+    border-color: palette(highlight);
+}
+QWidget#workspaceNavigation QPushButton:checked:hover {
+    background-color: palette(mid);
+}
+QWidget#workspaceNavigation QPushButton:disabled {
+    color: palette(disabled, window-text);
+    border-color: palette(dark);
 }
 
-QSplitter#marketSplitter::handle:horizontal:hover,
-QSplitter#marketSplitter::handle:horizontal:pressed {
-    background-color: palette(highlight);
+QStatusBar {
+    background-color: palette(window);
+    border-top: 1px solid palette(midlight);
+}
+
+QStatusBar::item {
+    border: none;
 }
