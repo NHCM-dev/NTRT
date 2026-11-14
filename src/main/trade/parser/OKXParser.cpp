@@ -76,12 +76,12 @@ namespace trtdata::OKXParser
         };
     }
 
-    std::vector<CandleData> parseCandles(const QByteArray& json)
+    std::vector<trttrade::CandleData> parseCandles(const QByteArray& json)
     {
         const elementResult response = parseElement(json);
         ensureSuccess(response);
         const jsonArray rows = getDataField(response);
-        std::vector<CandleData> candles;
+        std::vector<trttrade::CandleData> candles;
         candles.reserve(rows.size());
         for (const jsonElement row : rows)
         {
@@ -94,13 +94,13 @@ namespace trtdata::OKXParser
             for (const jsonElement field : fields)
                 values[index++] = field.get_string().value();
 
-            CandleData candle;
-            const std::from_chars_result timestamp = std::from_chars(values[0].data(), values[0].data() + values[0].size(), candle.ts);
-            if (timestamp.ec != std::errc{} || timestamp.ptr != values[0].data() + values[0].size() || candle.ts < 0)
+            trttrade::CandleData candle;
+            const std::from_chars_result timestamp = std::from_chars(values[0].data(), values[0].data() + values[0].size(), candle.timestamp);
+            if (timestamp.ec != std::errc{} || timestamp.ptr != values[0].data() + values[0].size() || candle.timestamp < 0)
                 throw std::runtime_error("Invalid OKX candle timestamp");
 
             const std::array<double*, 7> numbers{&candle.open, &candle.high, &candle.low, &candle.close,
-                                                &candle.volume, &candle.volumeCurrency, &candle.volumeQuote};
+                                                &candle.volume, &candle.volumeCcy, &candle.volumeQuote};
             for (std::size_t number = 0; number < numbers.size(); number++)
             {
                 const std::string_view value = values[number + 1];
@@ -116,10 +116,10 @@ namespace trtdata::OKXParser
             candle.confirmed = values[8] == "1";
             candles.push_back(candle);
         }
-        std::sort(candles.begin(), candles.end(), [](const CandleData& left, const CandleData& right) { return left.ts < right.ts; });
+        std::sort(candles.begin(), candles.end(), [](const trttrade::CandleData& left, const trttrade::CandleData& right) { return left.timestamp < right.timestamp; });
         for (std::size_t index = 1; index < candles.size(); index++)
         {
-            if (candles[index - 1].ts == candles[index].ts)
+            if (candles[index - 1].timestamp == candles[index].timestamp)
                 throw std::runtime_error("Duplicate OKX candle timestamp");
         }
         return candles;

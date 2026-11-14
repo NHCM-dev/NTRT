@@ -311,7 +311,7 @@ namespace trtui
                 priceItem->setToolTip("Market feed: " + snapshot->error);
             table->setItem(row, 4, priceItem);
 
-            const trtdata::CandleData* daily = candles.getDailyCandle(identifier);
+            const trttrade::CandleData* daily = candles.getDailyCandle(identifier);
             const trtcore::CandleSnapshot* candleSnapshot = candles.getSnapshot(identifier);
             QTableWidgetItem* volume = new QTableWidgetItem("-");
             QTableWidgetItem* change = new QTableWidgetItem("-");
@@ -329,7 +329,7 @@ namespace trtui
                 case trttrade::InstType::Futures:
                 case trttrade::InstType::Option:
                 case trttrade::InstType::Events:
-                    baseVolume = daily->volumeCurrency;
+                    baseVolume = daily->volumeCcy;
                     break;
                 }
                 volume->setText(locale.toString(baseVolume, 'f', 2) + " " + symbol.section('-', 0, 0));

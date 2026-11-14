@@ -1,5 +1,5 @@
 #include "OKXTickerStream.h"
-#include "main/data/parser/OKXParser.h"
+#include "main/trade/parser/OKXParser.h"
 #include "main/network/WebSocketAPITemplate.h"
 #include <QJsonDocument>
 #include <QJsonObject>

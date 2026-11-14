@@ -4,7 +4,7 @@
 
 #include "OKXApi.h"
 #include "OKXTickerStream.h"
-#include "main/data/parser/OKXParser.h"
+#include "main/trade/parser/OKXParser.h"
 #include "main/market/abstract/instimpl/OKXInstrument.h"
 #include "main/util/NetworkUtil.h"
 
@@ -53,7 +53,7 @@ namespace trtdata::okx
         return requestTickers(type);
     }
 
-    QFuture<std::vector<CandleData>> OKXApi::fetchDailyCandles(const InstIdentifier& identifier, TradingDataTimeZone timeZone, int limit) const
+    QFuture<std::vector<trttrade::CandleData>> OKXApi::fetchDailyCandles(const InstIdentifier& identifier, TradingDataTimeZone timeZone, int limit) const
     {
         QUrlQuery query;
         query.addQueryItem("instId", QString::fromStdString(identifier.id));

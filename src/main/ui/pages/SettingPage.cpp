@@ -1,7 +1,7 @@
 #include "SettingPage.h"
 #include "main/NTRT.h"
 #include "main/Ver.h"
-#include "main/data/api/AbstractApi.h"
+#include "main/api/AbstractApi.h"
 #include <QCheckBox>
 #include <QComboBox>
 #include <QPushButton>

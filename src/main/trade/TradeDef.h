@@ -15,12 +15,12 @@ namespace trttrade
 
     enum class InstType : uint8_t
     {
-        Spot = 0,   // Currency vs Currency
-        Margin = 1,     // Leverage Currency vs Currency
-        Swap = 2,       // Perpetual Swap Contract
-        Futures = 3,    // Futures Contract
-        Option = 4,     // Option
-        Events = 5      // Events Contract
+        Spot = 0, // Currency vs Currency
+        Margin = 1, // Leverage Currency vs Currency
+        Swap = 2, // Perpetual Swap Contract
+        Futures = 3, // Futures Contract
+        Option = 4, // Option
+        Events = 5 // Events Contract
     };
 
     enum class MarginMode : uint8_t

@@ -6,7 +6,7 @@
 #define NTRT_OKXPARSER_H
 
 #include "main/market/abstract/Instrument.h"
-#include "main/market/CandleData.h"
+#include "main/trade/TradeDataDef.h"
 #include <QByteArray>
 
 #include "main/util/JsonUtil.h"
@@ -23,7 +23,7 @@ namespace trtdata::OKXParser
     const TickerData parseTickerFromElement(const jsonElement& json);
     const TickerData parseTicker(const QByteArray& json);
     const std::shared_ptr<std::vector<TickerData>> parseTickers(const QByteArray& json);
-    std::vector<CandleData> parseCandles(const QByteArray& json);
+    std::vector<trttrade::CandleData> parseCandles(const QByteArray& json);
 } // trtdata
 
 #endif //NTRT_OKXPARSER_H

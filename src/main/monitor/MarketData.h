@@ -5,7 +5,7 @@
 #ifndef NTRT_MARKETDATA_H
 #define NTRT_MARKETDATA_H
 
-#include "main/data/api/TickerStream.h"
+#include "main/api/TickerStream.h"
 #include "main/trade/TradeDef.h"
 #include <QElapsedTimer>
 #include <map>

@@ -1,7 +1,7 @@
 #ifndef NTRT_OKXTICKERSTREAM_H
 #define NTRT_OKXTICKERSTREAM_H
 
-#include "TickerStream.h"
+#include "../TickerStream.h"
 #include "main/network/WebSocketClient.h"
 #include <QJsonArray>
 #include <map>

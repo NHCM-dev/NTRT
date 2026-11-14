@@ -3,8 +3,8 @@
 //
 
 #include "OKXInstrument.h"
-#include "main/data/api/OKXApi.h"
-#include "main/data/parser/OKXParser.h"
+#include "main/api/impl/OKXApi.h"
+#include "main/trade/parser/OKXParser.h"
 
 namespace trtdata::okx
 {

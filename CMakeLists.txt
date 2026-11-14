@@ -31,15 +31,15 @@ qt_add_executable(NTRT
         src/main/network/WebSocketAPITemplate.h
         src/main/network/WebSocketClient.cpp
         src/main/network/WebSocketClient.h
-        src/main/data/parser/OKXParser.cpp
-        src/main/data/parser/OKXParser.h
+        src/main/trade/parser/OKXParser.cpp
+        src/main/trade/parser/OKXParser.h
         src/main/util/JsonUtil.cpp
         src/main/util/JsonUtil.h
-        src/main/data/api/OKXApi.cpp
-        src/main/data/api/OKXApi.h
-        src/main/data/api/OKXTickerStream.cpp
-        src/main/data/api/OKXTickerStream.h
-        src/main/data/api/TickerStream.h
+        src/main/api/impl/OKXApi.cpp
+        src/main/api/impl/OKXApi.h
+        src/main/api/impl/OKXTickerStream.cpp
+        src/main/api/impl/OKXTickerStream.h
+        src/main/api/TickerStream.h
         src/main/util/NetworkUtil.cpp
         src/main/util/NetworkUtil.h
         src/main/data/ConfigManager.cpp
@@ -54,11 +54,10 @@ qt_add_executable(NTRT
         src/main/monitor/DataMonitor.h
         src/main/monitor/CandlesManager.cpp
         src/main/monitor/CandlesManager.h
-        src/main/market/CandleData.h
         src/main/util/StdUtil.cpp
         src/main/util/StdUtil.h
-        src/main/data/api/AbstractApi.cpp
-        src/main/data/api/AbstractApi.h
+        src/main/api/AbstractApi.cpp
+        src/main/api/AbstractApi.h
         src/main/ui/dialog/InstrumentDialog.cpp
         src/main/ui/dialog/InstrumentDialog.h
         src/main/util/QtUtil.cpp
@@ -71,6 +70,7 @@ qt_add_executable(NTRT
         src/main/trade/TradingAccount.cpp
         src/main/trade/TradingAccount.h
         src/main/trade/tradedef.h
+        src/main/trade/TradeDataDef.h
 )
 target_include_directories(NTRT PRIVATE src)
 target_link_libraries(NTRT PRIVATE Qt6::Widgets Qt6::Network Qt6::WebSockets simdjson::simdjson)
@@ -149,7 +149,7 @@ if(NTRT_BUILD_TESTS)
     qt_add_executable(NTRTCandlesTests
         tests/CandlesTests.cpp
         src/main/monitor/CandlesManager.cpp
-        src/main/data/parser/OKXParser.cpp
+            src/main/trade/parser/OKXParser.cpp
         src/main/data/AppearanceManager.cpp
         src/main/data/ConfigManager.cpp
         src/main/util/JsonUtil.cpp

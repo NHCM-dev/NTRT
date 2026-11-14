@@ -5,7 +5,7 @@
 #ifndef NTRT_OKXAPI_H
 #define NTRT_OKXAPI_H
 
-#include "AbstractApi.h"
+#include "../AbstractApi.h"
 #include "main/market/abstract/Instrument.h"
 #include "main/network/RestAPITemplate.h"
 
@@ -44,7 +44,7 @@ namespace trtdata::okx
 
         std::vector<trttrade::InstType> instrumentTypes() const override;
         std::unique_ptr<trtcore::TickerStream> createTickerStream() const override;
-        QFuture<std::vector<CandleData>> fetchDailyCandles(const InstIdentifier& identifier, TradingDataTimeZone timeZone, int limit) const override;
+        QFuture<std::vector<trttrade::CandleData>> fetchDailyCandles(const InstIdentifier& identifier, TradingDataTimeZone timeZone, int limit) const override;
         QFuture<std::shared_ptr<std::vector<TickerData>>> fetchTickers(trttrade::InstType type) const override;
         QFuture<std::vector<std::shared_ptr<Instrument>>> fetchInstruments(trttrade::InstType type) const override;
         std::shared_ptr<Instrument> createInstrument(const std::string& id, trttrade::InstType type) const override;

@@ -1,7 +1,7 @@
 #ifndef NTRT_CANDLESMANAGER_H
 #define NTRT_CANDLESMANAGER_H
 
-#include "main/market/CandleData.h"
+#include "main/trade/TradeDataDef.h"
 #include "main/market/abstract/Instrument.h"
 #include "main/data/TradingDataConfig.h"
 #include <QFutureWatcher>
@@ -15,7 +15,7 @@ namespace trtcore
 {
     struct CandleSnapshot
     {
-        std::vector<trtdata::CandleData> candles;
+        std::vector<trttrade::CandleData> candles;
         QString error;
         qint64 updatedAt = 0;
     };
@@ -25,7 +25,7 @@ namespace trtcore
         struct Subscription
         {
             CandleSnapshot snapshot;
-            QFutureWatcher<std::vector<trtdata::CandleData>>* watcher = nullptr;
+            QFutureWatcher<std::vector<trttrade::CandleData>>* watcher = nullptr;
             qint64 nextRequest = 0;
         };
 
@@ -35,7 +35,7 @@ namespace trtcore
 
         void fetchNext();
         void fetchCandles(const trtdata::InstIdentifier& identifier, Subscription& subscription);
-        void mergeCandles(Subscription& subscription, const std::vector<trtdata::CandleData>& candles);
+        void mergeCandles(Subscription& subscription, const std::vector<trttrade::CandleData>& candles);
         void cancelRequest(Subscription& subscription);
 
     public:
@@ -45,7 +45,7 @@ namespace trtcore
         void setTimeZone(trtdata::TradingDataTimeZone value);
         trtdata::TradingDataTimeZone getTimeZone() const;
         const CandleSnapshot* getSnapshot(const trtdata::InstIdentifier& identifier) const;
-        const trtdata::CandleData* getDailyCandle(const trtdata::InstIdentifier& identifier) const;
+        const trttrade::CandleData* getDailyCandle(const trtdata::InstIdentifier& identifier) const;
         std::optional<double> getDailyChangePercent(const trtdata::InstIdentifier& identifier, double latestPrice) const;
     };
 }

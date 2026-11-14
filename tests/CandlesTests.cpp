@@ -168,7 +168,7 @@ void CandleTests::run()
     complete(1, {{today - dayMs, 100, 120, 90, 115, 5, 6, 7, true}, {today, 100, 120, 90, 110, 2, 3, 4, false}});
     waitFor([&manager, &identifier] { return manager.getDailyCandle(identifier) != nullptr; });
     const trtcore::CandleSnapshot* snapshot = manager.getSnapshot(identifier);
-    require(snapshot->candles.size() == 300 && snapshot->candles.front().ts == today - 299 * dayMs, "History was not bounded after rollover");
+    require(snapshot->candles.size() == 300 && snapshot->candles.front().timestamp == today - 299 * dayMs, "History was not bounded after rollover");
     require(snapshot->candles[298].close == 115 && snapshot->candles.back().close == 110, "Incremental candle merge failed");
 
     manager.stop();

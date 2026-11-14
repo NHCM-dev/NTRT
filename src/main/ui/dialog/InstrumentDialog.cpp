@@ -1,5 +1,5 @@
 #include "InstrumentDialog.h"
-#include "main/data/api/AbstractApi.h"
+#include "main/api/AbstractApi.h"
 #include "main/util/QtUtil.h"
 #include <QComboBox>
 #include <QDialogButtonBox>
