@@ -5,3 +5,15 @@ QLabel#instrumentIcon {
     margin: 3px 10px;
     padding: 2px;
 }
+
+QSplitter#marketSplitter::handle:horizontal {
+    width: 12px;
+    background-color: palette(window);
+    border-left: 1px solid palette(mid);
+    border-right: 1px solid palette(mid);
+}
+
+QSplitter#marketSplitter::handle:horizontal:hover,
+QSplitter#marketSplitter::handle:horizontal:pressed {
+    background-color: palette(highlight);
+}

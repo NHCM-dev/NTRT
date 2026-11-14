@@ -51,6 +51,7 @@ namespace trtui
 
     private:
         void initLayouts();
+        void initWindowGeometry();
         void initMenuBar();
         void initNavigation();
         void initStatusBar();

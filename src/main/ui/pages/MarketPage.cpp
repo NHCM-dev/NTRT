@@ -139,6 +139,8 @@ namespace trtui
         layout->setContentsMargins(0, 0, 0, 0);
         QSplitter* splitter = new QSplitter(Qt::Horizontal, page);
         splitter->setChildrenCollapsible(false);
+        splitter->setObjectName("marketSplitter");
+        splitter->setHandleWidth(12);
         layout->addWidget(splitter);
 
         QFrame* instruments = new QFrame(splitter);
@@ -150,7 +152,7 @@ namespace trtui
         initChartPlaceholder(chart);
         splitter->setStretchFactor(0, 0);
         splitter->setStretchFactor(1, 1);
-        splitter->setSizes({520, 800});
+        splitter->setSizes({instruments->minimumSizeHint().width(), 10000});
         return page;
     }
 
@@ -174,7 +176,7 @@ namespace trtui
 
     void MarketPage::initTable(QFrame* page, QVBoxLayout* layout)
     {
-        table = trtutils::createHeaderTable(page, {"Exchange", "Type", "Icon", "Instrument", "Last Price", "Day Volume", "Day Change"});
+        table = trtutils::createHeaderTable(page, {"Exchange", "Type", "Icon", "Instrument", "Last Price", "Volume", "Change"});
         table->setItemDelegateForColumn(4, new PriceDelegate(table));
 
         QHeaderView* header = table->horizontalHeader();
@@ -193,7 +195,7 @@ namespace trtui
         table->setColumnWidth(1, 100);
         table->setColumnWidth(4, 70);
         table->setColumnWidth(5, 130);
-        table->setColumnWidth(6, 50);
+        table->setColumnWidth(6, 65);
         table->setColumnWidth(2, 48);
         table->verticalHeader()->hide();
         updateColumnVisibility();

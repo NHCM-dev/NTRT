@@ -17,6 +17,7 @@
 #include "pages/MarketPage.h"
 #include <QStatusBar>
 #include <QDateTime>
+#include <QScreen>
 
 #include "pages/SettingPage.h"
 
@@ -31,7 +32,18 @@ namespace trtui
         initWidgets();
         initPages();
         init200msSchedules();
-        resize(800, 680);
+        initWindowGeometry();
+    }
+
+    void MainWindow::initWindowGeometry()
+    {
+        resize(1400, 700);
+        QTimer::singleShot(0, this, [this]
+        {
+            QRect geometry = frameGeometry();
+            geometry.moveCenter(screen()->availableGeometry().center());
+            move(geometry.topLeft());
+        });
     }
 
     void MainWindow::initLayouts()
