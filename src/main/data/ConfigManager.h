@@ -12,7 +12,7 @@
 #include "AppearanceManager.h"
 #include "TradingDataConfig.h"
 #include "main/util/FileUtil.h"
-#include "market/abstract/Instrument.h"
+#include "main/market/abstract/Instrument.h"
 
 namespace trtdata
 {

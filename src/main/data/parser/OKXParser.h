@@ -5,8 +5,8 @@
 #ifndef NTRT_OKXPARSER_H
 #define NTRT_OKXPARSER_H
 
-#include "main/data/market/abstract/Instrument.h"
-#include "main/data/market/CandleData.h"
+#include "main/market/abstract/Instrument.h"
+#include "main/market/CandleData.h"
 #include <QByteArray>
 
 #include "main/util/JsonUtil.h"

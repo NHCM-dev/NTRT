@@ -44,6 +44,9 @@ namespace trtdata
                 columns.exchange = saved["exchange"].get_bool().value();
                 columns.type = saved["type"].get_bool().value();
                 columns.volume24h = saved["volume24h"].get_bool().value();
+                const simdjson::error_code iconError = saved["icon"].get_bool().get(columns.icon);
+                if (iconError != simdjson::SUCCESS && iconError != simdjson::NO_SUCH_FIELD)
+                    return false;
             }
 
             appearanceConfig = {theme == "dark" ? EnumTheme::Dark : EnumTheme::Light, priceFlash, columns};
@@ -71,6 +74,8 @@ namespace trtdata
         builder.append_key_value("type", appearanceConfig.marketColumns.type);
         builder.append_comma();
         builder.append_key_value("volume24h", appearanceConfig.marketColumns.volume24h);
+        builder.append_comma();
+        builder.append_key_value("icon", appearanceConfig.marketColumns.icon);
         builder.end_object();
         builder.end_object();
         return writeJsonFile(trtutils::appendPath(dataPath, "appearance.json"), builder.view());

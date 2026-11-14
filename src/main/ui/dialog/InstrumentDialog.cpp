@@ -125,8 +125,8 @@ namespace trtui
         const QSignalBlocker blocker(type);
         type->clear();
         const trtcore::AbstractApi& api = trtcore::exchangeApi(static_cast<trtdata::Exchange>(exchange->currentData().toInt()));
-        for (trtdata::InstType item : api.instrumentTypes())
-            type->addItem(QString::fromUtf8(trtdata::instrumentTypeName(item)), static_cast<int>(item));
+        for (InstType item : api.instrumentTypes())
+            type->addItem(QString::fromUtf8(instDisplayStr(item)), static_cast<int>(item));
         fetchCatalog();
     }
 
@@ -137,7 +137,7 @@ namespace trtui
 
         using Catalog = std::vector<InstrumentPtr>;
         const trtdata::Exchange selectedExchange = static_cast<trtdata::Exchange>(exchange->currentData().toInt());
-        const trtdata::InstType selectedType = static_cast<trtdata::InstType>(type->currentData().toInt());
+        const InstType selectedType = static_cast<InstType>(type->currentData().toInt());
         const trtcore::AbstractApi& api = trtcore::exchangeApi(selectedExchange);
         entries.clear();
         populate();
@@ -192,7 +192,7 @@ namespace trtui
             check->setCheckState(Qt::Unchecked);
             table->setItem(row, 0, check);
             table->setItem(row, 1, new QTableWidgetItem(QString::fromUtf8(trtdata::getExchangeStr(instrument->exchange))));
-            table->setItem(row, 2, new QTableWidgetItem(QString::fromUtf8(trtdata::instrumentTypeName(instrument->instType))));
+            table->setItem(row, 2, new QTableWidgetItem(QString::fromUtf8(instDisplayStr(instrument->instType))));
             table->setItem(row, 3, new QTableWidgetItem(QString::fromStdString(instrument->instId)));
         }
         filterRows();

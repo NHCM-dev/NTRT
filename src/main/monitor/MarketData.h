@@ -6,6 +6,7 @@
 #define NTRT_MARKETDATA_H
 
 #include "main/data/api/TickerStream.h"
+#include "main/trade/TradeDef.h"
 #include <QElapsedTimer>
 #include <map>
 #include <memory>
@@ -30,10 +31,10 @@ namespace trtcore
         void setInstruments(std::span<const std::shared_ptr<trtdata::Instrument>> instruments);
         void stop();
         const MarketSnapshot* getSnapshot(const trtdata::InstIdentifier& identifier) const;
-        const Identifier2SnapshotMap* getSnapshots(trtdata::InstType instType) const;
+        const Identifier2SnapshotMap* getSnapshots(InstType instType) const;
 
     private:
-        std::map<trtdata::InstType, Identifier2SnapshotMap> tickersData;
+        std::map<InstType, Identifier2SnapshotMap> tickersData;
         std::map<trtdata::Exchange, MarketSnapshot> failures;
         std::map<trtdata::Exchange, std::unique_ptr<TickerStream>> streams;
 

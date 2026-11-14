@@ -6,7 +6,7 @@
 #include <QNetworkAccessManager>
 #include <QPointer>
 #include <QTimer>
-#include "main/data/market/abstract/Instrument.h"
+#include "main/market/abstract/Instrument.h"
 #include <memory>
 #include <span>
 

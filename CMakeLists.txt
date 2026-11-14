@@ -22,9 +22,9 @@ qt_add_executable(NTRT
         src/main/util/FileUtil.h
         src/main/util/FileUtil.cpp
         src/main/Ver.h
-        src/main/data/market/abstract/Instrument.h
-        src/main/data/market/abstract/instimpl/OKXInstrument.cpp
-        src/main/data/market/abstract/instimpl/OKXInstrument.h
+        src/main/market/abstract/Instrument.h
+        src/main/market/abstract/instimpl/OKXInstrument.cpp
+        src/main/market/abstract/instimpl/OKXInstrument.h
         src/main/network/RestAPITemplate.cpp
         src/main/network/RestAPITemplate.h
         src/main/network/WebSocketAPITemplate.cpp
@@ -54,7 +54,7 @@ qt_add_executable(NTRT
         src/main/monitor/DataMonitor.h
         src/main/monitor/CandlesManager.cpp
         src/main/monitor/CandlesManager.h
-        src/main/data/market/CandleData.h
+        src/main/market/CandleData.h
         src/main/util/StdUtil.cpp
         src/main/util/StdUtil.h
         src/main/data/api/AbstractApi.cpp
@@ -68,6 +68,9 @@ qt_add_executable(NTRT
         src/main/data/AppearanceManager.cpp
         src/main/data/AppearanceManager.h
         src/main/data/TradingDataConfig.h
+        src/main/trade/TradingAccount.cpp
+        src/main/trade/TradingAccount.h
+        src/main/trade/tradedef.h
 )
 target_include_directories(NTRT PRIVATE src)
 target_link_libraries(NTRT PRIVATE Qt6::Widgets Qt6::Network Qt6::WebSockets simdjson::simdjson)

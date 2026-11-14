@@ -163,9 +163,9 @@ namespace trtui
         search->setPlaceholderText("Search instruments");
         typeFilter = new QComboBox(page);
         typeFilter->addItem("All types", -1);
-        for (trtdata::InstType type : {trtdata::InstType::Spot, trtdata::InstType::Margin, trtdata::InstType::Swap,
-                                     trtdata::InstType::Futures, trtdata::InstType::Option, trtdata::InstType::Events})
-            typeFilter->addItem(QString::fromUtf8(trtdata::instrumentTypeName(type)), static_cast<int>(type));
+        for (InstType type : {InstType::Spot, InstType::Margin, InstType::Swap,
+                                     InstType::Futures, InstType::Option, InstType::Events})
+            typeFilter->addItem(QString::fromUtf8(instDisplayStr(type)), static_cast<int>(type));
         filters->addWidget(search, 1);
         filters->addWidget(typeFilter);
         layout->addLayout(filters);
@@ -247,6 +247,7 @@ namespace trtui
         const trtdata::MarketColumnVisibility& columns = ntrt::configManager->getAppearanceManager()->getMarketColumns();
         table->setColumnHidden(0, !columns.exchange);
         table->setColumnHidden(1, !columns.type);
+        table->setColumnHidden(2, !columns.icon);
         table->setColumnHidden(5, !columns.volume24h);
 
         const QHeaderView* header = table->horizontalHeader();
@@ -284,7 +285,7 @@ namespace trtui
             if (row == table->rowCount())
                 table->insertRow(row);
             table->setItem(row, 0, new QTableWidgetItem(exchange));
-            table->setItem(row, 1, new QTableWidgetItem(QString::fromUtf8(trtdata::instrumentTypeName(instrument->instType))));
+            table->setItem(row, 1, new QTableWidgetItem(QString::fromUtf8(instDisplayStr(instrument->instType))));
             QLabel* icon = static_cast<QLabel*>(table->cellWidget(row, 2));
             if (!icon)
             {
@@ -320,14 +321,14 @@ namespace trtui
                 double baseVolume = 0;
                 switch (instrument->instType)
                 {
-                case trtdata::InstType::Spot:
-                case trtdata::InstType::Margin:
+                case InstType::Spot:
+                case InstType::Margin:
                     baseVolume = daily->volume;
                     break;
-                case trtdata::InstType::Swap:
-                case trtdata::InstType::Futures:
-                case trtdata::InstType::Option:
-                case trtdata::InstType::Events:
+                case InstType::Swap:
+                case InstType::Futures:
+                case InstType::Option:
+                case InstType::Events:
                     baseVolume = daily->volumeCurrency;
                     break;
                 }

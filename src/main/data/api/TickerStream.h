@@ -1,7 +1,7 @@
 #ifndef NTRT_TICKERSTREAM_H
 #define NTRT_TICKERSTREAM_H
 
-#include "main/data/market/abstract/Instrument.h"
+#include "main/market/abstract/Instrument.h"
 #include <set>
 
 namespace trtcore

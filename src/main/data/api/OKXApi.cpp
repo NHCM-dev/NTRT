@@ -5,7 +5,7 @@
 #include "OKXApi.h"
 #include "OKXTickerStream.h"
 #include "main/data/parser/OKXParser.h"
-#include "main/data/market/abstract/instimpl/OKXInstrument.h"
+#include "main/market/abstract/instimpl/OKXInstrument.h"
 #include "main/util/NetworkUtil.h"
 
 namespace trtdata::okx

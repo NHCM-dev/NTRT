@@ -164,6 +164,13 @@ namespace trtui
             {
                 return appearance->setPriceFlashEnabled(enabled);
             });
+        addToggle(rows, "Show Icon", "Show the icon for each instrument.", appearance->getMarketColumns().icon,
+            [appearance](bool enabled)
+            {
+                trtdata::MarketColumnVisibility columns = appearance->getMarketColumns();
+                columns.icon = enabled;
+                return appearance->setMarketColumns(columns);
+            });
         addToggle(rows, "Show Exchange", "Show the exchange for each instrument.", appearance->getMarketColumns().exchange,
             [appearance](bool enabled)
             {

@@ -18,9 +18,10 @@ namespace trtdata
 
     struct MarketColumnVisibility
     {
-        bool exchange = true;
+        bool exchange = false;
         bool type = false;
         bool volume24h = false;
+        bool icon = true;
     };
 
     struct AppearanceConfig

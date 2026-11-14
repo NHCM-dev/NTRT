@@ -4,7 +4,7 @@
 
 #ifndef NTRT_OKXINSTRUMENT_H
 #define NTRT_OKXINSTRUMENT_H
-#include "main/data/market/abstract/Instrument.h"
+#include "main/market/abstract/Instrument.h"
 
 namespace trtdata::okx
 {

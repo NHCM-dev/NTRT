@@ -1,8 +1,8 @@
 #ifndef NTRT_CANDLESMANAGER_H
 #define NTRT_CANDLESMANAGER_H
 
-#include "main/data/market/CandleData.h"
-#include "main/data/market/abstract/Instrument.h"
+#include "main/market/CandleData.h"
+#include "main/market/abstract/Instrument.h"
 #include "main/data/TradingDataConfig.h"
 #include <QFutureWatcher>
 #include <QTimer>

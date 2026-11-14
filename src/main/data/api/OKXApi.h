@@ -6,7 +6,7 @@
 #define NTRT_OKXAPI_H
 
 #include "AbstractApi.h"
-#include "main/data/market/abstract/Instrument.h"
+#include "main/market/abstract/Instrument.h"
 #include "main/network/RestAPITemplate.h"
 
 namespace trtdata::okx
