@@ -55,6 +55,23 @@ namespace trtcore
         return marketData;
     }
 
+    void DataMonitor::acquireChartSeries(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe)
+    {
+        candlesManager.subscribe(instrument, timeframe);
+        if (!running)
+            candlesManager.stop();
+    }
+
+    void DataMonitor::requestChartHistory(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe)
+    {
+        candlesManager.requestHistory(instrument, timeframe);
+    }
+
+    void DataMonitor::releaseChartSeries(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe)
+    {
+        candlesManager.unsubscribe(instrument, timeframe);
+    }
+
     const CandlesManager& DataMonitor::getCandlesManager() const
     {
         return candlesManager;

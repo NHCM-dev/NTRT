@@ -7,6 +7,7 @@ namespace trtui
     {
         void initAppearance();
         void paintEvent(QPaintEvent* event) override;
+        void closeEvent(QCloseEvent* event) override;
         void mouseMoveEvent(QMouseEvent* event) override;
         void leaveEvent(QEvent* event) override;
     public:

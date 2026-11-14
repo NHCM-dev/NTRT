@@ -138,7 +138,7 @@ namespace trtui
         layout->setContentsMargins(8, 8, 8, 8);
         initFilters(page, layout);
         initTable(page, layout);
-        initActions(page, layout);
+
         return page;
     }
 
@@ -189,31 +189,15 @@ namespace trtui
         table->setSelectionMode(QAbstractItemView::NoSelection);
         table->setFocusPolicy(Qt::NoFocus);
         layout->addWidget(table, 1);
-    }
-
-    void InstrumentListPanel::initActions(QFrame* page, QVBoxLayout* layout)
-    {
-        QHBoxLayout* actions = new QHBoxLayout;
-        actions->addStretch();
-        QPushButton* manageButton = new QPushButton("Manage", page);
-        QPushButton* addButton = new QPushButton("Add", page);
-        actions->addWidget(manageButton);
-        actions->addWidget(addButton);
-        layout->addLayout(actions);
-
-        QObject::connect(addButton, &QPushButton::clicked, page, [this, page]
+        connect(table, &QTableWidget::cellDoubleClicked, this, [this](int row, int)
         {
-            InstrumentDialog dialog(InstrumentDialog::Mode::Add, page);
-            if (dialog.exec() == QDialog::Accepted)
-                update();
+            const QTableWidgetItem* item = table->item(row, 3);
+            if (!item)
+                return;
+            const trtdata::InstIdentifier identifier{static_cast<trtdata::Exchange>(item->data(Qt::UserRole).toInt()),
+                static_cast<trttrade::InstType>(item->data(Qt::UserRole + 1).toInt()), item->text().toStdString()};
+            emit instrumentActivated(identifier);
         });
-        QObject::connect(manageButton, &QPushButton::clicked, page, [this, page]
-        {
-            InstrumentDialog dialog(InstrumentDialog::Mode::Manage, page);
-            if (dialog.exec() == QDialog::Accepted)
-                update();
-        });
-
     }
 
     void InstrumentListPanel::updateColumnVisibility()
@@ -278,6 +262,7 @@ namespace trtui
             {
                 icon = new QLabel(table);
                 icon->setObjectName("instrumentIcon");
+                icon->setAttribute(Qt::WA_TransparentForMouseEvents);
                 icon->setAlignment(Qt::AlignCenter);
                 table->setCellWidget(row, 2, icon);
             }
@@ -288,7 +273,9 @@ namespace trtui
                 icon->setProperty("iconCacheKey", image.cacheKey());
             }
             icon->setToolTip(symbol);
-            updateItem(row, 3, symbol);
+            QTableWidgetItem* symbolItem = updateItem(row, 3, symbol);
+            symbolItem->setData(Qt::UserRole, static_cast<int>(instrument->exchange));
+            symbolItem->setData(Qt::UserRole + 1, static_cast<int>(instrument->instType));
 
             const trtdata::InstIdentifier& identifier = instrument->getUniqueIdentifier();
             const trtcore::MarketSnapshot* snapshot = marketData.getSnapshot(identifier);

@@ -4,6 +4,7 @@
 
 #include "OKXApi.h"
 #include "OKXTickerStream.h"
+#include "OKXCandleStream.h"
 #include "main/trade/parser/OKXParser.h"
 #include "main/market/abstract/instimpl/OKXInstrument.h"
 #include "main/util/NetworkUtil.h"
@@ -53,10 +54,8 @@ namespace trtdata::okx
         return requestTickers(type);
     }
 
-    QFuture<std::vector<trttrade::CandleData>> OKXApi::fetchCandles(const InstIdentifier& identifier, trttrade::CandleTimeframe timeframe, TradingDataTimeZone timeZone, int limit) const
+    QString OKXApi::candleBar(trttrade::CandleTimeframe timeframe, TradingDataTimeZone timeZone)
     {
-        QUrlQuery query;
-        query.addQueryItem("instId", QString::fromStdString(identifier.id));
         QString bar;
         bool calendar = false;
         switch (timeframe)
@@ -81,6 +80,29 @@ namespace trtdata::okx
             case TradingDataTimeZone::UTC8: break;
             }
         }
+        return bar;
+    }
+
+    std::unique_ptr<trtcore::CandleStream> OKXApi::createCandleStream() const
+    {
+        return std::make_unique<OKXCandleStream>();
+    }
+
+    QFuture<std::vector<trttrade::CandleData>> OKXApi::fetchCandleHistory(const InstIdentifier& instrument, trttrade::CandleTimeframe timeframe, TradingDataTimeZone zone, qint64 after) const
+    {
+        QUrlQuery query;
+        query.addQueryItem("instId", QString::fromStdString(instrument.id));
+        query.addQueryItem("bar", candleBar(timeframe, zone));
+        query.addQueryItem("limit", "300");
+        query.addQueryItem("after", QString::number(after));
+        return trtnet::replyToFuture(CANDLE_HISTORY.request(query), [](const QByteArray& body) { return OKXParser::parseCandles(body); });
+    }
+
+    QFuture<std::vector<trttrade::CandleData>> OKXApi::fetchCandles(const InstIdentifier& identifier, trttrade::CandleTimeframe timeframe, TradingDataTimeZone timeZone, int limit) const
+    {
+        QUrlQuery query;
+        query.addQueryItem("instId", QString::fromStdString(identifier.id));
+        const QString bar = candleBar(timeframe, timeZone);
         query.addQueryItem("bar", bar);
         query.addQueryItem("limit", QString::number(limit));
         return trtnet::replyToFuture(CANDLES.request(query), [](const QByteArray& body)

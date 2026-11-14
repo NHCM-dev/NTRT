@@ -30,6 +30,9 @@ namespace trtcore
         explicit DataMonitor(const trtdata::ConfigManager& configManager);
         void start();
         void stop();
+        void acquireChartSeries(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe);
+        void requestChartHistory(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe);
+        void releaseChartSeries(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe);
         const MarketData& getMarketData() const;
         const CandlesManager& getCandlesManager() const;
         const InstrumentIconManager& getInstrumentIconManager() const;

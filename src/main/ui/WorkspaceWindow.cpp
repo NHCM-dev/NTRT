@@ -5,7 +5,9 @@
 #include <array>
 #include <QMdiArea>
 #include <QMouseEvent>
+#include <QCloseEvent>
 #include <QVariant>
+#include <QCursor>
 
 namespace trtui
 {
@@ -16,6 +18,8 @@ namespace trtui
 
         void drawPrimitive(PrimitiveElement element, const QStyleOption* option, QPainter* painter, const QWidget* widget) const override
         {
+            if (element == PE_FrameFocusRect)
+                return;
             if (element != PE_FrameWindow)
             {
                 QProxyStyle::drawPrimitive(element, option, painter, widget);
@@ -28,6 +32,8 @@ namespace trtui
 
         int styleHint(StyleHint hint, const QStyleOption* option, const QWidget* widget, QStyleHintReturn* data) const override
         {
+            if (hint == SH_Workspace_FillSpaceOnMaximize)
+                return 1;
             if (hint == SH_WindowFrame_Mask)
                 return 0;
             return QProxyStyle::styleHint(hint, option, widget, data);
@@ -46,11 +52,12 @@ namespace trtui
 
             painter->save();
             painter->setClipRect(title->rect);
-            const bool hovered = widget->property("titleHovered").toBool();
-            painter->fillRect(title->rect, title->palette.brush(hovered ? QPalette::Mid : QPalette::Window));
+            painter->fillRect(title->rect, title->palette.brush(QPalette::Window));
             painter->setPen(title->palette.color(QPalette::Mid));
             painter->drawLine(title->rect.bottomLeft(), title->rect.bottomRight());
             QRect label = subControlRect(CC_TitleBar, title, SC_TitleBarLabel, widget).adjusted(8, 0, -6, 0);
+            if (widget->property("titleHovered").toBool() && label.contains(widget->mapFromGlobal(QCursor::pos())))
+                painter->fillRect(label, title->palette.brush(QPalette::Mid));
             painter->setFont(widget->font());
             painter->setPen(title->palette.color(QPalette::WindowText));
             painter->drawText(label, Qt::AlignLeft | Qt::AlignVCenter,
@@ -118,7 +125,7 @@ namespace trtui
         WorkspaceWindowStyle* appearance = new WorkspaceWindowStyle;
         appearance->setParent(this);
         setStyle(appearance);
-        setAttribute(Qt::WA_DeleteOnClose, false);
+        setAttribute(Qt::WA_DeleteOnClose, true);
         setMouseTracking(true);
     }
     void WorkspaceWindow::paintEvent(QPaintEvent* event)
@@ -136,16 +143,23 @@ namespace trtui
         painter.drawRect(QRectF(rect()).adjusted(inset, inset, -inset, -inset));
     }
 
+    void WorkspaceWindow::closeEvent(QCloseEvent* event)
+    {
+        // QWidget close handling destroys this subwindow and its owned content.
+        event->accept();
+    }
+
     void WorkspaceWindow::mouseMoveEvent(QMouseEvent* event)
     {
         const int frame = style()->pixelMetric(QStyle::PM_MdiSubWindowFrameWidth, nullptr, this);
         const int titleHeight = style()->pixelMetric(QStyle::PM_TitleBarHeight, nullptr, this);
-        const bool hovered = event->position().y() >= frame && event->position().y() < frame + titleHeight;
+        const bool hovered = event->position().y() >= 0 && event->position().y() < frame + titleHeight;
         if (property("titleHovered").toBool() != hovered)
         {
             setProperty("titleHovered", hovered);
             update();
         }
+        update(QRect(0, 0, width(), titleHeight + frame * 2));
         QMdiSubWindow::mouseMoveEvent(event);
     }
 

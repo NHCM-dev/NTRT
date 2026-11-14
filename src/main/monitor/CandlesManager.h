@@ -6,6 +6,7 @@
 #include "main/data/TradingDataConfig.h"
 #include <QFutureWatcher>
 #include <QTimer>
+#include "main/api/CandleStream.h"
 #include <map>
 #include <memory>
 #include <span>
@@ -19,6 +20,8 @@ namespace trtcore
         std::vector<trttrade::CandleData> candles;
         QString error;
         qint64 updatedAt = 0;
+        bool historyLoading = false;
+        bool historyExhausted = false;
     };
 
     class CandlesManager final : public QObject
@@ -38,12 +41,22 @@ namespace trtcore
             CandleSnapshot snapshot;
             QFutureWatcher<std::vector<trttrade::CandleData>>* watcher = nullptr;
             qint64 nextRequest = 0;
+            std::size_t readers = 0;
+            bool tracked = false;
+            std::unique_ptr<CandleStream> stream;
+            QFutureWatcher<std::vector<trttrade::CandleData>>* historyWatcher = nullptr;
+            qint64 historyTarget = 0;
+            qint64 historyRetry = 0;
+            bool historyExhausted = false;
         };
 
         std::map<SeriesKey, Subscription> subscriptions;
         QTimer requestTimer;
+        qint64 nextStreamStart = 0;
         trtdata::TradingDataTimeZone timeZone = trtdata::TradingDataTimeZone::UTC;
 
+        void ensureStream(const SeriesKey& key, Subscription& subscription);
+        void fetchHistory(const SeriesKey& key, Subscription& subscription);
         void fetchNext();
         void fetchCandles(const SeriesKey& key, Subscription& subscription);
         void mergeCandles(Subscription& subscription, const std::vector<trttrade::CandleData>& candles);
@@ -54,6 +67,7 @@ namespace trtcore
         void setInstruments(std::span<const std::shared_ptr<trtdata::Instrument>> instruments);
         void stop();
         void subscribe(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe);
+        void requestHistory(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe);
         void unsubscribe(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe);
 
         // Cache-only queries. Use on the manager thread; views expire on updates, removal or time-zone changes.

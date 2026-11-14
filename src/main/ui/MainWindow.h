@@ -3,7 +3,8 @@
 
 #include <QMainWindow>
 
-class QHBoxLayout;
+class QTabWidget;
+class QAction;
 class QMenu;
 class QTimer;
 
@@ -13,16 +14,22 @@ namespace trtui
     class SettingsDialog;
     class MainWindow final : public QMainWindow
     {
-        QWidget* root = nullptr;
-        QHBoxLayout* rootLayout = nullptr;
-        Workspace* workspace = nullptr;
+        QTabWidget* workspaces = nullptr;
+        QAction* windowAction = nullptr;
+        QMenu* elementsMenu = nullptr;
+        int nextWorkspaceId = 1;
+        Workspace* getCurrentWorkspace() const;
+        void createWorkspace();
+        void renameWorkspace(int index);
+        void closeWorkspace(int index);
+        void showWorkspaceMenu(const QPoint& position);
         SettingsDialog* settings = nullptr;
         QTimer* timer200ms = nullptr;
 
         void initLayouts();
         void initWindowGeometry();
         void initMenuBar();
-        void initNavigation();
+        void initWorkspaceTabs();
         void initStatusBar();
         void init200msSchedules();
         void showSettings();

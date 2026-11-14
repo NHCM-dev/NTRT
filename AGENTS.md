@@ -1,3 +1,10 @@
+# Agent Startup and Git Tracking
+
+- At the start of every task in this repository, including follow-up tasks and newly opened chats, read the current on-disk `AGENTS.md` and repository-root `SKILL.md` before planning or editing. Read any additional applicable scoped `AGENTS.md` and relevant skill `SKILL.md` files before working in their scope. Do not rely solely on conversation history or previously cached copies.
+- Re-read these instructions when they change during a task. Reading the latest instructions does not mean rewriting them after every task; preserve the documentation scope rules below.
+- Whenever creating files, check whether they belong in version control. Always add necessary project source files, tests, runtime resources, and requested documentation to Git tracking with explicit paths. Keep generated build outputs, caches, temporary files, secrets, and intentionally ignored local files untracked; do not force-add ignored files without a concrete reason and authorization.
+- Preserve existing staged and unrelated changes. Adding new project files to Git tracking does not authorize committing or pushing; commit and push only when requested.
+
 # C++ Code Style
 
 - Do not use `auto`. Write explicit types for variables, return values, and lambda parameters.
@@ -26,10 +33,10 @@
 
 ## UI Layout
 
-- Keep navigation on the left and a `Workspace` QFrame on the right. Workspace uses a `QMdiArea` desktop background and independent `QMdiSubWindow` child windows.
+- Use a top menu bar and movable Workspace tabs for navigation. Each `Workspace` remains a QFrame with a `QMdiArea` desktop background and independent `QMdiSubWindow` child windows.
 - Tools live inside the desktop: allow moving, overlapping, resizing, minimizing and maximizing, but never detach them into native top-level OS windows. Do not use floating docking containers for workspace tools.
 - `Workspace` owns child-window construction and layout coordination; `MainWindow` owns navigation, menus and application actions. Keep panel content in `ui/panels` separate and reusable.
-- Give each child window a stable unique objectName. Closing hides the window without deleting its content or stopping backend services. Window menu checkmarks must follow actual visibility, including titlebar close and menu reopen.
+- Give each child window a stable unique objectName. Titlebar close destroys the child window and its content, removes its Window-menu entry, and releases its chart subscriptions. Shared backend monitoring continues independently. Window menu checkmarks follow visibility for retained windows.
 - Provide Reset Layout, Stack Windows and Sort Window actions in the Window menu.
 - Settings remains a standalone reusable `SettingsDialog` containing `SettingPage`; keep settings sections and row helpers in `SettingPage`.
 - UI panels only read backend data. DataMonitor's lifecycle is independent of window visibility. Keep styling in resource QSS files and support palette changes.

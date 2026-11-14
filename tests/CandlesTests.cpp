@@ -123,6 +123,10 @@ public:
         return promise->future();
     }
 
+    QFuture<std::vector<trttrade::CandleData>> fetchCandleHistory(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe, trtdata::TradingDataTimeZone zone, qint64) const override
+    {
+        return fetchCandles(instrument, timeframe, zone, 300);
+    }
     void run();
 };
 
@@ -228,6 +232,28 @@ void CandleTests::run()
     require(manager.getCandle(identifier, day, utc8Today)->open == 200, "Timeframes contaminated each other");
     manager.unsubscribe(identifier, trttrade::CandleTimeframe::Minute1);
     require(manager.getCandles(identifier, trttrade::CandleTimeframe::Minute1).empty(), "Unsubscribe retained series");
+    manager.subscribe(identifier, day);
+    const std::size_t historyRequest = requests.size();
+    manager.requestHistory(identifier, day);
+    require(manager.getSnapshot(identifier, day)->historyLoading, "History loading state was not published");
+    waitFor([this, historyRequest] { return requests.size() > historyRequest; });
+    complete(historyRequest, {{utc8Today - dayMs, 100, 120, 90, 110, 2, 3, 4, true}});
+    waitFor([&manager, &identifier, day] { return manager.getCandles(identifier, day).size() == 2; });
+    require(manager.getCandles(identifier, day).front().timestamp == utc8Today - dayMs, "History page was not prepended");
+    require(!manager.getSnapshot(identifier, day)->historyLoading, "Completed history request remained loading");
+    manager.unsubscribe(identifier, day);
+    manager.subscribe(identifier, trttrade::CandleTimeframe::Minute5);
+    manager.subscribe(identifier, trttrade::CandleTimeframe::Minute5);
+    manager.unsubscribe(identifier, trttrade::CandleTimeframe::Minute5);
+    require(manager.getSnapshot(identifier, trttrade::CandleTimeframe::Minute5) != nullptr, "Closing one chart removed another chart's series");
+    manager.setInstruments({});
+    require(manager.getSnapshot(identifier, trttrade::CandleTimeframe::Minute5) != nullptr, "List removal discarded a chart subscription");
+    manager.unsubscribe(identifier, trttrade::CandleTimeframe::Minute5);
+    require(!manager.getSnapshot(identifier, trttrade::CandleTimeframe::Minute5), "Last reader retained an untracked series");
+    manager.setInstruments(instruments);
+    manager.subscribe(identifier, day);
+    manager.unsubscribe(identifier, day);
+    require(manager.getSnapshot(identifier) != nullptr, "Closing a daily chart removed the instrument list's daily series");
     manager.stop();
 }
 

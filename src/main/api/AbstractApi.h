@@ -7,6 +7,7 @@
 
 #include "main/market/abstract/Instrument.h"
 #include "TickerStream.h"
+#include "CandleStream.h"
 #include "main/trade/TradeDataDef.h"
 #include "main/data/TradingDataConfig.h"
 #include <memory>
@@ -23,6 +24,12 @@ namespace trtcore
         virtual int getRequestInterval() const = 0;
         virtual std::vector<trttrade::InstType> instrumentTypes() const = 0;
         virtual std::unique_ptr<TickerStream> createTickerStream() const = 0;
+        virtual std::unique_ptr<CandleStream> createCandleStream() const { return {}; }
+        virtual QFuture<std::vector<trttrade::CandleData>> fetchCandleHistory(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe, trtdata::TradingDataTimeZone zone, qint64 after) const
+        {
+            Q_UNUSED(after);
+            return fetchCandles(instrument, timeframe, zone, 300);
+        }
         // Results must have ascending, unique opening timestamps in Unix milliseconds.
         virtual QFuture<std::vector<trttrade::CandleData>> fetchCandles(const trtdata::InstIdentifier& identifier, trttrade::CandleTimeframe timeframe, trtdata::TradingDataTimeZone timeZone, int limit) const = 0;
         QFuture<std::vector<trttrade::CandleData>> fetchDailyCandles(const trtdata::InstIdentifier& identifier, trtdata::TradingDataTimeZone timeZone, int limit) const

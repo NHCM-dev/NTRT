@@ -1,6 +1,12 @@
 #include "MainWindow.h"
 #include "Workspace.h"
 #include "dialog/SettingsDialog.h"
+#include "dialog/InstrumentDialog.h"
+#include <QTabWidget>
+#include <QTabBar>
+#include <QToolButton>
+#include <QInputDialog>
+#include <QLineEdit>
 #include "main/NTRT.h"
 #include "main/Ver.h"
 #include <QAction>
@@ -20,7 +26,8 @@ namespace trtui
     {
         initLayouts();
         initMenuBar();
-        initNavigation();
+        initWorkspaceTabs();
+        createWorkspace();
         initStatusBar();
         init200msSchedules();
         initWindowGeometry();
@@ -39,53 +46,159 @@ namespace trtui
 
     void MainWindow::initLayouts()
     {
-        root = new QWidget(this);
-        rootLayout = new QHBoxLayout(root);
-        rootLayout->setContentsMargins(0, 0, 0, 0);
-        rootLayout->setSpacing(0);
-        setCentralWidget(root);
-        workspace = new Workspace(root);
-        rootLayout->addWidget(workspace, 1);
+        workspaces = new QTabWidget(this);
+        workspaces->setObjectName("workspaceTabs");
+        workspaces->setDocumentMode(true);
+        workspaces->setMovable(true);
+        workspaces->setTabsClosable(true);
+        workspaces->setUsesScrollButtons(true);
+        workspaces->tabBar()->setElideMode(Qt::ElideRight);
+        setCentralWidget(workspaces);
     }
 
     void MainWindow::initMenuBar()
     {
+        menuBar()->setMouseTracking(true);
         QMenu* file = menuBar()->addMenu("File");
-        QAction* preferences = file->addAction("Settings...");
-        preferences->setShortcut(QKeySequence("Ctrl+,"));
-        connect(preferences, &QAction::triggered, this, [this] { showSettings(); });
+        connect(file->addAction("Settings…", QKeySequence("Ctrl+,")), &QAction::triggered, this, [this] { showSettings(); });
         file->addSeparator();
         connect(file->addAction("Exit"), &QAction::triggered, this, [] { ntrt::quitApp(); });
-        QMenu* windows = menuBar()->addMenu("Window");
-        workspace->addWindowActions(windows);
+        QMenu* workspaceMenu = menuBar()->addMenu("Workspace");
+        connect(workspaceMenu->addAction("New Workspace", QKeySequence("Ctrl+T")), &QAction::triggered, this, [this] { createWorkspace(); });
+        connect(workspaceMenu->addAction("Rename Workspace…", QKeySequence("F2")), &QAction::triggered, this, [this] { renameWorkspace(workspaces->currentIndex()); });
+        connect(workspaceMenu->addAction("Close Workspace", QKeySequence("Ctrl+W")), &QAction::triggered, this, [this] { closeWorkspace(workspaces->currentIndex()); });
+        connect(workspaceMenu->addAction("Previous Workspace", QKeySequence("Ctrl+Shift+Tab")), &QAction::triggered, this, [this]
+        {
+            workspaces->setCurrentIndex((workspaces->currentIndex() + workspaces->count() - 1) % workspaces->count());
+        });
+        connect(workspaceMenu->addAction("Next Workspace", QKeySequence("Ctrl+Tab")), &QAction::triggered, this, [this]
+        {
+            workspaces->setCurrentIndex((workspaces->currentIndex() + 1) % workspaces->count());
+        });
+        QAction* newChart = menuBar()->addAction("New Chart");
+        newChart->setShortcut(QKeySequence::New);
+        connect(newChart, &QAction::triggered, this, [this] { if (getCurrentWorkspace()) getCurrentWorkspace()->createChartWindow(); });
+        QMenu* elements = menuBar()->addMenu("Elements");
+        elementsMenu = elements;
+        elements->addAction(newChart);
+        connect(elements->addAction("Instrument List"), &QAction::triggered, this, [this] { if (getCurrentWorkspace()) getCurrentWorkspace()->showInstrumentList(); });
+        elements->addSeparator();
+        connect(elements->addAction("Add Instruments…"), &QAction::triggered, this, [this]
+        {
+            InstrumentDialog dialog(InstrumentDialog::Mode::Add, this);
+            dialog.exec();
+        });
+        connect(elements->addAction("Manage Instruments…"), &QAction::triggered, this, [this]
+        {
+            InstrumentDialog dialog(InstrumentDialog::Mode::Manage, this);
+            dialog.exec();
+        });
+        windowAction = menuBar()->addAction("Window");
         QMenu* about = menuBar()->addMenu("About");
         connect(about->addAction("About NTRT"), &QAction::triggered, this, [this] { ntrt::displayAbout(this); });
     }
 
-    void MainWindow::initNavigation()
+    void MainWindow::initWorkspaceTabs()
     {
-        QWidget* navigation = new QWidget(root);
-        navigation->setObjectName("workspaceNavigation");
-        navigation->setFixedWidth(100);
-        QVBoxLayout* layout = new QVBoxLayout(navigation);
-        QPushButton* market = new QPushButton("Market", navigation);
-        market->setCheckable(true);
-        market->setChecked(true);
-        layout->addWidget(market);
-        for (const QString& name : {QString("Data"), QString("Trade"), QString("Account"), QString("Research"), QString("AI")})
+        QWidget* corner = new QWidget(workspaces);
+        QHBoxLayout* cornerLayout = new QHBoxLayout(corner);
+        cornerLayout->setContentsMargins(0, 0, 0, 0);
+        cornerLayout->setSpacing(0);
+        QToolButton* add = new QToolButton(corner);
+        add->setObjectName("newWorkspaceButton");
+        add->setText("+");
+        add->setFixedSize(28, 28);
+        add->setToolTip("New Workspace (Ctrl+T)");
+        cornerLayout->addWidget(add);
+        workspaces->setCornerWidget(corner, Qt::TopRightCorner);
+        connect(add, &QToolButton::clicked, this, [this] { createWorkspace(); });
+        connect(workspaces, &QTabWidget::currentChanged, this, [this](int)
         {
-            QPushButton* button = new QPushButton(name, navigation);
-            button->setEnabled(false);
-            layout->addWidget(button);
+            Workspace* current = getCurrentWorkspace();
+            windowAction->setMenu(current ? current->getWindowMenu() : nullptr);
+            if (current)
+                current->updateData();
+        });
+        connect(workspaces, &QTabWidget::tabCloseRequested, this, [this](int index) { closeWorkspace(index); });
+        connect(workspaces->tabBar(), &QTabBar::tabBarDoubleClicked, this, [this](int index)
+        {
+            if (index < 0)
+                createWorkspace();
+            else
+                renameWorkspace(index);
+        });
+        workspaces->tabBar()->setContextMenuPolicy(Qt::CustomContextMenu);
+        connect(workspaces->tabBar(), &QTabBar::customContextMenuRequested, this, &MainWindow::showWorkspaceMenu);
+    }
+
+    Workspace* MainWindow::getCurrentWorkspace() const
+    {
+        return static_cast<Workspace*>(workspaces->currentWidget());
+    }
+
+    void MainWindow::createWorkspace()
+    {
+        Workspace* workspace = new Workspace(workspaces);
+        workspace->setObjectName(QString("workspace%1").arg(nextWorkspaceId));
+        const int index = workspaces->addTab(workspace, QString("Workspace %1").arg(nextWorkspaceId++));
+        QToolButton* close = new QToolButton(workspaces->tabBar());
+        close->setObjectName("workspaceTabClose");
+        close->setText("×");
+        close->setFixedSize(18, 18);
+        close->setToolTip("Close Workspace");
+        workspaces->tabBar()->setTabButton(index, QTabBar::RightSide, close);
+        connect(close, &QToolButton::clicked, this, [this, workspace]
+        {
+            closeWorkspace(workspaces->indexOf(workspace));
+        });
+        workspaces->setCurrentIndex(index);
+    }
+
+    void MainWindow::renameWorkspace(int index)
+    {
+        if (index < 0)
+            return;
+        bool accepted = false;
+        const QString name = QInputDialog::getText(this, "Rename Workspace", "Name", QLineEdit::Normal, workspaces->tabText(index), &accepted).trimmed();
+        if (accepted && !name.isEmpty())
+            workspaces->setTabText(index, name);
+    }
+
+    void MainWindow::closeWorkspace(int index)
+    {
+        if (index < 0)
+            return;
+        QWidget* removed = workspaces->widget(index);
+        if (workspaces->count() == 1)
+            createWorkspace();
+        workspaces->removeTab(workspaces->indexOf(removed));
+        removed->deleteLater();
+    }
+
+    void MainWindow::showWorkspaceMenu(const QPoint& position)
+    {
+        QTabBar* bar = workspaces->tabBar();
+        const int index = bar->tabAt(position);
+        QMenu menu(this);
+        connect(menu.addAction("New Workspace"), &QAction::triggered, this, [this] { createWorkspace(); });
+        if (index >= 0)
+        {
+            workspaces->setCurrentIndex(index);
+            connect(menu.addAction("Rename…"), &QAction::triggered, this, [this, index] { renameWorkspace(index); });
+            QAction* left = menu.addAction("Move Left");
+            left->setEnabled(index > 0);
+            connect(left, &QAction::triggered, this, [bar, index] { bar->moveTab(index, index - 1); });
+            QAction* right = menu.addAction("Move Right");
+            right->setEnabled(index + 1 < workspaces->count());
+            connect(right, &QAction::triggered, this, [bar, index] { bar->moveTab(index, index + 1); });
+            connect(menu.addAction("Close Workspace"), &QAction::triggered, this, [this, index] { closeWorkspace(index); });
+            menu.addSeparator();
+            menu.addMenu(elementsMenu);
+            menu.addMenu(getCurrentWorkspace()->getWindowMenu());
         }
-        layout->addStretch();
-        QPushButton* preferences = new QPushButton("Settings", navigation);
-        connect(preferences, &QPushButton::clicked, this, [this] { showSettings(); });
-        layout->addWidget(preferences);
-        QPushButton* exit = new QPushButton("Exit", navigation);
-        connect(exit, &QPushButton::clicked, this, [] { ntrt::quitApp(); });
-        layout->addWidget(exit);
-        rootLayout->insertWidget(0, navigation);
+        menu.addSeparator();
+        connect(menu.addAction("Settings…"), &QAction::triggered, this, [this] { showSettings(); });
+        menu.exec(bar->mapToGlobal(position));
     }
 
     void MainWindow::showSettings()
@@ -138,8 +251,9 @@ namespace trtui
     void MainWindow::init200msSchedules()
     {
         timer200ms = new QTimer(this);
-        connect(timer200ms, &QTimer::timeout, this, [this] { workspace->updateData(); });
-        workspace->updateData();
+        connect(timer200ms, &QTimer::timeout, this, [this] { if (getCurrentWorkspace()) getCurrentWorkspace()->updateData(); });
+        if (getCurrentWorkspace())
+            getCurrentWorkspace()->updateData();
         timer200ms->start(200);
     }
 }

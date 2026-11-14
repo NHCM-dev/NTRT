@@ -2,8 +2,8 @@
 #include "main/api/AbstractApi.h"
 #include <QDateTime>
 #include <algorithm>
-#include <set>
 #include <cmath>
+#include <limits>
 
 namespace trtcore
 {
@@ -15,15 +15,15 @@ namespace trtcore
 
     void CandlesManager::setInstruments(std::span<const std::shared_ptr<trtdata::Instrument>> instruments)
     {
-        std::set<trtdata::InstIdentifier> desired;
+        for (std::pair<const SeriesKey, Subscription>& entry : subscriptions)
+            entry.second.tracked = false;
         for (const std::shared_ptr<trtdata::Instrument>& instrument : instruments)
         {
-            desired.insert(instrument->getUniqueIdentifier());
-            subscriptions.try_emplace(SeriesKey{instrument->getUniqueIdentifier()});
+            subscriptions[SeriesKey{instrument->getUniqueIdentifier()}].tracked = true;
         }
-        std::erase_if(subscriptions, [this, &desired](std::pair<const SeriesKey, Subscription>& entry)
+        std::erase_if(subscriptions, [this](std::pair<const SeriesKey, Subscription>& entry)
         {
-            if (desired.contains(entry.first.instrument))
+            if (entry.second.tracked || entry.second.readers != 0)
                 return false;
             cancelRequest(entry.second);
             return true;
@@ -36,6 +36,18 @@ namespace trtcore
 
     void CandlesManager::cancelRequest(Subscription& subscription)
     {
+        if (subscription.stream)
+        {
+            subscription.stream->stop();
+            subscription.stream.reset();
+        }
+        if (subscription.historyWatcher)
+        {
+            subscription.historyWatcher->disconnect(this);
+            subscription.historyWatcher->cancel();
+            subscription.historyWatcher->deleteLater();
+            subscription.historyWatcher = nullptr;
+        }
         if (!subscription.watcher)
             return;
         subscription.watcher->disconnect(this);
@@ -54,6 +66,74 @@ namespace trtcore
         }
     }
 
+    void CandlesManager::ensureStream(const SeriesKey& key, Subscription& subscription)
+    {
+        if (subscription.stream)
+            return;
+        subscription.stream = exchangeApi(key.instrument.exchange).createCandleStream();
+        if (!subscription.stream)
+            return;
+        connect(subscription.stream.get(), &CandleStream::candlesReceived, this, [this, key](const std::vector<trttrade::CandleData>& candles)
+        {
+            Subscription& current = subscriptions.at(key);
+            mergeCandles(current, candles);
+            current.snapshot.updatedAt = QDateTime::currentMSecsSinceEpoch();
+        });
+        connect(subscription.stream.get(), &CandleStream::connectionChanged, this, [this, key](const QString& error)
+        {
+            Subscription& current = subscriptions.at(key);
+            current.snapshot.error = error;
+            if (error.isEmpty())
+                current.nextRequest = 0; // Backfill bars missed during a disconnect.
+        });
+        subscription.stream->start(key.instrument, key.timeframe, timeZone);
+    }
+
+    void CandlesManager::requestHistory(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe)
+    {
+        const std::map<SeriesKey, Subscription>::iterator entry = subscriptions.find({instrument, timeframe});
+        if (entry == subscriptions.end() || entry->second.historyExhausted || entry->second.snapshot.candles.empty())
+            return;
+        entry->second.historyTarget = entry->second.snapshot.candles.front().timestamp;
+        entry->second.snapshot.historyLoading = true;
+    }
+
+    void CandlesManager::fetchHistory(const SeriesKey& key, Subscription& subscription)
+    {
+        if (subscription.snapshot.candles.empty())
+            return;
+        const qint64 cursor = subscription.snapshot.candles.front().timestamp;
+        QFutureWatcher<std::vector<trttrade::CandleData>>* watcher = new QFutureWatcher<std::vector<trttrade::CandleData>>(this);
+        subscription.historyWatcher = watcher;
+        connect(watcher, &QFutureWatcherBase::finished, this, [this, key, watcher, cursor]
+        {
+            Subscription& current = subscriptions.at(key);
+            current.historyWatcher = nullptr;
+            try
+            {
+                const std::vector<trttrade::CandleData> page = watcher->result();
+                if (page.empty())
+                    current.historyExhausted = true;
+                else if (page.front().timestamp >= cursor)
+                    throw std::runtime_error("History endpoint did not advance the pagination cursor");
+                else
+                    mergeCandles(current, page);
+                current.historyTarget = 0;
+                current.snapshot.historyLoading = false;
+                current.snapshot.historyExhausted = current.historyExhausted;
+                current.snapshot.error.clear();
+                current.snapshot.updatedAt = QDateTime::currentMSecsSinceEpoch();
+            }
+            catch (const std::exception& error)
+            {
+                current.snapshot.error = QString::fromUtf8(error.what());
+                current.historyRetry = QDateTime::currentMSecsSinceEpoch() + 5000;
+            }
+            watcher->deleteLater();
+        });
+        watcher->setFuture(exchangeApi(key.instrument.exchange).fetchCandleHistory(key.instrument, key.timeframe, timeZone, cursor));
+    }
+
     void CandlesManager::fetchNext()
     {
         const qint64 now = QDateTime::currentMSecsSinceEpoch();
@@ -61,6 +141,17 @@ namespace trtcore
         std::map<SeriesKey, Subscription>::iterator next = subscriptions.end();
         for (std::map<SeriesKey, Subscription>::iterator entry = subscriptions.begin(); entry != subscriptions.end(); entry++)
         {
+            if (!entry->second.stream && nextStreamStart <= now)
+            {
+                ensureStream(entry->first, entry->second);
+                if (entry->second.stream)
+                    nextStreamStart = now + 500;
+            }
+            if (entry->second.historyTarget != 0 && !entry->second.historyWatcher && entry->second.historyRetry <= now)
+            {
+                fetchHistory(entry->first, entry->second);
+                return;
+            }
             if (entry->second.watcher)
                 pending++;
             else if (entry->second.nextRequest <= now &&
@@ -90,7 +181,7 @@ namespace trtcore
                 mergeCandles(current, candles);
                 current.snapshot.error.clear();
                 current.snapshot.updatedAt = QDateTime::currentMSecsSinceEpoch();
-                current.nextRequest = current.snapshot.updatedAt + 10000;
+                current.nextRequest = current.stream ? std::numeric_limits<qint64>::max() : current.snapshot.updatedAt + 10000;
             }
             catch (const std::exception& error)
             {
@@ -140,7 +231,7 @@ namespace trtcore
         }
         stored.resize(prefixSize);
         stored.insert(stored.end(), merged.begin(), merged.end());
-        if (stored.size() > 300)
+        if (subscription.readers == 0 && stored.size() > 300)
             stored.erase(stored.begin(), stored.end() - 300);
     }
 
@@ -171,6 +262,8 @@ namespace trtcore
         {
             cancelRequest(entry.second);
             entry.second.snapshot = {};
+            entry.second.historyTarget = 0;
+            entry.second.historyExhausted = false;
             entry.second.nextRequest = 0;
         }
     }
@@ -189,7 +282,9 @@ namespace trtcore
     }
     void CandlesManager::subscribe(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe)
     {
-        subscriptions.try_emplace(SeriesKey{instrument, timeframe});
+        Subscription& subscription = subscriptions[SeriesKey{instrument, timeframe}];
+        subscription.readers++;
+        subscription.nextRequest = 0;
         requestTimer.start();
     }
 
@@ -197,6 +292,10 @@ namespace trtcore
     {
         const std::map<SeriesKey, Subscription>::iterator entry = subscriptions.find(SeriesKey{instrument, timeframe});
         if (entry == subscriptions.end())
+            return;
+        if (entry->second.readers != 0)
+            entry->second.readers--;
+        if (entry->second.tracked || entry->second.readers != 0)
             return;
         cancelRequest(entry->second);
         subscriptions.erase(entry);

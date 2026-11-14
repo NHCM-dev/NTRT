@@ -4,6 +4,7 @@
 #include <QFrame>
 #include <memory>
 #include <vector>
+#include "main/market/abstract/Instrument.h"
 
 class QAction;
 class QMenu;
@@ -13,16 +14,21 @@ class QMdiSubWindow;
 namespace trtui
 {
     class InstrumentListPanel;
+    class ChartPanel;
     class Workspace final : public QFrame
     {
         struct WindowEntry
         {
             QMdiSubWindow* window = nullptr;
             QAction* action = nullptr;
+            ChartPanel* chart = nullptr;
         };
         QMdiArea* desktop = nullptr;
         QMdiSubWindow* instrumentWindow = nullptr;
-        QMdiSubWindow* chartWindow = nullptr;
+        QMdiSubWindow* lastChartWindow = nullptr;
+        QMenu* windowMenu = nullptr;
+        QAction* windowActionsEnd = nullptr;
+        int nextChartId = 1;
         std::unique_ptr<InstrumentListPanel> instruments;
         std::vector<WindowEntry> windows;
 
@@ -35,7 +41,10 @@ namespace trtui
         void arrangeWindows(std::vector<WindowPlacement> placements, const QRect& area);
         void initDesktop();
         void initInstrumentPanel();
-        void initChartPanel();
+        QMdiSubWindow* addChartWindow();
+        void showInstrument(const trtdata::InstIdentifier& identifier);
+        void showWindow(QMdiSubWindow* window);
+        void addWindowAction(WindowEntry& entry);
         QMdiSubWindow* addWindow(QWidget* content, const QString& title, const QString& id);
         bool eventFilter(QObject* watched, QEvent* event) override;
         void changeEvent(QEvent* event) override;
@@ -43,9 +52,12 @@ namespace trtui
     public:
         explicit Workspace(QWidget* parent = nullptr);
         ~Workspace() override;
+        QMenu* getWindowMenu();
+        void showInstrumentList();
         void addWindowActions(QMenu* menu);
         void resetLayout();
         void updateData();
+        void createChartWindow();
     };
 }
 #endif //NTRT_WORKSPACE_H

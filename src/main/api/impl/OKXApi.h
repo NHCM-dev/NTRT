@@ -33,9 +33,17 @@ namespace trtdata::okx
         {"instId"}, {"bar", "limit"}
     };
 
+    const trtnet::RestAPITemplate CANDLE_HISTORY{
+        trtnet::HTTPMethod::GET, QUrl{"https://www.okx.com"}, "/api/v5/market/history-candles",
+        {"instId"}, {"bar", "limit", "after"}
+    };
+
     class OKXApi final : public trtcore::AbstractApi
     {
     public:
+        static QString candleBar(trttrade::CandleTimeframe timeframe, TradingDataTimeZone zone);
+        std::unique_ptr<trtcore::CandleStream> createCandleStream() const override;
+        QFuture<std::vector<trttrade::CandleData>> fetchCandleHistory(const InstIdentifier& instrument, trttrade::CandleTimeframe timeframe, TradingDataTimeZone zone, qint64 after) const override;
         static QFuture<TickerData> requestTicker(const std::string& instId);
         /**
          * @param instFamily the prefix of instId

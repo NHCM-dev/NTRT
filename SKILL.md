@@ -36,7 +36,7 @@ These are discovery hints, not permission to create missing components. Inspect 
 
 The workspace uses `QMdiArea` with child windows, not detachable docking windows. Do not reintroduce Qt Advanced Docking System merely because older code or previous requests mention it.
 
-Keep panel content separate from window chrome. Tool windows may move, overlap, resize, minimize and maximize within the desktop. Titlebar close hides a tool, and Window-menu actions reopen it with synchronized checkmarks. Closing or hiding a tool must not stop its backend service. Settings remains a separate reusable dialog.
+Keep panel content separate from window chrome. Tool windows may move, overlap, resize, minimize and maximize within the desktop. Titlebar close destroys a tool and removes its Window-menu entry; recreate it through the element actions. Window-menu actions toggle visibility of retained tools with synchronized checkmarks. Closing a tool releases its chart subscriptions without stopping shared backend monitoring. Settings remains a separate reusable dialog.
 
 For window interaction changes, check the affected transitions: active/inactive, background-click deselection, hide/reopen, minimize/restore, move/resize, or arrangement. Preserve the usable resize hit area independently of the thin visible outline. Keep frame rendering consistent with titlebar geometry and repaint clipping; do not fix a paint problem by continually repainting the entire application.
 

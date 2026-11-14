@@ -25,7 +25,7 @@ file(GLOB_RECURSE NTRT_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.qrc")
 qt_add_executable(NTRT ${NTRT_SOURCES})
 target_include_directories(NTRT PRIVATE src)
-target_link_libraries(NTRT PRIVATE Qt6::Widgets Qt6::Network Qt6::WebSockets simdjson::simdjson)
+target_link_libraries(NTRT PRIVATE Qt6::Widgets Qt6::Network Qt6::WebSockets Qt6::OpenGL Qt6::OpenGLWidgets simdjson::simdjson)
 if(WIN32)
     set_target_properties(NTRT PROPERTIES WIN32_EXECUTABLE TRUE)
 
@@ -66,6 +66,7 @@ if(WIN32)
             "-DQT_WIDGETS=$<TARGET_FILE:Qt6::Widgets>"
             "-DQT_NETWORK=$<TARGET_FILE:Qt6::Network>"
             "-DQT_WEBSOCKETS=$<TARGET_FILE:Qt6::WebSockets>"
+            "-DQT_OPENGL=$<TARGET_FILE:Qt6::OpenGL>" "-DQT_OPENGLWIDGETS=$<TARGET_FILE:Qt6::OpenGLWidgets>"
             "-DQT_BIN=$<TARGET_FILE_DIR:Qt6::Core>"
             "-DQT_PLATFORM=$<TARGET_FILE:Qt6::QWindowsIntegrationPlugin>"
             "-DQT_TLS=${_qt_tls}"
@@ -73,7 +74,7 @@ if(WIN32)
             "-DRUNTIME_BIN=${_compiler_bin}"
             -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/deploy/PrepareRuntime.cmake"
         COMMAND "${CMAKE_COMMAND}" -E touch "${CMAKE_CURRENT_BINARY_DIR}/runtime-$<CONFIG>-ready.stamp"
-        DEPENDS Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Network Qt6::WebSockets
+        DEPENDS Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Network Qt6::WebSockets Qt6::OpenGL Qt6::OpenGLWidgets
             Qt6::QICOPlugin
             "${CMAKE_CURRENT_SOURCE_DIR}/cmake/deploy/PrepareRuntime.cmake"
             "${CMAKE_CURRENT_SOURCE_DIR}/cmake/deploy/DeployRuntime.cmake"
@@ -96,11 +97,12 @@ else()
     target_compile_options(NTRT PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
-option(NTRT_BUILD_TESTS "Build candle data and settings tests" OFF)
+option(NTRT_BUILD_TESTS "Build candle data, settings and chart tests" OFF)
 if(NTRT_BUILD_TESTS)
     enable_testing()
     qt_add_executable(NTRTCandlesTests
         tests/CandlesTests.cpp
+        src/main/api/CandleStream.h
         src/main/monitor/CandlesManager.cpp
             src/main/trade/parser/OKXParser.cpp
         src/main/data/AppearanceManager.cpp
@@ -113,4 +115,24 @@ if(NTRT_BUILD_TESTS)
         add_dependencies(NTRTCandlesTests ntrt_runtime)
     endif()
     add_test(NAME candles COMMAND NTRTCandlesTests)
+
+    find_package(Qt6 6.5 REQUIRED COMPONENTS Test)
+    set(NTRT_CHART_TEST_SOURCES ${NTRT_SOURCES})
+    list(FILTER NTRT_CHART_TEST_SOURCES EXCLUDE REGEX "/(NTRT|AbstractApi)\\.cpp$")
+    qt_add_executable(NTRTChartTests tests/ChartTests.cpp ${NTRT_CHART_TEST_SOURCES})
+    set_target_properties(NTRTChartTests PROPERTIES WIN32_EXECUTABLE FALSE)
+    target_include_directories(NTRTChartTests PRIVATE src)
+    target_link_libraries(NTRTChartTests PRIVATE Qt6::Test Qt6::Widgets Qt6::Network Qt6::WebSockets Qt6::OpenGL Qt6::OpenGLWidgets simdjson::simdjson)
+    if(MSVC)
+        target_compile_options(NTRTChartTests PRIVATE /W4 /utf-8)
+    else()
+        target_compile_options(NTRTChartTests PRIVATE -Wall -Wextra -Wpedantic)
+    endif()
+    if(TARGET ntrt_runtime)
+        add_dependencies(NTRTChartTests ntrt_runtime)
+    endif()
+    add_dependencies(NTRTChartTests ntrt_resources)
+    add_custom_command(TARGET NTRTChartTests POST_BUILD
+        COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:Qt6::Test>" "$<TARGET_FILE_DIR:NTRTChartTests>" VERBATIM)
+    add_test(NAME charts COMMAND NTRTChartTests -o -,txt)
 endif()

@@ -1,20 +1,305 @@
 #include "ChartPanel.h"
+#include "main/NTRT.h"
+#include "main/ui/chart/ChartView.h"
+#include <QComboBox>
+#include <QCompleter>
+#include <QDateTime>
 #include <QLabel>
+#include <QPushButton>
+#include <QSignalBlocker>
+#include <QStackedWidget>
+#include <QToolButton>
 #include <QVBoxLayout>
+#include <algorithm>
+
 namespace trtui
 {
-    ChartPanel::ChartPanel(QWidget* parent) : QFrame(parent)
+    ChartPanel::ChartPanel(QWidget* parent) : QFrame(parent), monitor(ntrt::dataMonitor)
     {
-        setMinimumSize(200, 120);
-        initContent();
+        setObjectName("chartPanel");
+        setMinimumSize(460, 320);
+        QVBoxLayout* layout = new QVBoxLayout(this);
+        layout->setContentsMargins(0, 0, 0, 0);
+        layout->setSpacing(0);
+        initToolbar(layout);
+        initContent(layout);
+        initStatus(layout);
+        rebuildInstruments();
+        connect(ntrt::configManager.get(), &trtdata::ConfigManager::instrumentsChanged, this, [this] { rebuildInstruments(); });
     }
 
-    void ChartPanel::initContent()
+    ChartPanel::~ChartPanel()
     {
-        QVBoxLayout* layout = new QVBoxLayout(this);
-        QLabel* placeholder = new QLabel("Chart coming soon", this);
-        placeholder->setAlignment(Qt::AlignCenter);
-        placeholder->setForegroundRole(QPalette::PlaceholderText);
-        layout->addWidget(placeholder);
+        releaseSeries();
+    }
+
+    void ChartPanel::initToolbar(QVBoxLayout* layout)
+    {
+        QWidget* toolbar = new QWidget(this);
+        toolbar->setObjectName("chartToolbar");
+        QHBoxLayout* controls = new QHBoxLayout(toolbar);
+        controls->setContentsMargins(8, 6, 8, 6);
+        instrumentBox = new QComboBox(toolbar);
+        instrumentBox->setObjectName("chartInstrument");
+        instrumentBox->setEditable(true);
+        instrumentBox->setInsertPolicy(QComboBox::NoInsert);
+        instrumentBox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        instrumentBox->setMinimumWidth(140);
+        instrumentBox->setToolTip("Select or search a tracked instrument");
+        instrumentBox->completer()->setFilterMode(Qt::MatchContains);
+        instrumentBox->completer()->setCompletionMode(QCompleter::PopupCompletion);
+        instrumentBox->completer()->setCaseSensitivity(Qt::CaseInsensitive);
+        controls->addWidget(instrumentBox, 1);
+        timeframeBox = new QComboBox(toolbar);
+        timeframeBox->setObjectName("chartTimeframe");
+        const std::pair<const char*, trttrade::CandleTimeframe> frames[] = {
+            {"1m", trttrade::CandleTimeframe::Minute1}, {"3m", trttrade::CandleTimeframe::Minute3},
+            {"5m", trttrade::CandleTimeframe::Minute5}, {"15m", trttrade::CandleTimeframe::Minute15},
+            {"30m", trttrade::CandleTimeframe::Minute30}, {"1h", trttrade::CandleTimeframe::Hour1},
+            {"2h", trttrade::CandleTimeframe::Hour2}, {"4h", trttrade::CandleTimeframe::Hour4},
+            {"1D", trttrade::CandleTimeframe::Day1}, {"1W", trttrade::CandleTimeframe::Week1}, {"1M", trttrade::CandleTimeframe::Month1}};
+        for (const std::pair<const char*, trttrade::CandleTimeframe>& frame : frames)
+            timeframeBox->addItem(frame.first, static_cast<int>(frame.second));
+        timeframeBox->setCurrentIndex(3);
+        timeframeBox->setToolTip("Candle interval");
+        controls->addWidget(timeframeBox);
+        QToolButton* volume = new QToolButton(toolbar);
+        volume->setText("Vol");
+        volume->setCheckable(true);
+        volume->setChecked(true);
+        volume->setToolTip("Show candle volume in exchange units (base currency for spot, contracts for derivatives)");
+        controls->addWidget(volume);
+        followButton = new QToolButton(toolbar);
+        followButton->setObjectName("chartFollow");
+        followButton->setText("Latest");
+        followButton->setCheckable(true);
+        followButton->setChecked(true);
+        followButton->setToolTip("Return to the latest candle and follow new bars (End)");
+        controls->addWidget(followButton);
+        QToolButton* reset = new QToolButton(toolbar);
+        reset->setText("Reset");
+        reset->setToolTip("Reset zoom and follow latest (Home or double-click chart)");
+        controls->addWidget(reset);
+        QToolButton* history = new QToolButton(toolbar);
+        history->setText("History");
+        controls->addWidget(history);
+        connect(history, &QToolButton::clicked, this, [this]
+        {
+            const std::shared_ptr<trtcore::DataMonitor> backend = monitor.lock();
+            if (backend && instrument)
+                backend->requestChartHistory(*instrument, timeframe);
+        });
+        layout->addWidget(toolbar);
+        connect(instrumentBox, &QComboBox::activated, this, [this](int index)
+        {
+            if (index > 0 && index <= static_cast<int>(choices.size()))
+                setInstrument(choices[static_cast<std::size_t>(index - 1)]);
+            else
+                rebuildInstruments();
+        });
+        connect(timeframeBox, &QComboBox::activated, this, [this](int)
+        {
+            setTimeframe(static_cast<trttrade::CandleTimeframe>(timeframeBox->currentData().toInt()));
+        });
+        connect(volume, &QToolButton::toggled, this, [this](bool visible) { chart->setVolumeVisible(visible); });
+        connect(followButton, &QToolButton::clicked, this, [this] { chart->followLatest(); });
+        connect(reset, &QToolButton::clicked, this, [this] { chart->resetView(); });
+    }
+
+    void ChartPanel::initContent(QVBoxLayout* layout)
+    {
+        content = new QStackedWidget(this);
+        QWidget* empty = new QWidget(content);
+        empty->setObjectName("chartEmpty");
+        QVBoxLayout* prompt = new QVBoxLayout(empty);
+        prompt->setContentsMargins(24, 24, 24, 24);
+        prompt->addStretch();
+        QLabel* title = new QLabel("Choose an instrument", empty);
+        title->setObjectName("chartEmptyTitle");
+        title->setAlignment(Qt::AlignCenter);
+        prompt->addWidget(title);
+        QLabel* help = new QLabel("Select an instrument above, or double-click one in the Instrument List.\nUse Elements → New Chart to compare instruments.", empty);
+        help->setAlignment(Qt::AlignCenter);
+        help->setWordWrap(true);
+        prompt->addWidget(help);
+        QPushButton* choose = new QPushButton("Choose instrument…", empty);
+        prompt->addWidget(choose, 0, Qt::AlignHCenter);
+        prompt->addStretch();
+        content->addWidget(empty);
+        chart = new ChartView(content);
+        chart->setObjectName("chartView");
+        content->addWidget(chart);
+        layout->addWidget(content, 1);
+        connect(chart, &ChartView::historyRequested, this, [this]
+        {
+            const std::shared_ptr<trtcore::DataMonitor> backend = monitor.lock();
+            if (backend && instrument)
+                backend->requestChartHistory(*instrument, timeframe);
+        });
+        connect(choose, &QPushButton::clicked, this, [this] { selectInstrument(); });
+        connect(chart, &ChartView::followChanged, this, [this](bool following) { followButton->setChecked(following); });
+        connect(chart, &ChartView::renderingFailed, this, [this](const QString& error)
+        {
+            renderingError = error;
+            updateData();
+        });
+    }
+
+    void ChartPanel::initStatus(QVBoxLayout* layout)
+    {
+        status = new QLabel("Select an instrument to begin", this);
+        status->setObjectName("chartStatus");
+        status->setWordWrap(true);
+        status->setToolTip("Drag: pan · Wheel: zoom · Double-click: reset · End: latest\nPan left or click History to load older candles.");
+        layout->addWidget(status);
+    }
+
+    QString ChartPanel::instrumentLabel(const trtdata::InstIdentifier& identifier) const
+    {
+        return QString::fromStdString(identifier.id) + " · " + QString::fromUtf8(trtdata::getExchangeStr(identifier.exchange)) +
+            " · " + QString::fromUtf8(trttrade::instDisplayStr(identifier.type));
+    }
+
+    void ChartPanel::rebuildInstruments()
+    {
+        const QSignalBlocker blocker(instrumentBox);
+        choices.clear();
+        instrumentBox->clear();
+        instrumentBox->addItem("Choose instrument…");
+        for (const std::shared_ptr<trtdata::Instrument>& tracked : ntrt::configManager->getInstruments())
+        {
+            choices.push_back(tracked->getUniqueIdentifier());
+            instrumentBox->addItem(instrumentLabel(choices.back()));
+        }
+        if (instrument)
+        {
+            const std::vector<trtdata::InstIdentifier>::const_iterator found = std::find(choices.cbegin(), choices.cend(), *instrument);
+            if (found == choices.cend())
+            {
+                choices.push_back(*instrument);
+                instrumentBox->addItem(instrumentLabel(*instrument));
+                instrumentBox->setCurrentIndex(static_cast<int>(choices.size()));
+            }
+            else
+                instrumentBox->setCurrentIndex(static_cast<int>(found - choices.cbegin()) + 1);
+        }
+        else
+            status->setText(choices.empty() ? "Add an instrument with Elements → Add Instruments, then select it here." : "Select an instrument to begin");
+    }
+
+    void ChartPanel::selectInstrument()
+    {
+        instrumentBox->setFocus();
+        if (!choices.empty())
+            instrumentBox->showPopup();
+        else
+            status->setText("No instruments yet. Use Elements → Add Instruments to track an instrument.");
+    }
+
+    void ChartPanel::releaseSeries()
+    {
+        const std::shared_ptr<trtcore::DataMonitor> backend = monitor.lock();
+        if (backend && instrument)
+            backend->releaseChartSeries(*instrument, timeframe);
+    }
+
+    void ChartPanel::setInstrument(const trtdata::InstIdentifier& identifier)
+    {
+        // identifier may refer to choices, which rebuildInstruments replaces.
+        const trtdata::InstIdentifier selected = identifier;
+        if (instrument && *instrument == selected)
+        {
+            rebuildInstruments();
+            return;
+        }
+        releaseSeries();
+        instrument = selected;
+        chart->setInstrument(selected);
+        displayedUpdate = -1;
+        chart->setCandles({});
+        chart->resetView();
+        const std::shared_ptr<trtcore::DataMonitor> backend = monitor.lock();
+        if (backend)
+            backend->acquireChartSeries(*instrument, timeframe);
+        rebuildInstruments();
+        content->setCurrentWidget(chart);
+        updateData();
+        emit titleChanged(getTitle());
+    }
+
+    void ChartPanel::setTimeframe(trttrade::CandleTimeframe value)
+    {
+        if (timeframe == value)
+            return;
+        releaseSeries();
+        timeframe = value;
+        displayedUpdate = -1;
+        chart->setCandles({});
+        chart->resetView();
+        const std::shared_ptr<trtcore::DataMonitor> backend = monitor.lock();
+        if (backend && instrument)
+            backend->acquireChartSeries(*instrument, timeframe);
+        updateData();
+        emit titleChanged(getTitle());
+    }
+
+    const std::optional<trtdata::InstIdentifier>& ChartPanel::getInstrument() const { return instrument; }
+
+    QString ChartPanel::getTitle() const
+    {
+        if (!instrument)
+            return "Choose instrument";
+        return instrumentLabel(*instrument) + " · " + timeframeBox->currentText();
+    }
+
+    void ChartPanel::updateData()
+    {
+        if (!instrument)
+            return;
+        if (!renderingError.isEmpty())
+        {
+            status->setText("OpenGL unavailable: " + renderingError);
+            status->setToolTip(renderingError);
+            return;
+        }
+        const std::shared_ptr<trtcore::DataMonitor> backend = monitor.lock();
+        if (!backend)
+            return;
+        const trtcore::CandlesManager& manager = backend->getCandlesManager();
+        chart->setTimeZone(manager.getTimeZone());
+        const trtcore::CandleSnapshot* snapshot = manager.getSnapshot(*instrument, timeframe);
+        if (!snapshot)
+            return;
+        chart->setHistoryState(snapshot->historyLoading, snapshot->historyExhausted);
+        if (displayedUpdate != snapshot->updatedAt)
+        {
+            chart->setCandles(snapshot->candles);
+            displayedUpdate = snapshot->updatedAt;
+        }
+        const QString zone = QString::fromUtf8(trtdata::tradingDataTimeZoneName(manager.getTimeZone()));
+        QString text;
+        if (!snapshot->error.isEmpty())
+        {
+            text = snapshot->candles.empty() ? "Unable to load candles · Retrying automatically" : "Cached candles · Feed unavailable · Retrying automatically";
+            chart->setMessage("Unable to load candles\n" + snapshot->error + "\nRetrying automatically");
+        }
+        else if (snapshot->candles.empty())
+        {
+            text = "Loading candles… · " + zone;
+            chart->setMessage("Loading candles…");
+        }
+        else
+        {
+            const qint64 age = QDateTime::currentMSecsSinceEpoch() - snapshot->updatedAt;
+            text = QString("%1 bars · %2 · Updated %3s ago").arg(snapshot->candles.size()).arg(zone).arg(age / 1000);
+            if (snapshot->historyLoading)
+                text += " · Loading history…";
+            if (age > 15000)
+                text += " · Waiting for feed";
+        }
+        if (status->text() != text)
+            status->setText(text);
+        status->setToolTip(snapshot->error.isEmpty() ?
+            "Drag: pan · Wheel: zoom · Double-click: reset · End: latest\nLive candles via WebSocket. Pan left or click History to load older candles." : snapshot->error);
     }
 }
