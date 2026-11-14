@@ -13,9 +13,9 @@
 
 namespace trtdata::OKXParser
 {
-    std::string_view getInstType(InstType type);
+    std::string_view getInstType(trttrade::InstType type);
 
-    InstType readType(std::string_view type);
+    trttrade::InstType readType(std::string_view type);
 
     void ensureSuccess(const elementResult& json);
     jsonArray getDataField(const elementResult& json);

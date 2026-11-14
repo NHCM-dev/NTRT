@@ -125,8 +125,8 @@ namespace trtui
         const QSignalBlocker blocker(type);
         type->clear();
         const trtcore::AbstractApi& api = trtcore::exchangeApi(static_cast<trtdata::Exchange>(exchange->currentData().toInt()));
-        for (InstType item : api.instrumentTypes())
-            type->addItem(QString::fromUtf8(instDisplayStr(item)), static_cast<int>(item));
+        for (trttrade::InstType item : api.instrumentTypes())
+            type->addItem(QString::fromUtf8(trttrade::instDisplayStr(item)), static_cast<int>(item));
         fetchCatalog();
     }
 
@@ -137,7 +137,7 @@ namespace trtui
 
         using Catalog = std::vector<InstrumentPtr>;
         const trtdata::Exchange selectedExchange = static_cast<trtdata::Exchange>(exchange->currentData().toInt());
-        const InstType selectedType = static_cast<InstType>(type->currentData().toInt());
+        const trttrade::InstType selectedType = static_cast<trttrade::InstType>(type->currentData().toInt());
         const trtcore::AbstractApi& api = trtcore::exchangeApi(selectedExchange);
         entries.clear();
         populate();

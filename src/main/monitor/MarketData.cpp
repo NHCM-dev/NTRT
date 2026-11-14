@@ -46,7 +46,7 @@ namespace trtcore
             entry.second->setInstruments(identifiers);
         }
 
-        for (std::pair<const InstType, Identifier2SnapshotMap>& group : tickersData)
+        for (std::pair<const trttrade::InstType, Identifier2SnapshotMap>& group : tickersData)
         {
             std::erase_if(group.second, [&desired](const Identifier2SnapshotMap::value_type& entry)
             {
@@ -95,7 +95,7 @@ namespace trtcore
         else
             failures.insert_or_assign(exchange, MarketSnapshot{exchange, std::nullopt, error});
 
-        for (std::pair<const InstType, Identifier2SnapshotMap>& group : tickersData)
+        for (std::pair<const trttrade::InstType, Identifier2SnapshotMap>& group : tickersData)
         {
             for (Identifier2SnapshotMap::value_type& entry : group.second)
             {
@@ -126,9 +126,9 @@ namespace trtcore
         return failure == failures.end() ? nullptr : &failure->second;
     }
 
-    const MarketData::Identifier2SnapshotMap* MarketData::getSnapshots(InstType instType) const
+    const MarketData::Identifier2SnapshotMap* MarketData::getSnapshots(trttrade::InstType instType) const
     {
-        const std::map<InstType, Identifier2SnapshotMap>::const_iterator entry = tickersData.find(instType);
+        const std::map<trttrade::InstType, Identifier2SnapshotMap>::const_iterator entry = tickersData.find(instType);
         return entry == tickersData.end() ? nullptr : &entry->second;
     }
 }

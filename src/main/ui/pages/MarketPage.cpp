@@ -163,8 +163,8 @@ namespace trtui
         search->setPlaceholderText("Search instruments");
         typeFilter = new QComboBox(page);
         typeFilter->addItem("All types", -1);
-        for (InstType type : {InstType::Spot, InstType::Margin, InstType::Swap,
-                                     InstType::Futures, InstType::Option, InstType::Events})
+        for (trttrade::InstType type : {trttrade::InstType::Spot, trttrade::InstType::Margin, trttrade::InstType::Swap,
+                                     trttrade::InstType::Futures, trttrade::InstType::Option, trttrade::InstType::Events})
             typeFilter->addItem(QString::fromUtf8(instDisplayStr(type)), static_cast<int>(type));
         filters->addWidget(search, 1);
         filters->addWidget(typeFilter);
@@ -285,7 +285,7 @@ namespace trtui
             if (row == table->rowCount())
                 table->insertRow(row);
             table->setItem(row, 0, new QTableWidgetItem(exchange));
-            table->setItem(row, 1, new QTableWidgetItem(QString::fromUtf8(instDisplayStr(instrument->instType))));
+            table->setItem(row, 1, new QTableWidgetItem(QString::fromUtf8(trttrade::instDisplayStr(instrument->instType))));
             QLabel* icon = static_cast<QLabel*>(table->cellWidget(row, 2));
             if (!icon)
             {
@@ -321,14 +321,14 @@ namespace trtui
                 double baseVolume = 0;
                 switch (instrument->instType)
                 {
-                case InstType::Spot:
-                case InstType::Margin:
+                case trttrade::InstType::Spot:
+                case trttrade::InstType::Margin:
                     baseVolume = daily->volume;
                     break;
-                case InstType::Swap:
-                case InstType::Futures:
-                case InstType::Option:
-                case InstType::Events:
+                case trttrade::InstType::Swap:
+                case trttrade::InstType::Futures:
+                case trttrade::InstType::Option:
+                case trttrade::InstType::Events:
                     baseVolume = daily->volumeCurrency;
                     break;
                 }

@@ -31,10 +31,10 @@ namespace trtcore
         void setInstruments(std::span<const std::shared_ptr<trtdata::Instrument>> instruments);
         void stop();
         const MarketSnapshot* getSnapshot(const trtdata::InstIdentifier& identifier) const;
-        const Identifier2SnapshotMap* getSnapshots(InstType instType) const;
+        const Identifier2SnapshotMap* getSnapshots(trttrade::InstType instType) const;
 
     private:
-        std::map<InstType, Identifier2SnapshotMap> tickersData;
+        std::map<trttrade::InstType, Identifier2SnapshotMap> tickersData;
         std::map<trtdata::Exchange, MarketSnapshot> failures;
         std::map<trtdata::Exchange, std::unique_ptr<TickerStream>> streams;
 

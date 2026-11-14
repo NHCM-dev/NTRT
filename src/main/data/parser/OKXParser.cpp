@@ -14,25 +14,25 @@
 
 namespace trtdata::OKXParser
 {
-    std::string_view getInstType(InstType type)
+    std::string_view getInstType(trttrade::InstType type)
     {
         switch (type)
         {
-        case InstType::Spot:    return "SPOT";
-        case InstType::Futures: return "FUTURES";
-        case InstType::Option:  return "OPTION";
-        case InstType::Events:  return "EVENTS";
-        case InstType::Margin:  return "MARGIN";
-        case InstType::Swap:    return "SWAP";
+        case trttrade::InstType::Spot:    return "SPOT";
+        case trttrade::InstType::Futures: return "FUTURES";
+        case trttrade::InstType::Option:  return "OPTION";
+        case trttrade::InstType::Events:  return "EVENTS";
+        case trttrade::InstType::Margin:  return "MARGIN";
+        case trttrade::InstType::Swap:    return "SWAP";
         }
 
         return "";
     }
 
-    InstType readType(std::string_view type)
+    trttrade::InstType readType(std::string_view type)
     {
-        for (const auto candidate : {InstType::Spot, InstType::Margin, InstType::Swap,
-                                     InstType::Futures, InstType::Option, InstType::Events})
+        for (const auto candidate : {trttrade::InstType::Spot, trttrade::InstType::Margin, trttrade::InstType::Swap,
+                                     trttrade::InstType::Futures, trttrade::InstType::Option, trttrade::InstType::Events})
         {
             if (getInstType(candidate) == type)
                 return candidate;

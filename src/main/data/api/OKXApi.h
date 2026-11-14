@@ -40,15 +40,15 @@ namespace trtdata::okx
         /**
          * @param instFamily the prefix of instId
          */
-        static QFuture<std::shared_ptr<std::vector<TickerData>>> requestTickers(InstType instType, const std::string& instFamily = {});
+        static QFuture<std::shared_ptr<std::vector<TickerData>>> requestTickers(trttrade::InstType instType, const std::string& instFamily = {});
 
-        std::vector<InstType> instrumentTypes() const override;
+        std::vector<trttrade::InstType> instrumentTypes() const override;
         std::unique_ptr<trtcore::TickerStream> createTickerStream() const override;
         QFuture<std::vector<CandleData>> fetchDailyCandles(const InstIdentifier& identifier, TradingDataTimeZone timeZone, int limit) const override;
-        QFuture<std::shared_ptr<std::vector<TickerData>>> fetchTickers(InstType type) const override;
-        QFuture<std::vector<std::shared_ptr<Instrument>>> fetchInstruments(InstType type) const override;
-        std::shared_ptr<Instrument> createInstrument(const std::string& id, InstType type) const override;
-        InstType parseInstrumentType(std::string_view name) const override;
+        QFuture<std::shared_ptr<std::vector<TickerData>>> fetchTickers(trttrade::InstType type) const override;
+        QFuture<std::vector<std::shared_ptr<Instrument>>> fetchInstruments(trttrade::InstType type) const override;
+        std::shared_ptr<Instrument> createInstrument(const std::string& id, trttrade::InstType type) const override;
+        trttrade::InstType parseInstrumentType(std::string_view name) const override;
 
         int getRequestInterval() const override
         {

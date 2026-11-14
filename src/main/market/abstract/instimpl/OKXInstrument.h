@@ -11,7 +11,7 @@ namespace trtdata::okx
     class OKXInstrument final : public Instrument
     {
     public:
-        OKXInstrument(const std::string& instId, InstType type)
+        OKXInstrument(const std::string& instId, trttrade::InstType type)
             : Instrument(instId, type, Exchange::OKX)
         {}
 

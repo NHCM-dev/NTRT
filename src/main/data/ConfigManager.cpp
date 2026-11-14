@@ -101,7 +101,7 @@ namespace trtdata
                 const std::string id(readString(entry, "instId"));
                 Exchange exchange = readExchange(readString(entry, "exchange"));
                 const trtcore::AbstractApi& api = trtcore::exchangeApi(exchange);
-                const InstType type = api.parseInstrumentType(readString(entry, "instType"));
+                const trttrade::InstType type = api.parseInstrumentType(readString(entry, "instType"));
                 loaded.instruments.push_back(api.createInstrument(id, type));
             }
             marketConfig = std::move(loaded);

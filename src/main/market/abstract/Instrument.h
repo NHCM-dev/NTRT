@@ -17,7 +17,7 @@ namespace trtdata
 {
     struct TickerData
     {
-        InstType instType;
+        trttrade::InstType instType;
         std::string instId;
         double last;
         double open24h;
@@ -32,7 +32,7 @@ namespace trtdata
     struct InstIdentifier
     {
         Exchange exchange;
-        InstType type;
+        trttrade::InstType type;
         std::string id;
 
         std::strong_ordering operator<=>(const InstIdentifier&) const = default;
@@ -44,12 +44,12 @@ namespace trtdata
 
     public:
         const std::string instId;
-        const InstType instType;
+        const trttrade::InstType instType;
         const Exchange exchange;
 
         virtual ~Instrument() = default;
 
-        Instrument(const std::string& instId, InstType type, Exchange exchange)
+        Instrument(const std::string& instId, trttrade::InstType type, Exchange exchange)
             : uniqueIdentifier{exchange, type, instId}, instId(instId), instType(type), exchange(exchange)
         {
         }

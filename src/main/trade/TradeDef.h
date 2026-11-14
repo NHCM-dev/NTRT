@@ -211,6 +211,4 @@ namespace trttrade
     }
 }
 
-using namespace trttrade;
-
 #endif //NTRT_TRADEDEF_H

@@ -21,7 +21,7 @@ namespace trtdata::okx
         });
     }
 
-    QFuture<std::shared_ptr<std::vector<TickerData>>> OKXApi::requestTickers(InstType instType, const std::string& instFamily)
+    QFuture<std::shared_ptr<std::vector<TickerData>>> OKXApi::requestTickers(trttrade::InstType instType, const std::string& instFamily)
     {
         QUrlQuery query;
         query.addQueryItem("instType", QString::fromStdString(std::string(OKXParser::getInstType(instType))));
@@ -38,9 +38,9 @@ namespace trtdata::okx
             return OKXParser::parseTickers(body);
         });
     }
-    std::vector<InstType> OKXApi::instrumentTypes() const
+    std::vector<trttrade::InstType> OKXApi::instrumentTypes() const
     {
-        return {InstType::Spot, InstType::Swap, InstType::Futures, InstType::Option};
+        return {trttrade::InstType::Spot, trttrade::InstType::Swap, trttrade::InstType::Futures, trttrade::InstType::Option};
     }
 
     std::unique_ptr<trtcore::TickerStream> OKXApi::createTickerStream() const
@@ -48,7 +48,7 @@ namespace trtdata::okx
         return std::make_unique<OKXTickerStream>();
     }
 
-    QFuture<std::shared_ptr<std::vector<TickerData>>> OKXApi::fetchTickers(InstType type) const
+    QFuture<std::shared_ptr<std::vector<TickerData>>> OKXApi::fetchTickers(trttrade::InstType type) const
     {
         return requestTickers(type);
     }
@@ -73,7 +73,7 @@ namespace trtdata::okx
         });
     }
 
-    QFuture<std::vector<std::shared_ptr<Instrument>>> OKXApi::fetchInstruments(InstType type) const
+    QFuture<std::vector<std::shared_ptr<Instrument>>> OKXApi::fetchInstruments(trttrade::InstType type) const
     {
         QUrlQuery query;
         query.addQueryItem("instType", QString::fromUtf8(OKXParser::getInstType(type)));
@@ -87,19 +87,19 @@ namespace trtdata::okx
             for (const jsonElement row : rows)
             {
                 const std::string id(readString(row, "instId"));
-                const InstType instrumentType = parseInstrumentType(readString(row, "instType"));
+                const trttrade::InstType instrumentType = parseInstrumentType(readString(row, "instType"));
                 instruments.push_back(createInstrument(id, instrumentType));
             }
             return instruments;
         });
     }
 
-    std::shared_ptr<Instrument> OKXApi::createInstrument(const std::string& id, InstType type) const
+    std::shared_ptr<Instrument> OKXApi::createInstrument(const std::string& id, trttrade::InstType type) const
     {
         return std::make_shared<OKXInstrument>(id, type);
     }
 
-    InstType OKXApi::parseInstrumentType(std::string_view name) const
+    trttrade::InstType OKXApi::parseInstrumentType(std::string_view name) const
     {
         return OKXParser::readType(name);
     }
