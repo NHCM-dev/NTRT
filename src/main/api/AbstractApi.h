@@ -11,6 +11,7 @@
 #include "main/data/TradingDataConfig.h"
 #include <memory>
 #include <vector>
+#include "main/trade/CandleTimeframe.h"
 
 namespace trtcore
 {
@@ -22,7 +23,12 @@ namespace trtcore
         virtual int getRequestInterval() const = 0;
         virtual std::vector<trttrade::InstType> instrumentTypes() const = 0;
         virtual std::unique_ptr<TickerStream> createTickerStream() const = 0;
-        virtual QFuture<std::vector<trttrade::CandleData>> fetchDailyCandles(const trtdata::InstIdentifier& identifier, trtdata::TradingDataTimeZone timeZone, int limit) const = 0;
+        // Results must have ascending, unique opening timestamps in Unix milliseconds.
+        virtual QFuture<std::vector<trttrade::CandleData>> fetchCandles(const trtdata::InstIdentifier& identifier, trttrade::CandleTimeframe timeframe, trtdata::TradingDataTimeZone timeZone, int limit) const = 0;
+        QFuture<std::vector<trttrade::CandleData>> fetchDailyCandles(const trtdata::InstIdentifier& identifier, trtdata::TradingDataTimeZone timeZone, int limit) const
+        {
+            return fetchCandles(identifier, trttrade::CandleTimeframe::Day1, timeZone, limit);
+        }
         virtual QFuture<std::shared_ptr<std::vector<trtdata::TickerData>>> fetchTickers(trttrade::InstType type) const = 0;
         virtual QFuture<std::vector<std::shared_ptr<trtdata::Instrument>>> fetchInstruments(trttrade::InstType type) const = 0;
         virtual std::shared_ptr<trtdata::Instrument> createInstrument(const std::string& id, trttrade::InstType type) const = 0;

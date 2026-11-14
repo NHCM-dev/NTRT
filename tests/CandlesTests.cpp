@@ -1,5 +1,5 @@
-#include "main/data/api/AbstractApi.h"
-#include "main/data/parser/OKXParser.h"
+#include "main/api/AbstractApi.h"
+#include "main/trade/parser/OKXParser.h"
 #include "main/data/AppearanceManager.h"
 #include "main/data/ConfigManager.h"
 #include "main/util/JsonUtil.h"
@@ -18,8 +18,9 @@
 
 class CandleTests final : public trtcore::AbstractApi
 {
-    mutable std::vector<std::shared_ptr<QPromise<std::vector<trtdata::CandleData>>>> requests;
+    mutable std::vector<std::shared_ptr<QPromise<std::vector<trttrade::CandleData>>>> requests;
     mutable std::vector<int> limits;
+    mutable std::vector<trttrade::CandleTimeframe> timeframes;
     mutable std::vector<trtdata::TradingDataTimeZone> timeZones;
 
     static void require(bool condition, const char* message)
@@ -44,10 +45,10 @@ class CandleTests final : public trtcore::AbstractApi
     static void testParser()
     {
         const QByteArray valid = R"({"code":"0","data":[["86400000","100","120","90","110","2","3","4","0"],["0","90","100","80","100","5","6","7","1"]]})";
-        const std::vector<trtdata::CandleData> candles = trtdata::OKXParser::parseCandles(valid);
-        require(candles.size() == 2 && candles.front().ts == 0 && candles.back().ts == 86400000, "Candle order is incorrect");
+        const std::vector<trttrade::CandleData> candles = trtdata::OKXParser::parseCandles(valid);
+        require(candles.size() == 2 && candles.front().timestamp == 0 && candles.back().timestamp == 86400000, "Candle order is incorrect");
         require(candles.front().confirmed && !candles.back().confirmed, "Candle confirmation is incorrect");
-        require(candles.back().volume == 2 && candles.back().volumeCurrency == 3 && candles.back().volumeQuote == 4, "Candle volume units were mixed");
+        require(candles.back().volume == 2 && candles.back().volumeCcy == 3 && candles.back().volumeQuote == 4, "Candle volume units were mixed");
         for (const QByteArray& invalid : {
                  QByteArray(R"({"code":"50011","msg":"Rate limit","data":[]})"),
                  QByteArray(R"({"code":"0","data":[["0","100"]]})"),
@@ -97,7 +98,7 @@ class CandleTests final : public trtcore::AbstractApi
                 "Failed save changed the active time zone");
     }
 
-    void complete(std::size_t index, const std::vector<trtdata::CandleData>& candles)
+    void complete(std::size_t index, const std::vector<trttrade::CandleData>& candles)
     {
         requests[index]->addResult(candles);
         requests[index]->finish();
@@ -105,16 +106,17 @@ class CandleTests final : public trtcore::AbstractApi
 
 public:
     int getRequestInterval() const override { return 100; }
-    std::vector<trtdata::InstType> instrumentTypes() const override { return {}; }
+    std::vector<trttrade::InstType> instrumentTypes() const override { return {}; }
     std::unique_ptr<trtcore::TickerStream> createTickerStream() const override { return {}; }
-    QFuture<std::shared_ptr<std::vector<trtdata::TickerData>>> fetchTickers(trtdata::InstType) const override { return {}; }
-    QFuture<std::vector<std::shared_ptr<trtdata::Instrument>>> fetchInstruments(trtdata::InstType) const override { return {}; }
-    std::shared_ptr<trtdata::Instrument> createInstrument(const std::string&, trtdata::InstType) const override { return {}; }
-    trtdata::InstType parseInstrumentType(std::string_view) const override { return trtdata::InstType::Spot; }
-    QFuture<std::vector<trtdata::CandleData>> fetchDailyCandles(const trtdata::InstIdentifier&, trtdata::TradingDataTimeZone timeZone, int limit) const override
+    QFuture<std::shared_ptr<std::vector<trtdata::TickerData>>> fetchTickers(trttrade::InstType) const override { return {}; }
+    QFuture<std::vector<std::shared_ptr<trtdata::Instrument>>> fetchInstruments(trttrade::InstType) const override { return {}; }
+    std::shared_ptr<trtdata::Instrument> createInstrument(const std::string&, trttrade::InstType) const override { return {}; }
+    trttrade::InstType parseInstrumentType(std::string_view) const override { return trttrade::InstType::Spot; }
+    QFuture<std::vector<trttrade::CandleData>> fetchCandles(const trtdata::InstIdentifier&, trttrade::CandleTimeframe timeframe, trtdata::TradingDataTimeZone timeZone, int limit) const override
     {
         timeZones.push_back(timeZone);
-        std::shared_ptr<QPromise<std::vector<trtdata::CandleData>>> promise = std::make_shared<QPromise<std::vector<trtdata::CandleData>>>();
+        timeframes.push_back(timeframe);
+        std::shared_ptr<QPromise<std::vector<trttrade::CandleData>>> promise = std::make_shared<QPromise<std::vector<trttrade::CandleData>>>();
         promise->start();
         requests.push_back(promise);
         limits.push_back(limit);
@@ -127,7 +129,7 @@ public:
 class TestInstrument final : public trtdata::Instrument
 {
 public:
-    TestInstrument() : Instrument("BTC-USDT-SWAP", trtdata::InstType::Swap, trtdata::Exchange::OKX) {}
+    TestInstrument() : Instrument("BTC-USDT-SWAP", trttrade::InstType::Swap, trtdata::Exchange::OKX) {}
     QFuture<trtdata::TickerData> requestTicker() override { return {}; }
     std::string getInstTypeStr() const override { return "SWAP"; }
 };
@@ -149,7 +151,7 @@ void CandleTests::run()
     const trtdata::InstIdentifier identifier = instruments.front()->getUniqueIdentifier();
     const qint64 dayMs = 86400000;
     const qint64 today = QDateTime::currentMSecsSinceEpoch() / dayMs * dayMs;
-    std::vector<trtdata::CandleData> history;
+    std::vector<trttrade::CandleData> history;
     for (int index = 0; index < 300; index++)
         history.push_back({today - (300 - index) * dayMs, 100, 120, 90, 110, 2, 3, 4, true});
 
@@ -210,6 +212,22 @@ void CandleTests::run()
     require(manager.getDailyCandle(identifier)->open == 200, "Old time zone request overwrote new daily open");
     const std::optional<double> utc8Change = manager.getDailyChangePercent(identifier, 220);
     require(utc8Change && *utc8Change == 10, "New time zone daily change is incorrect");
+    const trttrade::CandleTimeframe day = trttrade::CandleTimeframe::Day1;
+    require(manager.getCandle(identifier, day, utc8Today)->open == 200, "Exact lookup failed");
+    require(!manager.getCandle(identifier, day, utc8Today + 1), "Exact lookup returned a neighboring bar");
+    require(manager.getCandles(identifier, day, utc8Today, utc8Today + 1).size() == 1, "Range lookup failed");
+    require(manager.getCandles(identifier, day, utc8Today - 1, utc8Today).empty(), "Range end must be exclusive");
+    require(manager.getLatestCandles(identifier, day, 0).empty(), "Zero count must return no bars");
+    require(manager.getLatestCandles(identifier, day, 1000).size() == 1, "Latest count was not clamped");
+    require(manager.getCandleMap(identifier, day).at(utc8Today).open == 200, "Map export failed");
+    manager.subscribe(identifier, trttrade::CandleTimeframe::Minute1);
+    waitFor([this] { return requests.size() == 8; });
+    require(timeframes.back() == trttrade::CandleTimeframe::Minute1, "Timeframe was not passed to exchange API");
+    complete(7, {{utc8Today, 10, 12, 9, 11, 2, 3, 4, false}});
+    waitFor([&manager, &identifier] { return !manager.getCandles(identifier, trttrade::CandleTimeframe::Minute1).empty(); });
+    require(manager.getCandle(identifier, day, utc8Today)->open == 200, "Timeframes contaminated each other");
+    manager.unsubscribe(identifier, trttrade::CandleTimeframe::Minute1);
+    require(manager.getCandles(identifier, trttrade::CandleTimeframe::Minute1).empty(), "Unsubscribe retained series");
     manager.stop();
 }
 

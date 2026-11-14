@@ -10,6 +10,7 @@
 #include <memory>
 #include <span>
 #include <vector>
+#include "main/trade/CandleTimeframe.h"
 
 namespace trtcore
 {
@@ -22,6 +23,16 @@ namespace trtcore
 
     class CandlesManager final : public QObject
     {
+    public:
+        using CandleMap = std::map<std::int64_t, trttrade::CandleData>;
+        struct SeriesKey
+        {
+            trtdata::InstIdentifier instrument;
+            trttrade::CandleTimeframe timeframe = trttrade::CandleTimeframe::Day1;
+            std::strong_ordering operator<=>(const SeriesKey&) const = default;
+        };
+
+    private:
         struct Subscription
         {
             CandleSnapshot snapshot;
@@ -29,12 +40,12 @@ namespace trtcore
             qint64 nextRequest = 0;
         };
 
-        std::map<trtdata::InstIdentifier, Subscription> subscriptions;
+        std::map<SeriesKey, Subscription> subscriptions;
         QTimer requestTimer;
         trtdata::TradingDataTimeZone timeZone = trtdata::TradingDataTimeZone::UTC;
 
         void fetchNext();
-        void fetchCandles(const trtdata::InstIdentifier& identifier, Subscription& subscription);
+        void fetchCandles(const SeriesKey& key, Subscription& subscription);
         void mergeCandles(Subscription& subscription, const std::vector<trttrade::CandleData>& candles);
         void cancelRequest(Subscription& subscription);
 
@@ -42,9 +53,18 @@ namespace trtcore
         CandlesManager();
         void setInstruments(std::span<const std::shared_ptr<trtdata::Instrument>> instruments);
         void stop();
+        void subscribe(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe);
+        void unsubscribe(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe);
+
+        // Cache-only queries. Use on the manager thread; views expire on updates, removal or time-zone changes.
+        const trttrade::CandleData* getCandle(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe, std::int64_t timestamp) const;
+        std::span<const trttrade::CandleData> getCandles(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe) const;
+        std::span<const trttrade::CandleData> getCandles(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe, std::int64_t from, std::int64_t to) const;
+        std::span<const trttrade::CandleData> getLatestCandles(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe, std::size_t count) const;
+        CandleMap getCandleMap(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe) const;
         void setTimeZone(trtdata::TradingDataTimeZone value);
         trtdata::TradingDataTimeZone getTimeZone() const;
-        const CandleSnapshot* getSnapshot(const trtdata::InstIdentifier& identifier) const;
+        const CandleSnapshot* getSnapshot(const trtdata::InstIdentifier& identifier, trttrade::CandleTimeframe timeframe = trttrade::CandleTimeframe::Day1) const;
         const trttrade::CandleData* getDailyCandle(const trtdata::InstIdentifier& identifier) const;
         std::optional<double> getDailyChangePercent(const trtdata::InstIdentifier& identifier, double latestPrice) const;
     };

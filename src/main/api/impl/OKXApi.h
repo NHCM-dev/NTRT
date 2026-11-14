@@ -44,7 +44,7 @@ namespace trtdata::okx
 
         std::vector<trttrade::InstType> instrumentTypes() const override;
         std::unique_ptr<trtcore::TickerStream> createTickerStream() const override;
-        QFuture<std::vector<trttrade::CandleData>> fetchDailyCandles(const InstIdentifier& identifier, TradingDataTimeZone timeZone, int limit) const override;
+        QFuture<std::vector<trttrade::CandleData>> fetchCandles(const InstIdentifier& identifier, trttrade::CandleTimeframe timeframe, TradingDataTimeZone timeZone, int limit) const override;
         QFuture<std::shared_ptr<std::vector<TickerData>>> fetchTickers(trttrade::InstType type) const override;
         QFuture<std::vector<std::shared_ptr<Instrument>>> fetchInstruments(trttrade::InstType type) const override;
         std::shared_ptr<Instrument> createInstrument(const std::string& id, trttrade::InstType type) const override;
