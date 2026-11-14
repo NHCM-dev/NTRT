@@ -28,6 +28,11 @@ namespace trtdata::okx
         {"instId"}
     };
 
+    const trtnet::RestAPITemplate CANDLES{
+        trtnet::HTTPMethod::GET, QUrl{"https://www.okx.com"}, "/api/v5/market/candles",
+        {"instId"}, {"bar", "limit"}
+    };
+
     class OKXApi final : public trtcore::AbstractApi
     {
     public:
@@ -39,6 +44,7 @@ namespace trtdata::okx
 
         std::vector<InstType> instrumentTypes() const override;
         std::unique_ptr<trtcore::TickerStream> createTickerStream() const override;
+        QFuture<std::vector<CandleData>> fetchDailyCandles(const InstIdentifier& identifier, TradingDataTimeZone timeZone, int limit) const override;
         QFuture<std::shared_ptr<std::vector<TickerData>>> fetchTickers(InstType type) const override;
         QFuture<std::vector<std::shared_ptr<Instrument>>> fetchInstruments(InstType type) const override;
         std::shared_ptr<Instrument> createInstrument(const std::string& id, InstType type) const override;

@@ -20,6 +20,8 @@
 #include <QVBoxLayout>
 #include <QVariant>
 #include <QColor>
+#include <QLabel>
+#include <QSplitter>
 #include <QMetaType>
 
 #include "main/util/QtUtil.h"
@@ -28,23 +30,6 @@ namespace trtui
 {
     inline const int fullFlashMs = 500;
     inline const int digitHighlightMs = 1000;
-
-    class ExchangeColumnDelegate final : public QStyledItemDelegate
-    {
-    public:
-        explicit ExchangeColumnDelegate(QObject* parent) : QStyledItemDelegate(parent) {}
-
-        void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override
-        {
-            QStyledItemDelegate::paint(painter, option, index);
-            const QStyle* style = option.widget ? option.widget->style() : QApplication::style();
-            const int gridColor = style->styleHint(QStyle::SH_Table_GridLineColor, &option, option.widget);
-            painter->save();
-            painter->setPen(QColor::fromRgb(static_cast<QRgb>(gridColor)));
-            painter->drawLine(option.rect.topLeft(), option.rect.bottomLeft());
-            painter->restore();
-        }
-    };
 
     class PriceDelegate final : public QStyledItemDelegate
     {
@@ -150,7 +135,27 @@ namespace trtui
         page->setBackgroundRole(QPalette::Base);
         page->setAutoFillBackground(true);
 
-        QVBoxLayout* layout = new QVBoxLayout(page);
+        QHBoxLayout* layout = new QHBoxLayout(page);
+        layout->setContentsMargins(0, 0, 0, 0);
+        QSplitter* splitter = new QSplitter(Qt::Horizontal, page);
+        splitter->setChildrenCollapsible(false);
+        layout->addWidget(splitter);
+
+        QFrame* instruments = new QFrame(splitter);
+        QVBoxLayout* instrumentLayout = new QVBoxLayout(instruments);
+        initFilters(instruments, instrumentLayout);
+        initTable(instruments, instrumentLayout);
+        initActions(instruments, instrumentLayout);
+        QFrame* chart = new QFrame(splitter);
+        initChartPlaceholder(chart);
+        splitter->setStretchFactor(0, 0);
+        splitter->setStretchFactor(1, 1);
+        splitter->setSizes({520, 800});
+        return page;
+    }
+
+    void MarketPage::initFilters(QFrame* page, QVBoxLayout* layout)
+    {
         QHBoxLayout* filters = new QHBoxLayout;
         search = new QLineEdit(page);
         search->setPlaceholderText("Search instruments");
@@ -163,33 +168,43 @@ namespace trtui
         filters->addWidget(typeFilter);
         layout->addLayout(filters);
 
-        table = trtutils::createHeaderTable(page, {"Exchange", "Type", "Instrument", "Last Price", "24H Volume", "24H Change"});
-        table->setItemDelegateForColumn(0, new ExchangeColumnDelegate(table));
-        table->setItemDelegateForColumn(3, new PriceDelegate(table));
+        QObject::connect(search, &QLineEdit::textChanged, page, [this] { update(); });
+        QObject::connect(typeFilter, &QComboBox::currentIndexChanged, page, [this] { update(); });
+    }
+
+    void MarketPage::initTable(QFrame* page, QVBoxLayout* layout)
+    {
+        table = trtutils::createHeaderTable(page, {"Exchange", "Type", "Icon", "Instrument", "Last Price", "Day Volume", "Day Change"});
+        table->setItemDelegateForColumn(4, new PriceDelegate(table));
 
         QHeaderView* header = table->horizontalHeader();
         header->setSectionResizeMode(0, QHeaderView::Interactive);
-        header->setSectionResizeMode(3, QHeaderView::Interactive);
         header->setSectionResizeMode(4, QHeaderView::Interactive);
         header->setSectionResizeMode(5, QHeaderView::Interactive);
+        header->setSectionResizeMode(6, QHeaderView::Interactive);
         header->setSectionResizeMode(1, QHeaderView::Fixed);
 
-        header->setMinimumSectionSize(100);
-        header->setSectionResizeMode(2, QHeaderView::Stretch);
+        header->setMinimumSectionSize(32);
+        header->setSectionResizeMode(2, QHeaderView::Fixed);
+        header->setSectionResizeMode(3, QHeaderView::Stretch);
         table->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
 
-        table->setColumnWidth(0, 100);
+        table->setColumnWidth(0, 72);
         table->setColumnWidth(1, 100);
-        table->setColumnWidth(3, 110);
-        table->setColumnWidth(4, 130);
-        table->setColumnWidth(5, 100);
+        table->setColumnWidth(4, 70);
+        table->setColumnWidth(5, 130);
+        table->setColumnWidth(6, 50);
+        table->setColumnWidth(2, 48);
         table->verticalHeader()->hide();
         updateColumnVisibility();
         table->setEditTriggers(QAbstractItemView::NoEditTriggers);
         table->setSelectionMode(QAbstractItemView::NoSelection);
         table->setFocusPolicy(Qt::NoFocus);
         layout->addWidget(table, 1);
+    }
 
+    void MarketPage::initActions(QFrame* page, QVBoxLayout* layout)
+    {
         QHBoxLayout* actions = new QHBoxLayout;
         actions->addStretch();
         QPushButton* manageButton = new QPushButton("Manage", page);
@@ -198,8 +213,6 @@ namespace trtui
         actions->addWidget(addButton);
         layout->addLayout(actions);
 
-        QObject::connect(search, &QLineEdit::textChanged, page, [this] { update(); });
-        QObject::connect(typeFilter, &QComboBox::currentIndexChanged, page, [this] { update(); });
         QObject::connect(addButton, &QPushButton::clicked, page, [this, page]
         {
             InstrumentDialog dialog(InstrumentDialog::Mode::Add, page);
@@ -213,7 +226,18 @@ namespace trtui
                 update();
         });
 
-        return page;
+    }
+
+    void MarketPage::initChartPlaceholder(QFrame* page)
+    {
+        page->setMinimumWidth(200);
+        QVBoxLayout* layout = new QVBoxLayout(page);
+        QLabel* title = new QLabel("Chart", page);
+        layout->addWidget(title);
+        QLabel* placeholder = new QLabel("Chart coming soon", page);
+        placeholder->setAlignment(Qt::AlignCenter);
+        placeholder->setForegroundRole(QPalette::PlaceholderText);
+        layout->addWidget(placeholder, 1);
     }
 
     void MarketPage::updateColumnVisibility()
@@ -221,13 +245,13 @@ namespace trtui
         const trtdata::MarketColumnVisibility& columns = ntrt::configManager->getAppearanceManager()->getMarketColumns();
         table->setColumnHidden(0, !columns.exchange);
         table->setColumnHidden(1, !columns.type);
-        table->setColumnHidden(4, !columns.volume24h);
+        table->setColumnHidden(5, !columns.volume24h);
 
         const QHeaderView* header = table->horizontalHeader();
-        int minimumWidth = header->minimumSectionSize() + table->verticalScrollBar()->sizeHint().width();
+        int minimumWidth = 120 + table->verticalScrollBar()->sizeHint().width();
         for (int column = 0; column < header->count(); column++)
         {
-            if (!header->isSectionHidden(column) && column != 2)
+            if (!header->isSectionHidden(column) && column != 3)
                 minimumWidth += header->sectionSize(column);
         }
         table->setMinimumWidth(minimumWidth + 2 * table->frameWidth());
@@ -238,6 +262,10 @@ namespace trtui
         updateColumnVisibility();
         const std::span<const std::shared_ptr<trtdata::Instrument>> instruments = ntrt::configManager->getInstruments();
         const trtcore::MarketData& marketData = ntrt::dataMonitor->getMarketData();
+        const trtcore::CandlesManager& candles = ntrt::dataMonitor->getCandlesManager();
+        const QString timeZone = QString::fromUtf8(trtdata::tradingDataTimeZoneName(candles.getTimeZone()));
+        table->horizontalHeaderItem(5)->setToolTip("Today's daily-candle volume; day starts at 00:00 " + timeZone + ".");
+        table->horizontalHeaderItem(6)->setToolTip("(Latest price - daily open) / daily open; day starts at 00:00 " + timeZone + ".");
         const QString query = search->text().trimmed();
         const int filter = typeFilter->currentData().toInt();
         const QLocale locale(QLocale::English);
@@ -255,57 +283,78 @@ namespace trtui
                 table->insertRow(row);
             table->setItem(row, 0, new QTableWidgetItem(exchange));
             table->setItem(row, 1, new QTableWidgetItem(QString::fromUtf8(trtdata::instrumentTypeName(instrument->instType))));
-            table->setItem(row, 2, new QTableWidgetItem(symbol));
-
-            const trtcore::MarketSnapshot* snapshot = marketData.getSnapshot(instrument->getUniqueIdentifier());
-            if (!snapshot || !snapshot->ticker)
+            QLabel* icon = static_cast<QLabel*>(table->cellWidget(row, 2));
+            if (!icon)
             {
-                QTableWidgetItem* status = new QTableWidgetItem("No data");
-                if (snapshot && !snapshot->error.isEmpty())
-                {
-                    status->setText("Market feed unavailable");
-                    status->setToolTip(snapshot->error);
-                }
-                table->setItem(row, 3, status);
-                table->setItem(row, 4, new QTableWidgetItem("-"));
-                QTableWidgetItem* change = new QTableWidgetItem("-");
-                change->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
-                table->setItem(row, 5, change);
-                row++;
-                continue;
+                icon = new QLabel(table);
+                icon->setObjectName("instrumentIcon");
+                icon->setAlignment(Qt::AlignCenter);
+                table->setCellWidget(row, 2, icon);
             }
+            icon->setPixmap(ntrt::dataMonitor->getInstrumentIconManager().getIcon(symbol).pixmap(QSize(20, 20)));
+            icon->setToolTip(symbol);
+            table->setItem(row, 3, new QTableWidgetItem(symbol));
 
-            const trtdata::TickerData& data = *snapshot->ticker;
-            const QString price = data.last >= 1 ? locale.toString(data.last, 'f', 2) : locale.toString(data.last, 'g', 4);
-            QTableWidgetItem* priceItem = new QTableWidgetItem(price);
-            PriceDelegate::setMovement(priceItem, *snapshot, table->palette(), flashEnabled);
-            if (!snapshot->error.isEmpty())
-                priceItem->setToolTip("Last successful quote: " + snapshot->error);
-            table->setItem(row, 3, priceItem);
-
-            const QString instId = QString::fromStdString(data.instId);
-            const bool spot = data.instType == trtdata::InstType::Spot || data.instType == trtdata::InstType::Margin;
-            const double baseVol = spot ? data.vol24h : data.volCcy24h;
-            const double quoteVol = spot ? data.volCcy24h : data.volCcy24h * data.last;
-            QTableWidgetItem* volume = new QTableWidgetItem(locale.toString(baseVol, 'f', 2) + " " + instId.section('-', 0, 0));
-            volume->setToolTip(locale.toString(quoteVol, 'f', 2) + " " + instId.section('-', 1, 1));
-            table->setItem(row, 4, volume);
-
-            QTableWidgetItem* change = new QTableWidgetItem("N/A");
-            if (data.open24h != 0)
+            const trtdata::InstIdentifier& identifier = instrument->getUniqueIdentifier();
+            const trtcore::MarketSnapshot* snapshot = marketData.getSnapshot(identifier);
+            QTableWidgetItem* priceItem = new QTableWidgetItem("No data");
+            if (snapshot && snapshot->ticker)
             {
-                const double percent = (data.last - data.open24h) / data.open24h * 100.0;
-                const QString text = QString::number(percent, 'f', 2);
-                if (text == "0.00" || text == "-0.00")
-                    change->setText("0.00%");
-                else
-                {
-                    change->setText((percent > 0 ? "+" : "") + text + "%");
-                    change->setForeground(percent >= 0 ? QColor(0x15803d) : QColor(0xb91c1c));
-                }
-                change->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+                const trtdata::TickerData& data = *snapshot->ticker;
+                priceItem->setText(data.last >= 1 ? locale.toString(data.last, 'f', 2) : locale.toString(data.last, 'g', 4));
+                PriceDelegate::setMovement(priceItem, *snapshot, table->palette(), flashEnabled);
             }
-            table->setItem(row, 5, change);
+            if (snapshot && !snapshot->error.isEmpty())
+                priceItem->setToolTip("Market feed: " + snapshot->error);
+            table->setItem(row, 4, priceItem);
+
+            const trtdata::CandleData* daily = candles.getDailyCandle(identifier);
+            const trtcore::CandleSnapshot* candleSnapshot = candles.getSnapshot(identifier);
+            QTableWidgetItem* volume = new QTableWidgetItem("-");
+            QTableWidgetItem* change = new QTableWidgetItem("-");
+            change->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+            if (daily)
+            {
+                double baseVolume = 0;
+                switch (instrument->instType)
+                {
+                case trtdata::InstType::Spot:
+                case trtdata::InstType::Margin:
+                    baseVolume = daily->volume;
+                    break;
+                case trtdata::InstType::Swap:
+                case trtdata::InstType::Futures:
+                case trtdata::InstType::Option:
+                case trtdata::InstType::Events:
+                    baseVolume = daily->volumeCurrency;
+                    break;
+                }
+                volume->setText(locale.toString(baseVolume, 'f', 2) + " " + symbol.section('-', 0, 0));
+                volume->setToolTip(locale.toString(daily->volumeQuote, 'f', 2) + " " + symbol.section('-', 1, 1));
+                const std::optional<double> dailyChange = snapshot && snapshot->ticker ?
+                    candles.getDailyChangePercent(identifier, snapshot->ticker->last) : std::nullopt;
+                if (dailyChange)
+                {
+                    const double percent = *dailyChange;
+                    const QString text = QString::number(percent, 'f', 2);
+                    if (text == "0.00" || text == "-0.00")
+                        change->setText("0.00%");
+                    else
+                    {
+                        change->setText((percent > 0 ? "+" : "") + text + "%");
+                        const bool dark = table->palette().color(QPalette::Base).lightness() < 128;
+                        change->setForeground(percent > 0 ? QColor(dark ? 0x4ade80 : 0x15803d) : QColor(dark ? 0xfb7185 : 0xb91c1c));
+                    }
+                }
+            }
+            if (candleSnapshot && !candleSnapshot->error.isEmpty())
+            {
+                const QString error = "Daily candles: " + candleSnapshot->error;
+                volume->setToolTip(volume->toolTip() + "\n" + error);
+                change->setToolTip(error);
+            }
+            table->setItem(row, 5, volume);
+            table->setItem(row, 6, change);
             row++;
         }
         table->setRowCount(row);

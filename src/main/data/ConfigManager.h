@@ -10,6 +10,7 @@
 #include <QObject>
 
 #include "AppearanceManager.h"
+#include "TradingDataConfig.h"
 #include "main/util/FileUtil.h"
 #include "market/abstract/Instrument.h"
 
@@ -19,6 +20,7 @@ namespace trtdata
     {
         std::string fileName;
         std::vector<std::shared_ptr<Instrument>> instruments;
+        TradingDataConfig tradingData;
     };
 
     struct ExchangeConfig
@@ -93,11 +95,14 @@ namespace trtdata
         void setExchange(Exchange exchange);
 
         AppearanceManager* getAppearanceManager();
+        TradingDataTimeZone getTradingDataTimeZone() const;
+        bool setTradingDataTimeZone(TradingDataTimeZone timeZone);
 
         int instrumentsCount();
 
     signals:
         void instrumentsChanged();
+        void tradingDataChanged();
     };
 } // trtdata
 

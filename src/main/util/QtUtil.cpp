@@ -7,6 +7,8 @@
 #include <QHeaderView>
 #include <QProxyStyle>
 #include <QStyleOption>
+#include <QPainter>
+#include <algorithm>
 
 namespace trtutils
 {
@@ -23,9 +25,31 @@ namespace trtutils
         }
     };
 
+    class HeaderTable final : public QTableWidget
+    {
+    public:
+        explicit HeaderTable(QWidget* parent) : QTableWidget(parent) {}
+
+    protected:
+        void paintEvent(QPaintEvent* event) override
+        {
+            QTableWidget::paintEvent(event);
+            if (!showGrid() || rowCount() == 0 || columnCount() == 0)
+                return;
+
+            QStyleOptionViewItem option;
+            option.initFrom(this);
+            const int gridColor = style()->styleHint(QStyle::SH_Table_GridLineColor, &option, this);
+            QPainter painter(viewport());
+            painter.setPen(QColor::fromRgb(static_cast<QRgb>(gridColor)));
+            const int bottom = std::min(viewport()->height() - 1, rowViewportPosition(rowCount() - 1) + rowHeight(rowCount() - 1) - 1);
+            painter.drawLine(0, 0, 0, bottom);
+        }
+    };
+
     QTableWidget* createHeaderTable(QWidget* parent, QStringList headers)
     {
-        QTableWidget* table = new QTableWidget(parent);
+        QTableWidget* table = new HeaderTable(parent);
         TableStyle* style = new TableStyle;
         style->setParent(table);
         table->setStyle(style);

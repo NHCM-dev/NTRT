@@ -5,6 +5,10 @@
 #include "OKXParser.h"
 #include <simdjson.h>
 #include <stdexcept>
+#include <algorithm>
+#include <array>
+#include <charconv>
+#include <cmath>
 
 #include "main/util/JsonUtil.h"
 
@@ -70,6 +74,55 @@ namespace trtdata::OKXParser
             .vol24h = readNumber<double>(json, "vol24h"),
             .ts = readNumber<std::int64_t>(json, "ts"),
         };
+    }
+
+    std::vector<CandleData> parseCandles(const QByteArray& json)
+    {
+        const elementResult response = parseElement(json);
+        ensureSuccess(response);
+        const jsonArray rows = getDataField(response);
+        std::vector<CandleData> candles;
+        candles.reserve(rows.size());
+        for (const jsonElement row : rows)
+        {
+            const jsonArray fields = row.get_array().value();
+            if (fields.size() != 9)
+                throw std::runtime_error("Invalid OKX candle field count");
+
+            std::array<std::string_view, 9> values;
+            std::size_t index = 0;
+            for (const jsonElement field : fields)
+                values[index++] = field.get_string().value();
+
+            CandleData candle;
+            const std::from_chars_result timestamp = std::from_chars(values[0].data(), values[0].data() + values[0].size(), candle.ts);
+            if (timestamp.ec != std::errc{} || timestamp.ptr != values[0].data() + values[0].size() || candle.ts < 0)
+                throw std::runtime_error("Invalid OKX candle timestamp");
+
+            const std::array<double*, 7> numbers{&candle.open, &candle.high, &candle.low, &candle.close,
+                                                &candle.volume, &candle.volumeCurrency, &candle.volumeQuote};
+            for (std::size_t number = 0; number < numbers.size(); number++)
+            {
+                const std::string_view value = values[number + 1];
+                const std::from_chars_result parsed = std::from_chars(value.data(), value.data() + value.size(), *numbers[number]);
+                if (parsed.ec != std::errc{} || parsed.ptr != value.data() + value.size() || !std::isfinite(*numbers[number]) || *numbers[number] < 0)
+                    throw std::runtime_error("Invalid OKX candle number");
+            }
+            if (values[8] != "0" && values[8] != "1")
+                throw std::runtime_error("Invalid OKX candle confirmation");
+            if (candle.low > candle.high || candle.open < candle.low || candle.open > candle.high ||
+                candle.close < candle.low || candle.close > candle.high)
+                throw std::runtime_error("Invalid OKX candle price range");
+            candle.confirmed = values[8] == "1";
+            candles.push_back(candle);
+        }
+        std::sort(candles.begin(), candles.end(), [](const CandleData& left, const CandleData& right) { return left.ts < right.ts; });
+        for (std::size_t index = 1; index < candles.size(); index++)
+        {
+            if (candles[index - 1].ts == candles[index].ts)
+                throw std::runtime_error("Duplicate OKX candle timestamp");
+        }
+        return candles;
     }
 
     const TickerData parseTicker(const QByteArray& json)

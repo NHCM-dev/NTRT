@@ -21,10 +21,12 @@ namespace trtui
     enum class Navigation : int
     {
         Market = 1,
-        Trade = 2,
-        Account = 3,
-        Research = 4,
-        Settings = 5
+        Data = 2,
+        Trade = 3,
+        Account = 4,
+        Research = 5,
+        AI = 6,
+        Settings = 7
     };
 
     class MainWindow final : public QMainWindow

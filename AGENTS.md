@@ -14,9 +14,22 @@
 
 ## Class Responsibilities and Interfaces
 
+- Use object-oriented design. Encapsulate related state and behavior in the owning class and keep responsibilities and interfaces focused.
 - Read the existing owner class and its callers before adding a feature. Put state and operations on the class that owns them. Use private member methods for work that uses that class's state.
 - Use `ntrt::` for shared application objects and application-wide actions, following `ntrt::configManager`, `ntrt::dataMonitor`, and `ntrt::quitApp()`. Keep feature state and logic inside the owning classes.
 - Use a `Manager` for state and its lifecycle, such as loading, saving, and updating settings in `ConfigManager` and `AppearanceManager`. Let the manager own its subcomponents and expose them through focused accessors such as `ConfigManager::getAppearanceManager()`.
 - Keep monitoring and scheduling in `DataMonitor`. Follow its `start()`, `stop()`, and `getMarketData()` interface. Keep fetching, caching, and snapshot lookup in `MarketData`.
+- Integrate real-time data through the background `DataMonitor` and keep live data in memory in its owned data components. Store data that can be persisted under the `app` directory, with persistence handled by the owning data component or manager.
+- Keep UI classes responsible for reading data and displaying it. Do not perform API calls, collect data, or own data-fetching and monitoring logic in the UI; access data through the owning backend interfaces.
 - Use a `Client` for a live network connection and its lifecycle. Keep endpoint or channel definitions separate, following `RequestTemplate` for addresses and parameter rules. Put exchange-specific messages, parsing, and protocol behavior in the exchange implementation behind a common interface, following `AbstractApi` and `OKXApi`.
 - Keep mutable members private. Use `getX() const` for reads, `isX()` for boolean state, and `setX(...)` for setting a value. Return a read-only reference or view when callers only need to inspect owned state. Use named operations such as `addInstrument()`, `removeInstrument()`, and `moveInstrument()` for changes with their own meaning.
+
+## UI Layout
+
+- Keep the navigation bar on the left and a content `QFrame` on the right. Place and render all page content inside that right-hand `QFrame`.
+
+## Git Commits
+
+- When asked to stage and commit, inspect the working tree, staged changes, and recent commit messages first. Stage all files belonging to the requested work, including new files and deletions, while keeping unrelated changes out of the commit.
+- Match the existing commit style: a short, lowercase English subject describing the concrete change, following messages such as `added flash on price change`, `fix missing file`, and `basic settings page impl`. Do not add Conventional Commits prefixes unless the repository starts using them or the user requests them.
+- Run relevant checks before committing and report any checks blocked by the environment accurately. Inspect the final staged diff, commit the requested changes, then verify the resulting commit and working tree. Report the commit hash and subject. Do not push unless requested.

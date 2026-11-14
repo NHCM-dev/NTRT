@@ -53,6 +53,26 @@ namespace trtdata::okx
         return requestTickers(type);
     }
 
+    QFuture<std::vector<CandleData>> OKXApi::fetchDailyCandles(const InstIdentifier& identifier, TradingDataTimeZone timeZone, int limit) const
+    {
+        QUrlQuery query;
+        query.addQueryItem("instId", QString::fromStdString(identifier.id));
+        switch (timeZone)
+        {
+        case TradingDataTimeZone::UTC:
+            query.addQueryItem("bar", "1Dutc");
+            break;
+        case TradingDataTimeZone::UTC8:
+            query.addQueryItem("bar", "1D");
+            break;
+        }
+        query.addQueryItem("limit", QString::number(limit));
+        return trtnet::replyToFuture(CANDLES.request(query), [](const QByteArray& body)
+        {
+            return OKXParser::parseCandles(body);
+        });
+    }
+
     QFuture<std::vector<std::shared_ptr<Instrument>>> OKXApi::fetchInstruments(InstType type) const
     {
         QUrlQuery query;

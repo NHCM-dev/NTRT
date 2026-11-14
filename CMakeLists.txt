@@ -17,6 +17,8 @@ qt_add_executable(NTRT
         src/main/NTRT.h
         src/main/ui/MainWindow.cpp
         src/main/ui/MainWindow.h
+        src/main/monitor/InstrumentIconManager.cpp
+        src/main/monitor/InstrumentIconManager.h
         src/main/util/FileUtil.h
         src/main/util/FileUtil.cpp
         src/main/Ver.h
@@ -50,6 +52,9 @@ qt_add_executable(NTRT
         src/main/monitor/MarketData.h
         src/main/monitor/DataMonitor.cpp
         src/main/monitor/DataMonitor.h
+        src/main/monitor/CandlesManager.cpp
+        src/main/monitor/CandlesManager.h
+        src/main/data/market/CandleData.h
         src/main/util/StdUtil.cpp
         src/main/util/StdUtil.h
         src/main/data/api/AbstractApi.cpp
@@ -62,6 +67,7 @@ qt_add_executable(NTRT
         src/main/ui/pages/SettingPage.h
         src/main/data/AppearanceManager.cpp
         src/main/data/AppearanceManager.h
+        src/main/data/TradingDataConfig.h
 )
 target_include_directories(NTRT PRIVATE src)
 target_link_libraries(NTRT PRIVATE Qt6::Widgets Qt6::Network Qt6::WebSockets simdjson::simdjson)
@@ -132,4 +138,23 @@ if(MSVC)
     target_compile_options(NTRT PRIVATE /W4 /utf-8 /Zc:__cplusplus)
 else()
     target_compile_options(NTRT PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+option(NTRT_BUILD_TESTS "Build candle data and settings tests" OFF)
+if(NTRT_BUILD_TESTS)
+    enable_testing()
+    qt_add_executable(NTRTCandlesTests
+        tests/CandlesTests.cpp
+        src/main/monitor/CandlesManager.cpp
+        src/main/data/parser/OKXParser.cpp
+        src/main/data/AppearanceManager.cpp
+        src/main/data/ConfigManager.cpp
+        src/main/util/JsonUtil.cpp
+        src/main/util/FileUtil.cpp)
+    target_include_directories(NTRTCandlesTests PRIVATE src)
+    target_link_libraries(NTRTCandlesTests PRIVATE Qt6::Widgets Qt6::Network simdjson::simdjson)
+    if(TARGET ntrt_runtime)
+        add_dependencies(NTRTCandlesTests ntrt_runtime)
+    endif()
+    add_test(NAME candles COMMAND NTRTCandlesTests)
 endif()

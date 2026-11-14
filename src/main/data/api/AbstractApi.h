@@ -7,6 +7,8 @@
 
 #include "main/data/market/abstract/Instrument.h"
 #include "TickerStream.h"
+#include "main/data/market/CandleData.h"
+#include "main/data/TradingDataConfig.h"
 #include <memory>
 #include <vector>
 
@@ -20,6 +22,7 @@ namespace trtcore
         virtual int getRequestInterval() const = 0;
         virtual std::vector<trtdata::InstType> instrumentTypes() const = 0;
         virtual std::unique_ptr<TickerStream> createTickerStream() const = 0;
+        virtual QFuture<std::vector<trtdata::CandleData>> fetchDailyCandles(const trtdata::InstIdentifier& identifier, trtdata::TradingDataTimeZone timeZone, int limit) const = 0;
         virtual QFuture<std::shared_ptr<std::vector<trtdata::TickerData>>> fetchTickers(trtdata::InstType type) const = 0;
         virtual QFuture<std::vector<std::shared_ptr<trtdata::Instrument>>> fetchInstruments(trtdata::InstType type) const = 0;
         virtual std::shared_ptr<trtdata::Instrument> createInstrument(const std::string& id, trtdata::InstType type) const = 0;

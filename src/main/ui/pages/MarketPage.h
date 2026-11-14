@@ -10,6 +10,7 @@
 
 class QComboBox;
 class QLineEdit;
+class QVBoxLayout;
 
 namespace trtui
 {
@@ -19,6 +20,10 @@ namespace trtui
         QLineEdit* search = nullptr;
         QComboBox* typeFilter = nullptr;
 
+        void initFilters(QFrame* page, QVBoxLayout* layout);
+        void initTable(QFrame* page, QVBoxLayout* layout);
+        void initActions(QFrame* page, QVBoxLayout* layout);
+        void initChartPlaceholder(QFrame* page);
         void updateColumnVisibility();
 
     public:

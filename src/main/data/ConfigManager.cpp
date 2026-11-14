@@ -85,6 +85,17 @@ namespace trtdata
         {
             const elementResult config = parseElement(bytes);
             MarketConfig loaded;
+            const elementResult tradingData = config["tradingData"];
+            if (tradingData.error() != simdjson::NO_SUCH_FIELD)
+            {
+                const std::string_view timeZone = readString(tradingData, "timeZone");
+                if (timeZone == "UTC")
+                    loaded.tradingData.timeZone = TradingDataTimeZone::UTC;
+                else if (timeZone == "UTC+8")
+                    loaded.tradingData.timeZone = TradingDataTimeZone::UTC8;
+                else
+                    return false;
+            }
             for (const jsonElement entry : readArray(config, "instruments"))
             {
                 const std::string id(readString(entry, "instId"));
@@ -99,6 +110,7 @@ namespace trtdata
             return false;
         }
         emit instrumentsChanged();
+        emit tradingDataChanged();
         return true;
     }
 
@@ -153,6 +165,12 @@ namespace trtdata
             return false;
         }
         builder.end_array();
+        builder.append_comma();
+        builder.escape_and_append_with_quotes("tradingData");
+        builder.append_colon();
+        builder.start_object();
+        builder.append_key_value("timeZone", tradingDataTimeZoneName(marketConfig.tradingData.timeZone));
+        builder.end_object();
         builder.end_object();
         return writeJsonFile(path, builder.view());
     }
@@ -284,5 +302,33 @@ namespace trtdata
     int ConfigManager::instrumentsCount()
     {
         return marketConfig.instruments.size();
+    }
+
+    TradingDataTimeZone ConfigManager::getTradingDataTimeZone() const
+    {
+        return marketConfig.tradingData.timeZone;
+    }
+
+    bool ConfigManager::setTradingDataTimeZone(TradingDataTimeZone timeZone)
+    {
+        switch (timeZone)
+        {
+        case TradingDataTimeZone::UTC:
+        case TradingDataTimeZone::UTC8:
+            break;
+        default:
+            return false;
+        }
+        const TradingDataTimeZone previous = marketConfig.tradingData.timeZone;
+        if (timeZone == previous)
+            return true;
+        marketConfig.tradingData.timeZone = timeZone;
+        if (!saveMarketConfig())
+        {
+            marketConfig.tradingData.timeZone = previous;
+            return false;
+        }
+        emit tradingDataChanged();
+        return true;
     }
 } // trtdata

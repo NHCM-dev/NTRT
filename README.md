@@ -30,3 +30,17 @@ Distribution files will be available at `./build/release/dist/NTRT`, including t
 required DLLs and resources. This directory is cleared when the Release program is rebuilt.
 
 To explicitly select Visual Studio 2022, use `msvc-release` in both commands. Its output is under `build/msvc-release`. Use a fresh build directory when changing compilers.
+
+## Market data
+
+Market has a resizable instrument list and a reserved chart pane. New settings default to the dark theme with Type and Day Volume hidden; existing saved preferences are preserved.
+
+`DataMonitor` owns ticker feeds, `CandlesManager`, and instrument icons. Daily change uses `(latest ticker price - daily open) / daily open`, and volume uses the daily candle's base and quote currency fields. Settings ¡ú Trading ¡ú Trading data time zone selects midnight UTC (default, OKX `1Dutc`) or UTC+8 (OKX `1D`). Changing the time zone reloads candle history without reusing the previous zone's candles. The choice is saved in `market.json`; older configurations default to UTC. The candle manager keeps up to 300 daily bars per instrument in memory, refreshes about every 10 seconds, and retries failures after 30 seconds while retaining cached data. Icons come from LogoAPI.sh with a letter fallback and a disk cache under `app/cache/instrument-icons`.
+
+To run candle parsing, rollover, subscription lifecycle, cache and settings checks:
+
+```shell
+cmake --preset debug -DNTRT_BUILD_TESTS=ON
+cmake --build --preset debug
+ctest --test-dir build/debug --output-on-failure
+```

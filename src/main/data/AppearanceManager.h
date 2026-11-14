@@ -19,13 +19,13 @@ namespace trtdata
     struct MarketColumnVisibility
     {
         bool exchange = true;
-        bool type = true;
-        bool volume24h = true;
+        bool type = false;
+        bool volume24h = false;
     };
 
     struct AppearanceConfig
     {
-        EnumTheme currentTheme = EnumTheme::Light;
+        EnumTheme currentTheme = EnumTheme::Dark;
         bool priceFlash = true;
         MarketColumnVisibility marketColumns{};
     };

@@ -140,7 +140,24 @@ namespace trtui
 
     void SettingPage::initTradingSection()
     {
-        QVBoxLayout* rows = addSection("Trading", "Market", "price flash color exchange type volume columns");
+        QVBoxLayout* rows = addSection("Trading", "Market", "price flash color exchange type volume columns data time zone timezone UTC");
+        trtdata::ConfigManager& config = *ntrt::configManager;
+        int selectedTimeZone = 0;
+        switch (config.getTradingDataTimeZone())
+        {
+        case trtdata::TradingDataTimeZone::UTC: selectedTimeZone = 0; break;
+        case trtdata::TradingDataTimeZone::UTC8: selectedTimeZone = 1; break;
+        }
+        addDropdown(rows, "Trading data time zone", "Daily open and volume reset at midnight in this time zone. OKX supports UTC and UTC+8.",
+            {"UTC", "UTC+8"}, selectedTimeZone, [&config](int index)
+            {
+                switch (index)
+                {
+                case 0: return config.setTradingDataTimeZone(trtdata::TradingDataTimeZone::UTC);
+                case 1: return config.setTradingDataTimeZone(trtdata::TradingDataTimeZone::UTC8);
+                default: return false;
+                }
+            });
         trtdata::AppearanceManager* appearance = ntrt::configManager->getAppearanceManager();
         addToggle(rows, "Flash on price change", "Flash the latest price and highlight the changed digits.",
             appearance->isPriceFlashEnabled(), [appearance](bool enabled)
@@ -161,7 +178,7 @@ namespace trtui
                 columns.type = enabled;
                 return appearance->setMarketColumns(columns);
             });
-        addToggle(rows, "Show 24H Volume", "Show each instrument's 24-hour trading volume.", appearance->getMarketColumns().volume24h,
+        addToggle(rows, "Show Day Volume", "Show today's candle volume in the trading data time zone.", appearance->getMarketColumns().volume24h,
             [appearance](bool enabled)
             {
                 trtdata::MarketColumnVisibility columns = appearance->getMarketColumns();

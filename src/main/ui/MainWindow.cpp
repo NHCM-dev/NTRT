@@ -99,9 +99,11 @@ namespace trtui
         };
 
         addButton("Market", Navigation::Market);
+        addButton("Data", Navigation::Data);
         addButton("Trade", Navigation::Trade);
         addButton("Account", Navigation::Account);
         addButton("Research", Navigation::Research);
+        addButton("AI", Navigation::AI);
 
         layout->addStretch();
 
