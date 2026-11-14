@@ -20,7 +20,14 @@ namespace trtui
         initDesktop();
         initInstrumentPanel();
         initChartPanel();
-        QTimer::singleShot(0, this, [this] { resetLayout(); });
+        QTimer::singleShot(0, this, [this]
+        {
+            resetLayout();
+            QMdiSubWindow* active = desktop->activeSubWindow();
+            if (active && active->focusWidget())
+                active->focusWidget()->clearFocus();
+            desktop->setActiveSubWindow(nullptr);
+        });
     }
 
     Workspace::~Workspace() = default;
