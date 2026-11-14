@@ -12,74 +12,18 @@ include(cmake/dependencies/EnsureQt.cmake)
 include(cmake/dependencies/EnsureSimdjson.cmake)
 qt_standard_project_setup()
 
-qt_add_executable(NTRT
-        src/main/NTRT.cpp
-        src/main/NTRT.h
-        src/main/ui/MainWindow.cpp
-        src/main/ui/MainWindow.h
-        src/main/ui/Workspace.cpp
-        src/main/ui/Workspace.h
-        src/main/ui/WorkspaceWindow.cpp
-        src/main/ui/WorkspaceWindow.h
-        src/main/ui/panels/ChartPanel.cpp
-        src/main/ui/panels/ChartPanel.h
-        src/main/ui/dialog/SettingsDialog.cpp
-        src/main/ui/dialog/SettingsDialog.h
-        src/main/monitor/InstrumentIconManager.cpp
-        src/main/monitor/InstrumentIconManager.h
-        src/main/util/FileUtil.h
-        src/main/util/FileUtil.cpp
-        src/main/Ver.h
-        src/main/market/abstract/Instrument.h
-        src/main/market/abstract/instimpl/OKXInstrument.cpp
-        src/main/market/abstract/instimpl/OKXInstrument.h
-        src/main/network/RestAPITemplate.cpp
-        src/main/network/RestAPITemplate.h
-        src/main/network/WebSocketAPITemplate.cpp
-        src/main/network/WebSocketAPITemplate.h
-        src/main/network/WebSocketClient.cpp
-        src/main/network/WebSocketClient.h
-        src/main/trade/parser/OKXParser.cpp
-        src/main/trade/parser/OKXParser.h
-        src/main/util/JsonUtil.cpp
-        src/main/util/JsonUtil.h
-        src/main/api/impl/OKXApi.cpp
-        src/main/api/impl/OKXApi.h
-        src/main/api/impl/OKXTickerStream.cpp
-        src/main/api/impl/OKXTickerStream.h
-        src/main/api/TickerStream.h
-        src/main/util/NetworkUtil.cpp
-        src/main/util/NetworkUtil.h
-        src/main/data/ConfigManager.cpp
-        src/main/data/ConfigManager.h
-        src/main/data/Exchanges.h
-        src/main/ui/AbstractPage.h
-        src/main/ui/panels/InstrumentListPanel.cpp
-        src/main/ui/panels/InstrumentListPanel.h
-        src/main/monitor/MarketData.cpp
-        src/main/monitor/MarketData.h
-        src/main/monitor/DataMonitor.cpp
-        src/main/monitor/DataMonitor.h
-        src/main/monitor/CandlesManager.cpp
-        src/main/monitor/CandlesManager.h
-        src/main/util/StdUtil.cpp
-        src/main/util/StdUtil.h
-        src/main/api/AbstractApi.cpp
-        src/main/api/AbstractApi.h
-        src/main/ui/dialog/InstrumentDialog.cpp
-        src/main/ui/dialog/InstrumentDialog.h
-        src/main/util/QtUtil.cpp
-        src/main/util/QtUtil.h
-        src/main/ui/pages/SettingPage.cpp
-        src/main/ui/pages/SettingPage.h
-        src/main/data/AppearanceManager.cpp
-        src/main/data/AppearanceManager.h
-        src/main/data/TradingDataConfig.h
-        src/main/trade/TradingAccount.cpp
-        src/main/trade/TradingAccount.h
-        src/main/trade/tradedef.h
-        src/main/trade/TradeDataDef.h
-)
+file(GLOB_RECURSE NTRT_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cxx"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.hh"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.hxx"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.ui"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.qrc")
+qt_add_executable(NTRT ${NTRT_SOURCES})
 target_include_directories(NTRT PRIVATE src)
 target_link_libraries(NTRT PRIVATE Qt6::Widgets Qt6::Network Qt6::WebSockets simdjson::simdjson)
 if(WIN32)
