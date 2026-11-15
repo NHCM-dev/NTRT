@@ -39,6 +39,8 @@ namespace trtui
 
         void populate();
 
+        void toggleRowSelection(int row, int column);
+
         void filterRows();
 
         void moveCurrent(int direction);
