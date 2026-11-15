@@ -67,16 +67,6 @@ cmake --preset release
 cmake --build --preset release
 ```
 
-When relevant tests need enabling:
-
-```shell
-cmake --preset release -DNTRT_BUILD_TESTS=ON
-cmake --build --preset release
-ctest --test-dir build/release --output-on-failure
-```
-
-Use tests that exercise changed behavior: query boundaries, timeframe isolation, asynchronous cancellation, configuration compatibility, or other meaningful invariants. Do not create tests that merely repeat implementation text. Small styling changes generally need a build and visual inspection rather than new unit tests.
-
 Distinguish compilation from successful linking and packaging. A running `NTRT.exe` can prevent replacement on Windows. Do not report a successful build when linking failed, terminate the user's app without authorization, or repeatedly retry an unchanged locked output. Report the limitation and whether visual verification was actually performed. Never claim a measured performance improvement without measurements.
 
 ## Finish within scope

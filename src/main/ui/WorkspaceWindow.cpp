@@ -9,7 +9,8 @@
 #include <QVariant>
 #include <QCursor>
 #include <QMoveEvent>
-#include <QPaintEvent>
+#include <QResizeEvent>
+#include <algorithm>
 
 namespace trtui
 {
@@ -31,6 +32,13 @@ namespace trtui
             }
             painter->save();
             painter->fillRect(option->rect, option->palette.brush(QPalette::Window));
+            const QMdiSubWindow* window = qobject_cast<const QMdiSubWindow*>(widget);
+            const bool active = window && window->mdiArea() && window->mdiArea()->activeSubWindow() == window;
+            const int thickness = active ? 2 : 1;
+            const QRect frame = option->rect;
+            const QRegion border = QRegion(frame).subtracted(QRegion(frame.adjusted(thickness, thickness, -thickness, -thickness)));
+            painter->setClipRegion(border, Qt::IntersectClip);
+            painter->fillRect(frame, option->palette.brush(active ? QPalette::Highlight : QPalette::Mid));
             painter->restore();
         }
 
@@ -142,40 +150,30 @@ namespace trtui
         setMouseTracking(true);
     }
 
-    void WorkspaceWindow::paintEvent(QPaintEvent* event)
+    void WorkspaceWindow::constrainPosition()
     {
-        QMdiSubWindow::paintEvent(event);
-        // Restrict custom chrome to the actual damaged frame pixels. A partial titlebar
-        // repaint must never draw an entire active outline into the backing store.
-        const bool active = mdiArea() && mdiArea()->activeSubWindow() == this;
-        const int thickness = active ? 2 : 1;
-        const QRegion frame = QRegion(rect()).subtracted(
-            QRegion(rect().adjusted(thickness, thickness, -thickness, -thickness)));
-        QPainter painter(this);
-        painter.setClipRegion(event->region().intersected(frame));
-        painter.fillRect(rect(), palette().brush(active ? QPalette::Highlight : QPalette::Mid));
+        if (constrainingPosition || !parentWidget() || isMaximized() || isMinimized())
+            return;
+        const QRect area = parentWidget()->rect();
+        const QPoint bounded(std::clamp(x(), 0, std::max(0, area.width() - width())),
+            std::clamp(y(), 0, std::max(0, area.height() - height())));
+        if (bounded == pos())
+            return;
+        constrainingPosition = true;
+        move(bounded);
+        constrainingPosition = false;
     }
 
     void WorkspaceWindow::moveEvent(QMoveEvent* event)
     {
+        constrainPosition();
         QMdiSubWindow::moveEvent(event);
-        QWidget* desktop = parentWidget();
-        if (!desktop)
-            return;
-        const QRegion exposed = QRegion(QRect(event->oldPos(), size())).subtracted(QRegion(geometry()));
-        desktop->update(exposed);
-        if (mdiArea())
-        {
-            for (QMdiSubWindow* sibling : mdiArea()->subWindowList())
-            {
-                if (sibling == this || !sibling->isVisible())
-                    continue;
-                const QRegion damage = exposed.intersected(sibling->geometry()).translated(-sibling->pos());
-                if (!damage.isEmpty())
-                    sibling->update(damage);
-            }
-        }
-        update();
+    }
+
+    void WorkspaceWindow::resizeEvent(QResizeEvent* event)
+    {
+        QMdiSubWindow::resizeEvent(event);
+        constrainPosition();
     }
 
     void WorkspaceWindow::closeEvent(QCloseEvent* event)

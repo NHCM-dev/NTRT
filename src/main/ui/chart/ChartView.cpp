@@ -36,6 +36,7 @@ namespace trtui
         format.setStencilBufferSize(0);
         format.setSamples(0);
         setFormat(format);
+        setUpdateBehavior(QOpenGLWidget::NoPartialUpdate);
     }
 
     void ChartView::initInteraction()
@@ -79,7 +80,7 @@ namespace trtui
 
     void ChartView::resizeGL(int, int)
     {
-        viewport.setSize(size());
+        viewport.setSize(size(), fontMetrics().height() + 8);
         geometryDirty = true;
     }
 
@@ -199,6 +200,10 @@ namespace trtui
     void ChartView::paintGL()
     {
         const QColor background = palette().color(QPalette::Base);
+        // QPainter and native drawing share this context. Clear the entire FBO,
+        // independent of clipping/color masks left by the preceding paint pass.
+        glDisable(GL_SCISSOR_TEST);
+        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
         glClearColor(background.redF(), background.greenF(), background.blueF(), 1);
         glClear(GL_COLOR_BUFFER_BIT);
         if (geometryDirty)
@@ -332,10 +337,9 @@ namespace trtui
             trtutils::formatPrice(candle.low), trtutils::formatPrice(candle.close),
             candle.confirmed ? "" : "· Forming");
         painter.setPen(candle.close >= candle.open ? getRisingColor() : getFallingColor());
-        const QRectF readout = viewport.getPriceRect().adjusted(5, 3, -5, 0);
-        painter.fillRect(QRectF(readout.topLeft(), QSizeF(readout.width(), 23)), palette().brush(QPalette::Base));
-        painter.drawText(QRectF(readout.topLeft(), QSizeF(readout.width(), 23)), Qt::AlignVCenter,
-                         painter.fontMetrics().elidedText(text, Qt::ElideRight, static_cast<int>(readout.width())));
+        const QRectF readout = viewport.getReadoutRect().adjusted(5, 0, -5, 0);
+        painter.drawText(readout, Qt::AlignVCenter,
+            painter.fontMetrics().elidedText(text, Qt::ElideRight, static_cast<int>(readout.width())));
         if (viewport.isVolumeVisible())
         {
             const double base = trtutils::baseVolume(candle, instrumentType);
@@ -355,10 +359,9 @@ namespace trtui
             const QString volume = QString("Volume %1 %2  %3 %4  %5 Contracts").arg(
                 trtutils::formatVolume(base), baseCurrency, trtutils::formatVolume(candle.volumeQuote), quoteCurrency,
                 contracts);
-            const QRectF volumeArea = viewport.getVolumeRect().adjusted(5, 2, -5, 0);
-            painter.fillRect(QRectF(volumeArea.topLeft(), QSizeF(volumeArea.width(), 38)),
-                             palette().brush(QPalette::Base));
-            painter.drawText(volumeArea, Qt::AlignTop | Qt::AlignLeft, volume);
+            const QRectF volumeArea = viewport.getVolumeReadoutRect().adjusted(5, 0, -5, 0);
+            painter.drawText(volumeArea, Qt::AlignVCenter | Qt::AlignLeft,
+                painter.fontMetrics().elidedText(volume, Qt::ElideRight, static_cast<int>(volumeArea.width())));
         }
     }
 
@@ -492,6 +495,8 @@ namespace trtui
     void ChartView::changeEvent(QEvent* event)
     {
         QOpenGLWidget::changeEvent(event);
+        if (event->type() == QEvent::FontChange)
+            viewport.setSize(size(), fontMetrics().height() + 8);
         if (event->type() == QEvent::PaletteChange || event->type() == QEvent::FontChange)
             invalidateGeometry();
     }

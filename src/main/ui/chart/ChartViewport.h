@@ -12,6 +12,9 @@ namespace trtui
     // Owns the shared time transform and pane transforms, independently of the renderer.
     class ChartViewport final
     {
+        QRectF readoutRect;
+        QRectF volumeReadoutRect;
+        int readoutHeight = 23;
         QRectF priceRect;
         QRectF volumeRect;
         std::size_t seriesSize = 0;
@@ -26,7 +29,7 @@ namespace trtui
         void constrain();
 
     public:
-        void setSize(const QSize& size);
+        void setSize(const QSize& size, int readoutHeight = 23);
 
         void setSeriesSize(std::size_t count, std::size_t removedPrefix = 0);
 
@@ -46,6 +49,8 @@ namespace trtui
 
         bool isVolumeVisible() const;
 
+        const QRectF& getReadoutRect() const;
+        const QRectF& getVolumeReadoutRect() const;
         const QRectF& getPriceRect() const;
 
         const QRectF& getVolumeRect() const;

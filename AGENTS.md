@@ -57,7 +57,7 @@
 
 ## Build and Performance
 
-- Use the `release` CMake configure/build preset for everyday CLion runs and validation: `cmake --preset release`, `cmake --build --preset release`, and `ctest --test-dir build/release --output-on-failure`. Use Debug only when debugging is explicitly required.
+- Use the `release` CMake configure/build preset for everyday CLion runs and validation: `cmake --preset release`, `cmake --build --preset release`. Use Debug only when debugging is explicitly required.
 - Reuse UI items and avoid recreating table cells on periodic refresh. Skip refresh for hidden/minimized tool windows; backend monitoring must continue independently.
 
 - Release presets intentionally omit compiler optimization switches (such as -O2, -O3 or /O2) per user preference. Keep NDEBUG and Release runtime libraries; do not add optimization flags without an explicit request.

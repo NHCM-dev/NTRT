@@ -6,13 +6,19 @@
 
 namespace trtui
 {
-    void ChartViewport::setSize(const QSize& size)
+    void ChartViewport::setSize(const QSize& size, int headerHeight)
     {
+        readoutHeight = std::max(1, headerHeight);
         const double width = std::max(1, size.width() - 104);
-        const double height = std::max(1, size.height() - 62);
-        const double volumeHeight = volumeVisible ? std::max(70.0, height * 0.25) : 0;
-        priceRect = QRectF(10, 32, width, std::max(1.0, height - volumeHeight - (volumeVisible ? 12 : 0)));
-        volumeRect = QRectF(10, priceRect.bottom() + 12, width, volumeHeight);
+        readoutRect = QRectF(10, 2, width, readoutHeight);
+        const double top = readoutRect.bottom() + 4;
+        const double available = std::max(1.0, size.height() - 30.0 - top);
+        const double separator = volumeVisible ? readoutHeight + 12.0 : 0;
+        const double plotHeight = std::max(2.0, available - separator);
+        const double volumeHeight = volumeVisible ? plotHeight * 0.25 : 0;
+        priceRect = QRectF(10, top, width, std::max(1.0, plotHeight - volumeHeight));
+        volumeReadoutRect = QRectF(10, priceRect.bottom() + 8, width, readoutHeight);
+        volumeRect = QRectF(10, volumeReadoutRect.bottom() + 4, width, volumeHeight);
         constrain();
     }
 
@@ -26,7 +32,7 @@ namespace trtui
     void ChartViewport::setVolumeVisible(bool visible, const QSize& size)
     {
         volumeVisible = visible;
-        setSize(size);
+        setSize(size, readoutHeight);
     }
 
     void ChartViewport::constrain()
@@ -107,6 +113,9 @@ namespace trtui
         return volumeVisible;
     }
 
+    const QRectF& ChartViewport::getReadoutRect() const { return readoutRect; }
+    const QRectF& ChartViewport::getVolumeReadoutRect() const { return volumeReadoutRect; }
+
     const QRectF& ChartViewport::getPriceRect() const
     {
         return priceRect;
@@ -175,7 +184,7 @@ namespace trtui
 
     double ChartViewport::yFromVolume(double volume) const
     {
-        return volumeRect.bottom() - volume / volumeMax * std::max(1.0, volumeRect.height() - 40);
+        return volumeRect.bottom() - volume / volumeMax * std::max(1.0, volumeRect.height());
     }
 
     std::size_t ChartViewport::getFirstVisible() const
