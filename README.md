@@ -2,6 +2,8 @@
 
 N Trading Research Terminal is a C++23 / Qt desktop application for market analysis and trading.
 
+![NTRT workspace with instrument list and BTC/ETH charts](doc/ntrt-workspace.png)
+
 ## Build
 
 Requires CMake 3.21+, Ninja, and a compatible C++23 compiler. CMake locates Qt or downloads a compatible SDK; the initial download may require Python.
