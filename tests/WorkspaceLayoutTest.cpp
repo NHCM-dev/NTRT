@@ -15,6 +15,8 @@
 #include <QMdiArea>
 #include <QMouseEvent>
 #include <QMdiSubWindow>
+#include <QElapsedTimer>
+#include <QThread>
 #include <QTabBar>
 #include <QTabWidget>
 #include <QTemporaryDir>
@@ -35,10 +37,13 @@ void require(bool condition, const char* message)
 
 void settleLayout()
 {
-    for (int index = 0; index < 8; index++)
+    QElapsedTimer timer;
+    timer.start();
+    while (timer.elapsed() < 200)
     {
         QCoreApplication::processEvents();
         QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+        QThread::msleep(1);
     }
 }
 
@@ -294,6 +299,35 @@ int main(int argc, char** argv)
             settleLayout();
             verifyThemes(restored, *workspace);
             restored.close();
+        }
+        // Restart a maximized main window with children close to all desktop edges.
+        require(ntrt::configManager->getWorkspaceManager()->saveConfig({}), "reset maximized restart fixture");
+        QRect savedChart;
+        QRect savedList;
+        {
+            trtui::MainWindow initial;
+            initial.showMaximized();
+            settleLayout();
+            QMdiArea* desktop = initial.findChild<QMdiArea*>("workspaceDesktop");
+            const QSize size = desktop->viewport()->size();
+            savedList = QRect(size.width() - 430, 11, 414, size.height() - 27);
+            savedChart = QRect(8, 12, savedList.x() - 24, size.height() - 25);
+            initial.findChild<QMdiSubWindow*>("instrumentList")->setGeometry(savedList);
+            initial.findChild<QMdiSubWindow*>("chart1")->setGeometry(savedChart);
+            settleLayout();
+            saveLayout(initial);
+            initial.close();
+        }
+        require(ntrt::configManager->getWorkspaceManager()->loadConfig(), "reload maximized layout");
+        {
+            trtui::MainWindow restarted;
+            restarted.show();
+            settleLayout();
+            require(restarted.isMaximized(), "restore maximized main window");
+            require(restarted.findChild<QMdiSubWindow*>("instrumentList")->geometry() == savedList, "exact right-edge list rectangle after maximized restart");
+            require(restarted.findChild<QMdiSubWindow*>("chart1")->geometry() == savedChart, "exact chart rectangle after maximized restart");
+            savePreview(restarted, "maximized-restart");
+            restarted.close();
         }
         ntrt::dataMonitor.reset();
         ntrt::configManager.reset();

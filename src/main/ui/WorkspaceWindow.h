@@ -6,10 +6,8 @@ namespace trtui
 {
     class WorkspaceWindow final : public QMdiSubWindow
     {
-        bool positionConstraintPending = false;
         QRect previousGeometry;
         void initAppearance();
-        void schedulePositionConstraint();
         void constrainPosition();
         void updateExposedFrame();
         void paintEvent(QPaintEvent* event) override;

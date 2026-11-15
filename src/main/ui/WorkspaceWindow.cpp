@@ -150,19 +150,6 @@ namespace trtui
         setMouseTracking(true);
     }
 
-    void WorkspaceWindow::schedulePositionConstraint()
-    {
-        if (positionConstraintPending)
-            return;
-        positionConstraintPending = true;
-        // Finish Qt's backing-store move/resize before changing geometry again.
-        QTimer::singleShot(0, this, [this]
-        {
-            positionConstraintPending = false;
-            constrainPosition();
-        });
-    }
-
     void WorkspaceWindow::paintEvent(QPaintEvent* event)
     {
         QMdiSubWindow::paintEvent(event);
@@ -190,14 +177,12 @@ namespace trtui
     {
         QMdiSubWindow::moveEvent(event);
         updateExposedFrame();
-        schedulePositionConstraint();
     }
 
     void WorkspaceWindow::resizeEvent(QResizeEvent* event)
     {
         QMdiSubWindow::resizeEvent(event);
         updateExposedFrame();
-        schedulePositionConstraint();
     }
 
     void WorkspaceWindow::updateExposedFrame()
