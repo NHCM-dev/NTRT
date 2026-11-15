@@ -7,12 +7,13 @@
 
 #include "main/market/abstract/Instrument.h"
 #include "TickerStream.h"
+#include "BookStream.h"
 #include "CandleStream.h"
 #include "main/trade/TradeDataDef.h"
-#include "main/data/TradingDataConfig.h"
+#include "main/data/TradingDataDef.h"
 #include <memory>
 #include <vector>
-#include "main/trade/CandleTimeframe.h"
+#include "main/trade/TradeDef.h"
 
 namespace trtcore
 {
@@ -26,6 +27,8 @@ namespace trtcore
         virtual std::vector<trttrade::InstType> instrumentTypes() const = 0;
 
         virtual std::unique_ptr<TickerStream> createTickerStream() const = 0;
+
+        virtual std::unique_ptr<BookStream> createBookStream() const { return {}; }
 
         virtual std::unique_ptr<CandleStream> createCandleStream() const
         {

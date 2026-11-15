@@ -1,5 +1,5 @@
 #include "PaletteUtil.h"
-#include "main/data/AppearanceManager.h"
+#include "main/data/AppearanceDef.h"
 #include <QApplication>
 
 namespace trtutils

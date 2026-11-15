@@ -1,9 +1,9 @@
 #ifndef NTRT_CANDLESMANAGER_H
 #define NTRT_CANDLESMANAGER_H
 
-#include "main/trade/TradeDataDef.h"
+#include "main/trade/TradeSnapshotDef.h"
 #include "main/market/abstract/Instrument.h"
-#include "main/data/TradingDataConfig.h"
+#include "main/data/TradingDataDef.h"
 #include <QFutureWatcher>
 #include <QTimer>
 #include "main/api/CandleStream.h"
@@ -11,33 +11,14 @@
 #include <memory>
 #include <span>
 #include <vector>
-#include "main/trade/CandleTimeframe.h"
+#include "main/trade/TradeDef.h"
 
 namespace trtcore
 {
-    class CandlesSnapshot;
-
-    struct CandleSnapshot
-    {
-        std::vector<trttrade::CandleData> candles;
-        QString error;
-        qint64 updatedAt = 0;
-        bool historyLoading = false;
-        bool historyExhausted = false;
-    };
-
     class CandlesManager final : public QObject
     {
     public:
         using CandleMap = std::map<std::int64_t, trttrade::CandleData>;
-
-        struct SeriesKey
-        {
-            trtdata::InstIdentifier instrument;
-            trttrade::CandleTimeframe timeframe = trttrade::CandleTimeframe::Day1;
-
-            std::strong_ordering operator<=>(const SeriesKey&) const = default;
-        };
 
     private:
         struct Subscription
@@ -63,20 +44,20 @@ namespace trtcore
             bool historyExhausted = false;
         };
 
-        std::map<SeriesKey, Subscription> subscriptions;
+        std::map<CandleSeriesKey, Subscription> subscriptions;
         QTimer requestTimer;
         qint64 nextStreamStart = 0;
         trtdata::TradingDataTimeZone timeZone = trtdata::TradingDataTimeZone::UTC;
 
-        void ensureStream(const SeriesKey& key, Subscription& subscription);
+        void ensureStream(const CandleSeriesKey& key, Subscription& subscription);
 
         void beginRecovery(Subscription& subscription);
 
-        void fetchHistory(const SeriesKey& key, Subscription& subscription);
+        void fetchHistory(const CandleSeriesKey& key, Subscription& subscription);
 
         void fetchNext();
 
-        void fetchCandles(const SeriesKey& key, Subscription& subscription);
+        void fetchCandles(const CandleSeriesKey& key, Subscription& subscription);
 
         void mergeCandles(Subscription& subscription, const std::vector<trttrade::CandleData>& candles);
 
@@ -127,23 +108,6 @@ namespace trtcore
         getDailyChangePercent(const trtdata::InstIdentifier& identifier, double latestPrice) const;
     };
 
-    class CandlesSnapshot final
-    {
-        friend class CandlesManager;
-        std::map<CandlesManager::SeriesKey, std::shared_ptr<const CandleSnapshot>> series;
-        trtdata::TradingDataTimeZone timeZone = trtdata::TradingDataTimeZone::UTC;
-
-    public:
-        trtdata::TradingDataTimeZone getTimeZone() const;
-
-        const CandleSnapshot* getSnapshot(const trtdata::InstIdentifier& identifier,
-                                          trttrade::CandleTimeframe timeframe = trttrade::CandleTimeframe::Day1) const;
-
-        const trttrade::CandleData* getDailyCandle(const trtdata::InstIdentifier& identifier) const;
-
-        std::optional<double>
-        getDailyChangePercent(const trtdata::InstIdentifier& identifier, double latestPrice) const;
-    };
 }
 
 #endif //NTRT_CANDLESMANAGER_H

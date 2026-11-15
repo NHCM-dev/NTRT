@@ -9,20 +9,10 @@
 #include <QUrlQuery>
 #include <QtNetwork/QNetworkReply>
 
+#include "NetworkDef.h"
+
 namespace trtnet
 {
-    enum class HTTPMethod : uint8_t
-    {
-        GET,
-        POST,
-        PUT,
-        PATCH,
-        DELETE,
-        HEAD,
-        OPTIONS,
-        TRACE
-    };
-
     class RestAPITemplate
     {
     public:

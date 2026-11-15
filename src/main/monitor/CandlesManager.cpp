@@ -20,13 +20,13 @@ namespace trtcore
 
     void CandlesManager::setInstruments(std::span<const std::shared_ptr<trtdata::Instrument>> instruments)
     {
-        for (std::pair<const SeriesKey, Subscription>& entry : subscriptions)
+        for (std::pair<const CandleSeriesKey, Subscription>& entry : subscriptions)
             entry.second.tracked = false;
         for (const std::shared_ptr<trtdata::Instrument>& instrument : instruments)
         {
-            subscriptions[SeriesKey{instrument->getUniqueIdentifier()}].tracked = true;
+            subscriptions[CandleSeriesKey{instrument->getUniqueIdentifier()}].tracked = true;
         }
-        std::erase_if(subscriptions, [this](std::pair<const SeriesKey, Subscription>& entry)
+        std::erase_if(subscriptions, [this](std::pair<const CandleSeriesKey, Subscription>& entry)
         {
             if (entry.second.tracked || entry.second.readers != 0)
                 return false;
@@ -67,14 +67,14 @@ namespace trtcore
     void CandlesManager::stop()
     {
         requestTimer.stop();
-        for (std::pair<const SeriesKey, Subscription>& entry : subscriptions)
+        for (std::pair<const CandleSeriesKey, Subscription>& entry : subscriptions)
         {
             cancelRequest(entry.second);
             entry.second.nextRequest = 0;
         }
     }
 
-    void CandlesManager::ensureStream(const SeriesKey& key, Subscription& subscription)
+    void CandlesManager::ensureStream(const CandleSeriesKey& key, Subscription& subscription)
     {
         if (subscription.stream)
             return;
@@ -117,7 +117,7 @@ namespace trtcore
 
     void CandlesManager::requestHistory(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe)
     {
-        const std::map<SeriesKey, Subscription>::iterator entry = subscriptions.find({instrument, timeframe});
+        const std::map<CandleSeriesKey, Subscription>::iterator entry = subscriptions.find({instrument, timeframe});
         if (entry == subscriptions.end() || entry->second.historyExhausted || entry->second.snapshot.candles.empty())
             return;
         entry->second.historyTarget = entry->second.snapshot.candles.front().timestamp;
@@ -125,7 +125,7 @@ namespace trtcore
         entry->second.publishedSnapshot.reset();
     }
 
-    void CandlesManager::fetchHistory(const SeriesKey& key, Subscription& subscription)
+    void CandlesManager::fetchHistory(const CandleSeriesKey& key, Subscription& subscription)
     {
         if (subscription.snapshot.candles.empty())
             return;
@@ -170,8 +170,8 @@ namespace trtcore
     {
         const qint64 now = QDateTime::currentMSecsSinceEpoch();
         int pending = 0;
-        std::map<SeriesKey, Subscription>::iterator next = subscriptions.end();
-        for (std::map<SeriesKey, Subscription>::iterator entry = subscriptions.begin(); entry != subscriptions.end();
+        std::map<CandleSeriesKey, Subscription>::iterator next = subscriptions.end();
+        for (std::map<CandleSeriesKey, Subscription>::iterator entry = subscriptions.begin(); entry != subscriptions.end();
              entry++)
         {
             if (!entry->second.stream && nextStreamStart <= now)
@@ -195,7 +195,7 @@ namespace trtcore
             fetchCandles(next->first, next->second);
     }
 
-    void CandlesManager::fetchCandles(const SeriesKey& key, Subscription& subscription)
+    void CandlesManager::fetchCandles(const CandleSeriesKey& key, Subscription& subscription)
     {
         const std::optional<qint64> cursor = subscription.recoveryCursor;
         const std::uint64_t generation = subscription.recoveryGeneration;
@@ -205,7 +205,7 @@ namespace trtcore
         subscription.requestLiveCandles.clear();
         connect(watcher, &QFutureWatcherBase::finished, this, [this, key, watcher, cursor, generation]
         {
-            const std::map<SeriesKey, Subscription>::iterator entry = subscriptions.find(key);
+            const std::map<CandleSeriesKey, Subscription>::iterator entry = subscriptions.find(key);
             if (entry == subscriptions.end() || entry->second.watcher != watcher)
                 return;
             Subscription& current = entry->second;
@@ -267,7 +267,7 @@ namespace trtcore
     const CandleSnapshot* CandlesManager::getSnapshot(const trtdata::InstIdentifier& identifier,
                                                       trttrade::CandleTimeframe timeframe) const
     {
-        const std::map<SeriesKey, Subscription>::const_iterator entry = subscriptions.find(SeriesKey{
+        const std::map<CandleSeriesKey, Subscription>::const_iterator entry = subscriptions.find(CandleSeriesKey{
             identifier,
             timeframe
         });
@@ -287,7 +287,7 @@ namespace trtcore
         if (timeZone == value)
             return;
         timeZone = value;
-        for (std::pair<const SeriesKey, Subscription>& entry : subscriptions)
+        for (std::pair<const CandleSeriesKey, Subscription>& entry : subscriptions)
         {
             cancelRequest(entry.second);
             entry.second.snapshot = {};
@@ -315,7 +315,7 @@ namespace trtcore
 
     void CandlesManager::subscribe(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe)
     {
-        Subscription& subscription = subscriptions[SeriesKey{instrument, timeframe}];
+        Subscription& subscription = subscriptions[CandleSeriesKey{instrument, timeframe}];
         subscription.readers++;
         subscription.nextRequest = 0;
         requestTimer.start();
@@ -323,7 +323,7 @@ namespace trtcore
 
     void CandlesManager::unsubscribe(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe)
     {
-        const std::map<SeriesKey, Subscription>::iterator entry = subscriptions.find(SeriesKey{instrument, timeframe});
+        const std::map<CandleSeriesKey, Subscription>::iterator entry = subscriptions.find(CandleSeriesKey{instrument, timeframe});
         if (entry == subscriptions.end())
             return;
         if (entry->second.readers != 0)
@@ -387,41 +387,13 @@ namespace trtcore
     {
         CandlesSnapshot result;
         result.timeZone = timeZone;
-        for (std::pair<const SeriesKey, Subscription>& entry : subscriptions)
+        for (std::pair<const CandleSeriesKey, Subscription>& entry : subscriptions)
         {
             if (!entry.second.publishedSnapshot)
                 entry.second.publishedSnapshot = std::make_shared<const CandleSnapshot>(entry.second.snapshot);
             result.series.emplace(entry.first, entry.second.publishedSnapshot);
         }
         return result;
-    }
-
-    trtdata::TradingDataTimeZone CandlesSnapshot::getTimeZone() const
-    {
-        return timeZone;
-    }
-
-    const CandleSnapshot* CandlesSnapshot::getSnapshot(const trtdata::InstIdentifier& identifier,
-                                                       trttrade::CandleTimeframe timeframe) const
-    {
-        const std::map<CandlesManager::SeriesKey, std::shared_ptr<const CandleSnapshot>>::const_iterator entry = series.
-            find({identifier, timeframe});
-        return entry == series.end() ? nullptr : entry->second.get();
-    }
-
-    const trttrade::CandleData* CandlesSnapshot::getDailyCandle(const trtdata::InstIdentifier& identifier) const
-    {
-        const CandleSnapshot* snapshot = getSnapshot(identifier);
-        if (!snapshot)
-            return nullptr;
-        return trtutils::dailyCandle(snapshot->candles, QDateTime::currentMSecsSinceEpoch(), timeZone);
-    }
-
-    std::optional<double> CandlesSnapshot::getDailyChangePercent(const trtdata::InstIdentifier& identifier,
-                                                                 double latestPrice) const
-    {
-        const trttrade::CandleData* candle = getDailyCandle(identifier);
-        return trtutils::dailyChangePercent(candle, latestPrice);
     }
 
 }

@@ -4,10 +4,18 @@
 
 #ifndef NTRT_TRADEDATADEF_H
 #define NTRT_TRADEDATADEF_H
+#include "TradeDef.h"
 #include <cstdint>
+#include <optional>
 
 namespace trttrade
 {
+    struct BookLevel
+    {
+        double price = 0;
+        double size = 0;
+    };
+
     struct CandleData
     {
         std::int64_t timestamp = 0;
@@ -19,6 +27,23 @@ namespace trttrade
         double volumeCcy = 0;
         double volumeQuote = 0;
         bool confirmed = false;
+    };
+}
+
+namespace trtdata
+{
+    struct TickerData
+    {
+        trttrade::InstType instType;
+        std::string instId;
+        double last;
+        double open24h;
+        double high24h;
+        double low24h;
+        double volCcy24h;
+        double vol24h;
+        std::int64_t ts;
+        std::optional<double> previousLast{};
     };
 }
 

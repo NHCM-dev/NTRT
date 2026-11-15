@@ -35,6 +35,12 @@ namespace trtcore
             publish();
         }
 
+        void setBookInstruments(const BookStream::Instruments& instruments)
+        {
+            marketData.setBookInstruments(instruments);
+            publish();
+        }
+
         void setTimeZone(trtdata::TradingDataTimeZone zone)
         {
             candlesManager.setTimeZone(zone);
@@ -103,11 +109,11 @@ namespace trtcore
         workerContext->moveToThread(&workerThread);
         connect(&workerThread, &QThread::finished, workerContext, &QObject::deleteLater);
         workerThread.start();
-        const std::map<CandlesManager::SeriesKey, std::size_t> readers = chartReaders;
+        const std::map<CandleSeriesKey, std::size_t> readers = chartReaders;
         QMetaObject::invokeMethod(workerContext, [this, readers]
         {
             worker = std::make_unique<Worker>(snapshot);
-            for (const std::pair<const CandlesManager::SeriesKey, std::size_t>& entry : readers)
+            for (const std::pair<const CandleSeriesKey, std::size_t>& entry : readers)
             {
                 for (std::size_t index = 0; index < entry.second; index++)
                     worker->acquireSeries(entry.first.instrument, entry.first.timeframe);
@@ -115,6 +121,7 @@ namespace trtcore
         }, Qt::QueuedConnection);
         updateTimeZone();
         updateInstruments();
+        updateBookInstruments();
     }
 
     void DataMonitor::stop()
@@ -158,6 +165,38 @@ namespace trtcore
         }, Qt::QueuedConnection);
     }
 
+    void DataMonitor::acquireBook(const trtdata::InstIdentifier& instrument)
+    {
+        if (bookReaders[instrument]++ == 0)
+            updateBookInstruments();
+    }
+
+    void DataMonitor::releaseBook(const trtdata::InstIdentifier& instrument)
+    {
+        const std::map<trtdata::InstIdentifier, std::size_t>::iterator found = bookReaders.find(instrument);
+        if (found == bookReaders.end())
+            return;
+        found->second--;
+        if (found->second == 0)
+        {
+            bookReaders.erase(found);
+            updateBookInstruments();
+        }
+    }
+
+    void DataMonitor::updateBookInstruments()
+    {
+        if (!running)
+            return;
+        BookStream::Instruments instruments;
+        for (const std::pair<const trtdata::InstIdentifier, std::size_t>& entry : bookReaders)
+            instruments.insert(entry.first);
+        QMetaObject::invokeMethod(workerContext, [this, instruments]
+        {
+            worker->setBookInstruments(instruments);
+        }, Qt::QueuedConnection);
+    }
+
     void DataMonitor::acquireChartSeries(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe)
     {
         chartReaders[{instrument, timeframe}]++;
@@ -180,7 +219,7 @@ namespace trtcore
 
     void DataMonitor::releaseChartSeries(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe)
     {
-        const std::map<CandlesManager::SeriesKey, std::size_t>::iterator entry = chartReaders.find({
+        const std::map<CandleSeriesKey, std::size_t>::iterator entry = chartReaders.find({
             instrument,
             timeframe
         });

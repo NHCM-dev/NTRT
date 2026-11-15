@@ -1,6 +1,7 @@
 #include "NumberUtil.h"
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace trtutils
 {
@@ -36,10 +37,46 @@ namespace trtutils
         return trimDecimalZeros(result);
     }
 
+    QString formatDecimal(double value, int maximumDecimals)
+    {
+        if (!std::isfinite(value))
+            return "—";
+        if (value == 0)
+            return "0";
+        // Keep meaningful decimal digits without exposing binary multiplication/sum residue.
+        const int integerDigits = static_cast<int>(std::floor(std::log10(std::abs(value)))) + 1;
+        const int decimals = std::clamp(std::numeric_limits<double>::digits10 - integerDigits, 0, std::clamp(maximumDecimals, 0, 12));
+        const QString text = trimDecimalZeros(QString::number(value, 'f', decimals));
+        return text == "-0" ? QString("0") : text;
+    }
+
+    double roundToStep(double value, double step, bool upward)
+    {
+        if (!std::isfinite(value) || !std::isfinite(step) || step <= 0)
+            return value;
+        const long double ticks = static_cast<long double>(value) / static_cast<long double>(step);
+        const long double nearest = std::round(ticks);
+        const long double tolerance = std::min(0.25L, 4 * std::numeric_limits<double>::epsilon() * std::abs(ticks));
+        const long double aligned = std::abs(ticks - nearest) <= tolerance ? nearest : ticks;
+        return static_cast<double>((upward ? std::ceil(aligned) : std::floor(aligned)) * static_cast<long double>(step));
+    }
+
+    qsizetype priceFlashOffset(const QString& price, double difference, qint64 age, bool enabled)
+    {
+        if (!enabled || age < 0 || age >= 1500 || !std::isfinite(difference) || difference == 0)
+            return -1;
+        return age < 500 ? 0 : changedDigitOffset(price, std::abs(difference));
+    }
+
     QString formatAxisPrice(double value, double pricePerPixel)
     {
         const int decimals = std::clamp(static_cast<int>(std::ceil(-std::log10(pricePerPixel))) + 1, 2, 12);
         return QString::number(value, 'f', decimals);
+    }
+
+    QString formatQuantity(double value)
+    {
+        return formatDecimal(QString::number(value, 'g', 14).toDouble());
     }
 
     QString formatVolume(double value)
@@ -64,7 +101,9 @@ namespace trtutils
             divisor = 1000.0;
             suffix = "K";
         }
-        QString result = QString::number(value / divisor, 'f', suffix.isEmpty() ? 4 : 2);
+        if (suffix.isEmpty())
+            return formatQuantity(value);
+        const QString result = QString::number(value / divisor, 'f', 2);
         return trimDecimalZeros(result) + suffix;
     }
 

@@ -6,7 +6,9 @@
 #define NTRT_MARKETDATA_H
 
 #include "main/api/TickerStream.h"
-#include "main/trade/TradeDef.h"
+#include "main/market/abstract/Instrument.h"
+#include "main/api/BookStream.h"
+#include "main/trade/TradeSnapshotDef.h"
 #include <QElapsedTimer>
 #include <map>
 #include <memory>
@@ -15,29 +17,6 @@
 
 namespace trtcore
 {
-    struct MarketSnapshot
-    {
-        trtdata::Exchange exchange;
-        std::optional<trtdata::TickerData> ticker{};
-        QString error{};
-        QElapsedTimer priceChangeAge{};
-    };
-
-    class MarketDataSnapshot
-    {
-    public:
-        using Identifier2SnapshotMap = std::map<trtdata::InstIdentifier, MarketSnapshot>;
-
-        const MarketSnapshot* getSnapshot(const trtdata::InstIdentifier& identifier) const;
-
-        const Identifier2SnapshotMap* getSnapshots(trttrade::InstType instType) const;
-
-    private:
-        friend class MarketData;
-        std::map<trttrade::InstType, Identifier2SnapshotMap> tickersData;
-        std::map<trtdata::Exchange, MarketSnapshot> failures;
-    };
-
     class MarketData final : public QObject
     {
     public:
@@ -47,6 +26,8 @@ namespace trtcore
 
         void setInstruments(std::span<const std::shared_ptr<trtdata::Instrument>> instruments);
 
+        void setBookInstruments(const BookStream::Instruments& instruments);
+
         void stop();
 
         MarketDataSnapshot getSnapshot() const;
@@ -54,6 +35,8 @@ namespace trtcore
     private:
         MarketDataSnapshot snapshot;
         std::map<trtdata::Exchange, std::unique_ptr<TickerStream>> streams;
+
+        std::map<trtdata::Exchange, std::unique_ptr<BookStream>> bookStreams;
 
         void initStream(trtdata::Exchange exchange);
 

@@ -2,6 +2,7 @@
 #include "WorkspaceWindow.h"
 #include "panels/InstrumentListPanel.h"
 #include "panels/ChartPanel.h"
+#include "panels/BookDepthPanel.h"
 #include <QAction>
 #include <QEvent>
 #include <QMdiArea>
@@ -44,6 +45,7 @@ namespace trtui
         trtdata::WorkspaceState state;
         state.id = objectName();
         state.nextChartId = nextChartId;
+        state.nextBookDepthId = nextBookDepthId;
         if (selectedWindow)
             state.activeWindow = selectedWindow->objectName();
         if (lastChartWindow)
@@ -58,7 +60,11 @@ namespace trtui
                     continue;
                 trtdata::WorkspaceWindowState saved;
                 saved.id = window->objectName();
-                saved.type = entry.chart ? trtdata::WorkspaceWindowType::Chart : trtdata::WorkspaceWindowType::Instruments;
+                saved.type = trtdata::WorkspaceWindowType::Instruments;
+                if (entry.chart)
+                    saved.type = trtdata::WorkspaceWindowType::Chart;
+                else if (entry.bookDepth)
+                    saved.type = trtdata::WorkspaceWindowType::BookDepth;
                 saved.geometry = window->isMaximized() || window->isMinimized() ? entry.normalGeometry : window->geometry();
                 saved.visible = !window->isHidden();
                 if (window->isMaximized())
@@ -67,6 +73,8 @@ namespace trtui
                     saved.mode = trtdata::WorkspaceWindowMode::Minimized;
                 if (entry.chart)
                     saved.chart = entry.chart->getState();
+                if (entry.bookDepth)
+                    saved.bookDepth = entry.bookDepth->getState();
                 state.windows.push_back(std::move(saved));
                 break;
             }
@@ -90,14 +98,22 @@ namespace trtui
                     addChartWindow();
                     windows.back().chart->restoreState(saved.chart);
                     break;
+                case trtdata::WorkspaceWindowType::BookDepth:
+                    nextBookDepthId = saved.id.mid(9).toInt();
+                    addBookDepthWindow();
+                    windows.back().bookDepth->restoreState(saved.bookDepth);
+                    break;
             }
             windows.back().window->setObjectName(saved.id);
         }
         nextChartId = state.nextChartId;
+        nextBookDepthId = state.nextBookDepthId;
         for (const WindowEntry& entry : windows)
         {
             if (entry.chart)
                 nextChartId = std::max(nextChartId, entry.window->objectName().mid(5).toInt() + 1);
+            if (entry.bookDepth)
+                nextBookDepthId = std::max(nextBookDepthId, entry.window->objectName().mid(9).toInt() + 1);
         }
         pendingState = state;
         QTimer::singleShot(0, this, &Workspace::applyRestoredLayout);
@@ -136,6 +152,9 @@ namespace trtui
         desktop->setActiveSubWindow(active);
         selectedWindow = active;
         restoring = false;
+        for (const WindowEntry& entry : windows)
+            rememberInstrumentWindow(entry.window);
+        rememberInstrumentWindow(active);
         pendingState.reset();
         for (const WindowEntry& entry : windows)
         {
@@ -174,6 +193,7 @@ namespace trtui
         {
             if (active)
                 selectedWindow = active;
+            rememberInstrumentWindow(active);
             for (const WindowEntry& entry : windows)
             {
                 if (entry.window == active && entry.chart)
@@ -192,7 +212,7 @@ namespace trtui
         window->setWindowTitle(title);
         window->setAttribute(Qt::WA_DeleteOnClose, true);
         window->installEventFilter(this);
-        windows.push_back({window, nullptr, nullptr, window->geometry()});
+        windows.push_back({window, nullptr, nullptr, nullptr, window->geometry()});
         connect(window, &QObject::destroyed, this, [this, window]
         {
             std::erase_if(windows, [window](const WindowEntry& entry)
@@ -234,6 +254,7 @@ namespace trtui
         QMdiSubWindow* window = addWindow(panel, QString("Chart %1 · Choose instrument").arg(id),
                                           QString("chart%1").arg(id));
         windows.back().chart = panel;
+        rememberInstrumentWindow(window);
         addWindowAction(windows.back());
         connect(panel, &ChartPanel::titleChanged, this, [this, window, id](const QString& title)
         {
@@ -252,6 +273,33 @@ namespace trtui
         return window;
     }
 
+    QMdiSubWindow* Workspace::addBookDepthWindow()
+    {
+        const int id = nextBookDepthId++;
+        BookDepthPanel* panel = new BookDepthPanel(desktop);
+        QMdiSubWindow* window = addWindow(panel, QString("BookDepth %1 · Choose instrument").arg(id),
+                                         QString("bookDepth%1").arg(id));
+        windows.back().bookDepth = panel;
+        rememberInstrumentWindow(window);
+        addWindowAction(windows.back());
+        connect(panel, &BookDepthPanel::titleChanged, this, [this, window, id](const QString& title)
+        {
+            window->setWindowTitle(QString("BookDepth %1 · %2").arg(id).arg(title));
+            for (const WindowEntry& entry : windows)
+            {
+                if (entry.window == window && entry.action)
+                    entry.action->setText(window->windowTitle());
+            }
+        });
+        window->setGeometry(48 + (id - 1) % 7 * 24, 48 + (id - 1) % 7 * 24, 440, 660);
+        return window;
+    }
+
+    void Workspace::createBookDepthWindow()
+    {
+        showWindow(addBookDepthWindow());
+    }
+
     void Workspace::showWindow(QMdiSubWindow* window)
     {
         if (window->isMinimized())
@@ -267,31 +315,47 @@ namespace trtui
         showWindow(addChartWindow());
     }
 
-    void Workspace::showInstrument(const trtdata::InstIdentifier& identifier)
+    void Workspace::rememberInstrumentWindow(QMdiSubWindow* window)
     {
-        QMdiSubWindow* target = lastChartWindow;
-        if (!target)
-        {
-            for (const WindowEntry& entry : windows)
-            {
-                if (entry.chart)
-                {
-                    target = entry.window;
-                    break;
-                }
-            }
-        }
-        if (!target)
-            target = addChartWindow();
+        if (restoring || !window)
+            return;
         for (const WindowEntry& entry : windows)
         {
-            if (entry.window == target && entry.chart)
+            if (entry.window != window || (!entry.chart && !entry.bookDepth))
+                continue;
+            std::erase_if(instRequiredWindow, [window](const QPointer<QMdiSubWindow>& value)
             {
-                entry.chart->setInstrument(identifier);
-                break;
+                return !value || value == window;
+            });
+            instRequiredWindow.emplace_back(window);
+            break;
+        }
+    }
+
+    void Workspace::showInstrument(const trtdata::InstIdentifier& identifier)
+    {
+        WindowEntry* chart = nullptr;
+        WindowEntry* book = nullptr;
+        // A frozen target set prevents activation during apply from changing this dispatch.
+        for (std::vector<QPointer<QMdiSubWindow>>::const_reverse_iterator iterator = instRequiredWindow.crbegin();
+             iterator != instRequiredWindow.crend(); iterator++)
+        {
+            if (!*iterator || (*iterator)->isHidden() || (*iterator)->isMinimized())
+                continue;
+            for (WindowEntry& entry : windows)
+            {
+                if (entry.window != *iterator)
+                    continue;
+                if (entry.chart && (!chart || (!entry.chart->getInstrument() && chart->chart->getInstrument())))
+                    chart = &entry;
+                if (entry.bookDepth && (!book || (!entry.bookDepth->getState().instrument && book->bookDepth->getState().instrument)))
+                    book = &entry;
             }
         }
-        showWindow(target);
+        if (chart)
+            chart->chart->setInstrument(identifier);
+        if (book)
+            book->bookDepth->setInstrument(identifier);
     }
 
     void Workspace::addWindowAction(WindowEntry& entry)
@@ -473,7 +537,7 @@ namespace trtui
         std::vector<WindowPlacement> charts;
         for (const WindowEntry& entry : windows)
         {
-            if (!entry.chart)
+            if (!entry.chart && !entry.bookDepth)
                 continue;
             entry.window->showNormal();
             charts.push_back({entry.window, entry.window->geometry()});
@@ -494,6 +558,8 @@ namespace trtui
         {
             if (entry.chart && entry.window->isVisible() && !entry.window->isMinimized())
                 entry.chart->updateData();
+            if (entry.bookDepth && entry.window->isVisible() && !entry.window->isMinimized())
+                entry.bookDepth->updateData();
         }
     }
 }

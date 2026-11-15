@@ -13,7 +13,7 @@
 #include <QLocale>
 #include <QPainter>
 #include <QStyledItemDelegate>
-#include <QTextLayout>
+#include "main/util/PaintUtil.h"
 #include <cmath>
 #include <QPushButton>
 #include <QObject>
@@ -28,6 +28,7 @@
 #include <QMouseEvent>
 #include <QCursor>
 #include <QTimer>
+#include <QDateTime>
 
 #include "main/util/QtUtil.h"
 #include "main/util/NumberUtil.h"
@@ -35,9 +36,6 @@
 
 namespace trtui
 {
-    inline const int fullFlashMs = 500;
-    inline const int digitHighlightMs = 1000;
-
     class InstrumentDelegate : public QStyledItemDelegate
     {
     protected:
@@ -69,22 +67,14 @@ namespace trtui
         static void setMovement(QTableWidgetItem* item, const trtcore::MarketSnapshot& snapshot,
                                 const QPalette& palette, bool flashEnabled)
         {
-            if (!flashEnabled || !snapshot.priceChangeAge.isValid())
-                return;
-
-            const qint64 age = snapshot.priceChangeAge.elapsed();
-            if (age >= fullFlashMs + digitHighlightMs)
-                return;
-
             const trtdata::TickerData& ticker = *snapshot.ticker;
-            if (!ticker.previousLast || ticker.last == *ticker.previousLast)
-                return;
-
-            const double difference = ticker.last - *ticker.previousLast;
-            const QColor color = difference > 0 ? trtutils::risingColor(palette) : trtutils::fallingColor(palette);
+            const double difference = ticker.previousLast ? ticker.last - *ticker.previousLast : 0;
+            const qint64 age = snapshot.priceChangeAge.isValid() ? snapshot.priceChangeAge.elapsed() : -1;
             const QString price = item->text();
-            const qsizetype start = age < fullFlashMs ? 0 : trtutils::changedDigitOffset(price, std::abs(difference));
-            if (start < price.size())
+            const bool stale = !snapshot.error.isEmpty() || QDateTime::currentMSecsSinceEpoch() - ticker.ts > 15000;
+            const qsizetype start = trtutils::priceFlashOffset(price, difference, age, flashEnabled && !stale);
+            const QColor color = difference > 0 ? trtutils::risingColor(palette) : trtutils::fallingColor(palette);
+            if (start >= 0 && start < price.size())
             {
                 item->setData(Qt::UserRole, start);
                 item->setData(Qt::UserRole + 1, color.rgba());
@@ -109,28 +99,9 @@ namespace trtui
             styled.text.clear();
             style->drawControl(QStyle::CE_ItemViewItem, &styled, painter, styled.widget);
 
-            QTextLayout text(price, styled.font);
-            if (start.isValid() && start.toInt() < price.size())
-            {
-                QTextLayout::FormatRange suffix;
-                suffix.start = start.toInt();
-                suffix.length = static_cast<int>(price.size()) - suffix.start;
-                suffix.format.setForeground(QColor::fromRgba(index.data(Qt::UserRole + 1).toUInt()));
-                text.setFormats({suffix});
-            }
-            text.beginLayout();
-            QTextLine line = text.createLine();
-            line.setLineWidth(textRect.width());
-            text.endLayout();
-
-            painter->save();
-            painter->setClipRect(textRect, Qt::IntersectClip);
-            painter->setPen(styled.palette.color(QPalette::Text));
-            const QSize textSize(static_cast<int>(std::ceil(line.naturalTextWidth())),
-                                 static_cast<int>(std::ceil(line.height())));
-            const QRect aligned = QStyle::alignedRect(styled.direction, styled.displayAlignment, textSize, textRect);
-            text.draw(painter, aligned.topLeft());
-            painter->restore();
+            trtutils::drawHighlightedText(*painter, textRect, price, styled.font, styled.palette.color(QPalette::Text),
+                                          styled.displayAlignment, start.isValid() ? start.toInt() : -1, price.size(),
+                                          QColor::fromRgba(index.data(Qt::UserRole + 1).toUInt()));
         }
 
     };

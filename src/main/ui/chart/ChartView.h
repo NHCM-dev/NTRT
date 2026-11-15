@@ -3,8 +3,8 @@
 
 #include <QTimeZone>
 #include "ChartRenderer.h"
-#include "main/market/abstract/Instrument.h"
-#include "main/data/TradingDataConfig.h"
+#include "main/trade/TradeDataDef.h"
+#include "main/data/TradingDataDef.h"
 #include <QOpenGLWidget>
 #include <QOpenGLFunctions>
 

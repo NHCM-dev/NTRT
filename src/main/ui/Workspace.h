@@ -4,10 +4,9 @@
 #include <QFrame>
 #include <QPointer>
 #include <QMdiSubWindow>
-#include "main/data/WorkspaceManager.h"
+#include "main/data/WorkspaceDef.h"
 #include <memory>
 #include <vector>
-#include "main/market/abstract/Instrument.h"
 
 class QAction;
 class QMenu;
@@ -17,6 +16,7 @@ namespace trtui
 {
     class InstrumentListPanel;
     class ChartPanel;
+    class BookDepthPanel;
 
     class Workspace final : public QFrame
     {
@@ -25,6 +25,7 @@ namespace trtui
             QMdiSubWindow* window = nullptr;
             QAction* action = nullptr;
             ChartPanel* chart = nullptr;
+            BookDepthPanel* bookDepth = nullptr;
             QRect normalGeometry;
         };
 
@@ -37,8 +38,12 @@ namespace trtui
         QMenu* windowMenu = nullptr;
         QAction* windowActionsEnd = nullptr;
         int nextChartId = 1;
+        int nextBookDepthId = 1;
         std::unique_ptr<InstrumentListPanel> instruments;
         std::vector<WindowEntry> windows;
+        std::vector<QPointer<QMdiSubWindow>> instRequiredWindow;
+
+        void rememberInstrumentWindow(QMdiSubWindow* window);
 
         struct WindowPlacement
         {
@@ -55,6 +60,8 @@ namespace trtui
         void initInstrumentPanel();
 
         QMdiSubWindow* addChartWindow();
+
+        QMdiSubWindow* addBookDepthWindow();
 
         void showInstrument(const trtdata::InstIdentifier& identifier);
 
@@ -92,6 +99,8 @@ namespace trtui
         void updateData();
 
         void createChartWindow();
+
+        void createBookDepthWindow();
     };
 }
 #endif //NTRT_WORKSPACE_H

@@ -47,6 +47,8 @@ namespace trtdata::okx
     class OKXApi final : public trtcore::AbstractApi
     {
     public:
+        std::unique_ptr<trtcore::BookStream> createBookStream() const override;
+
         std::unique_ptr<trtcore::CandleStream> createCandleStream() const override;
 
         QFuture<std::vector<trttrade::CandleData>> fetchCandleHistory(const InstIdentifier& instrument,

@@ -1,7 +1,9 @@
 #ifndef NTRT_TICKERSTREAM_H
 #define NTRT_TICKERSTREAM_H
 
-#include "main/market/abstract/Instrument.h"
+#include "main/trade/TradeDataDef.h"
+#include <QObject>
+#include <QString>
 #include <set>
 
 namespace trtcore

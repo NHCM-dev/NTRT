@@ -3,6 +3,12 @@
 #include "main/ui/Workspace.h"
 #include "main/ui/chart/ChartView.h"
 #include "main/ui/panels/ChartPanel.h"
+#include "main/ui/panels/BookDepthPanel.h"
+#include <QSpinBox>
+#include <QDoubleSpinBox>
+#include <QTableWidget>
+#include <QLabel>
+#include <QToolButton>
 #include "main/ui/dialog/SettingsDialog.h"
 #include "main/util/FileUtil.h"
 #include <QAction>
@@ -28,6 +34,9 @@ namespace ntrt
     void quitApp() { QApplication::quit(); }
     void displayAbout(QWidget* parent) { Q_UNUSED(parent); }
 }
+
+void verifyBooks();
+void verifyNumericWidgets();
 
 void require(bool condition, const char* message)
 {
@@ -96,14 +105,42 @@ void verifyThemes(trtui::MainWindow& mainWindow, trtui::Workspace& workspace)
     require(theme, "theme setting");
     QMdiSubWindow* hidden = workspace.findChild<QMdiSubWindow*>("chart7");
     require(hidden, "retained hidden chart");
+    workspace.createBookDepthWindow();
+    QMdiSubWindow* retainedBook = workspace.findChild<QMdiSubWindow*>("bookDepth2");
+    require(retainedBook, "retained depth theme window");
     const int themes[] = {0, 1, 0};
     int step = 0;
     for (int selection : themes)
     {
         hidden->hide();
+        retainedBook->hide();
         theme->setCurrentIndex(selection);
         settleLayout();
         hidden->show();
+        retainedBook->show();
+        workspace.createBookDepthWindow();
+        QMdiArea* bookDesktop = workspace.findChild<QMdiArea*>("workspaceDesktop");
+        QMdiSubWindow* newBook = bookDesktop->activeSubWindow();
+        require(newBook && newBook->findChild<trtui::BookDepthPanel*>(), "new themed depth panel");
+        newBook->findChild<trtui::BookDepthPanel*>()->setInstrument({trtdata::Exchange::OKX, trttrade::InstType::Swap, "BTC-USDT-SWAP"});
+        settleLayout();
+        require(retainedBook->palette().color(QPalette::Window) == mainWindow.palette().color(QPalette::Window), "hidden depth follows theme");
+        savePreview(*newBook, QString("book-depth-theme-%1").arg(step));
+        QComboBox* alignment = newBook->findChild<QComboBox*>("bookPriceAlignment");
+        require(alignment, "price alignment setting");
+        alignment->setCurrentIndex(step);
+        const Qt::Alignment expected[] = {Qt::AlignLeft | Qt::AlignVCenter, Qt::AlignCenter, Qt::AlignRight | Qt::AlignVCenter};
+        require(newBook->findChild<QLabel*>("bookLatest")->alignment() == expected[step], "apply price alignment");
+        QToolButton* toggle = newBook->findChild<QToolButton*>("bookSettingsToggle");
+        require(toggle, "book settings toggle");
+        toggle->click();
+        require(newBook->findChild<QWidget*>("bookSettingsControls")->isHidden(), "collapse book settings");
+        require(!newBook->findChild<trtui::BookDepthPanel*>()->getState().settingsExpanded, "capture collapsed setting");
+        settleLayout();
+        savePreview(*newBook, QString("book-depth-collapsed-theme-%1").arg(step));
+        toggle->click();
+        require(!newBook->findChild<QWidget*>("bookSettingsControls")->isHidden(), "expand book settings");
+        newBook->close();
         workspace.createChartWindow();
         QMdiArea* desktop = workspace.findChild<QMdiArea*>("workspaceDesktop");
         QMdiSubWindow* created = desktop->activeSubWindow();
@@ -142,8 +179,10 @@ void verifyThemes(trtui::MainWindow& mainWindow, trtui::Workspace& workspace)
         menu->hide();
         created->close();
         settleLayout();
+        verifyNumericWidgets();
         step++;
     }
+    retainedBook->close();
     settings.close();
 }
 
@@ -154,6 +193,7 @@ int main(int argc, char** argv)
     QApplication::setStyle("Fusion");
     try
     {
+        verifyBooks();
         QTemporaryDir directory;
         require(directory.isValid(), "temporary directory");
         ntrt::configManager = std::make_shared<trtdata::ConfigManager>(directory.path());
@@ -271,6 +311,49 @@ int main(int argc, char** argv)
             created->close();
             settleLayout();
             require(!workspace->findChild<QMdiSubWindow*>("chart8"), "closed charts are destroyed");
+            QAction* newBookAction = nullptr;
+            for (QAction* action : mainWindow.findChildren<QAction*>())
+            {
+                if (action->text() == "New BookDepth Window")
+                    newBookAction = action;
+            }
+            require(newBookAction, "book depth menu action");
+            newBookAction->trigger();
+            settleLayout();
+            QMdiSubWindow* bookWindow = workspace->findChild<QMdiSubWindow*>("bookDepth1");
+            require(bookWindow, "create stable book identity");
+            trtui::BookDepthPanel* bookPanel = bookWindow->findChild<trtui::BookDepthPanel*>();
+            bookPanel->setInstrument(instrument->getUniqueIdentifier());
+            bookPanel->findChild<QSpinBox*>("bookDepth")->setValue(100);
+            bookPanel->findChild<QSpinBox*>("bookRows")->setValue(12);
+            bookPanel->findChild<QDoubleSpinBox*>("bookPriceStep")->setValue(0.5);
+            bookPanel->findChild<QComboBox*>("bookLayout")->setCurrentIndex(1);
+            require(bookPanel->findChild<QTableWidget*>("bookAsks")->isHidden(), "buy-only hides asks");
+            require(!bookPanel->findChild<QTableWidget*>("bookBids")->isHidden(), "buy-only retains bids");
+            bookPanel->findChild<QComboBox*>("bookLayout")->setCurrentIndex(2);
+            require(!bookPanel->findChild<QTableWidget*>("bookAsks")->isHidden(), "sell-only retains asks");
+            require(bookPanel->findChild<QTableWidget*>("bookBids")->isHidden(), "sell-only hides bids");
+            bookPanel->findChild<QComboBox*>("bookLayout")->setCurrentIndex(0);
+            bookWindow->setGeometry(140, 60, 440, 660);
+            bookWindow->hide();
+            settleLayout();
+            const trtdata::WorkspaceWindowState bookState = findWindow(workspace->getState(), "bookDepth1");
+            require(bookState.bookDepth.depth == 100 && bookState.bookDepth.rows == 12 && bookState.bookDepth.priceStep == 0.5,
+                    "book controls saved to typed state");
+            require(!bookState.visible && bookState.bookDepth.instrument == instrument->getUniqueIdentifier(), "hidden book retains instrument");
+            QAction* bookAction = nullptr;
+            for (QAction* action : workspace->getWindowMenu()->actions())
+            {
+                if (action->text() == bookWindow->windowTitle())
+                    bookAction = action;
+            }
+            require(bookAction && !bookAction->isChecked(), "hidden book menu checkmark");
+            bookAction->setChecked(true);
+            settleLayout();
+            require(bookWindow->isVisible(), "window menu reopens book");
+            bookAction->setChecked(false);
+            settleLayout();
+            require(bookWindow->isHidden(), "window menu hides book");
             QMdiArea* desktop = workspace->findChild<QMdiArea*>("workspaceDesktop");
             desktop->setActiveSubWindow(workspace->findChild<QMdiSubWindow*>("chart3"));
             tabs->setTabText(0, QString::fromUtf8("重命名"));
@@ -280,7 +363,7 @@ int main(int argc, char** argv)
             const trtdata::WorkspaceConfig& saved = ntrt::configManager->getWorkspaceManager()->getConfig();
             require(saved.currentWorkspace == 1 && saved.workspaces[1].id == "workspace4", "save reordered selected tab");
             require(saved.workspaces[1].name == QString::fromUtf8("重命名"), "save renamed tab");
-            require(saved.workspaces[1].windows.size() == 4, "closed chart excluded from saved layout");
+            require(saved.workspaces[1].windows.size() == 5, "closed chart excluded from saved layout");
             mainWindow.close();
         }
         require(ntrt::configManager->getWorkspaceManager()->loadConfig(), "reload layout from disk");
@@ -297,8 +380,66 @@ int main(int argc, char** argv)
             require(static_cast<trtui::Workspace*>(tabs->widget(2))->getState().windows.empty(), "empty workspace stays empty");
             tabs->setCurrentIndex(1);
             settleLayout();
+            const trtdata::WorkspaceWindowState book = findWindow(workspace->getState(), "bookDepth1");
+            require(book.bookDepth.rows == 12 && book.bookDepth.depth == 100 && book.bookDepth.priceStep == 0.5, "restart restores book settings");
+            require(!book.visible && book.geometry == QRect(140, 60, 440, 660), "restart restores hidden book geometry");
+            if (qEnvironmentVariableIsSet("NTRT_TEST_LIVE_BOOK"))
+            {
+                trtui::BookDepthPanel live;
+                live.resize(440, 700);
+                live.show();
+                live.setInstrument(instrument->getUniqueIdentifier());
+                ntrt::dataMonitor->start();
+                QElapsedTimer timeout;
+                timeout.start();
+                bool received = false;
+                while (timeout.elapsed() < 25000)
+                {
+                    settleLayout();
+                    live.updateData();
+                    const std::shared_ptr<const trtcore::MarketDataSnapshot> snapshot = ntrt::dataMonitor->getMarketData();
+                    const trttrade::BookSnapshot* book = snapshot->getBook(instrument->getUniqueIdentifier());
+                    if (book && book->sequence >= 0 && !book->bids.empty() && !book->asks.empty() &&
+                        !live.findChild<QLabel*>("bookLatest")->text().isEmpty() &&
+                        !live.findChild<QLabel*>("bookLatest")->text().contains(QString::fromUtf8("—")))
+                    {
+                        received = true;
+                        break;
+                    }
+                }
+                savePreview(live, "book-depth-live");
+                ntrt::dataMonitor->stop();
+                require(received, "live OKX book and ticker feed within 25 seconds");
+                std::cout << "live OKX book and ticker received\n";
+            }
             verifyThemes(restored, *workspace);
             restored.close();
+        }
+        {
+            trtui::Workspace dispatch;
+            dispatch.resize(1200, 900);
+            dispatch.show();
+            settleLayout();
+            dispatch.createChartWindow();
+            dispatch.createBookDepthWindow();
+            dispatch.createBookDepthWindow();
+            settleLayout();
+            dispatch.updateData();
+            QTableWidget* table = dispatch.findChild<QTableWidget*>("instrumentTable");
+            require(table && table->rowCount() > 0, "dispatch instrument source");
+            QMetaObject::invokeMethod(table, "cellDoubleClicked", Qt::DirectConnection, Q_ARG(int, 0), Q_ARG(int, 3));
+            trtdata::WorkspaceState state = dispatch.getState();
+            require(!findWindow(state, "chart1").chart.instrument && findWindow(state, "chart2").chart.instrument,
+                    "dispatch selects only latest empty chart");
+            require(!findWindow(state, "bookDepth1").bookDepth.instrument && findWindow(state, "bookDepth2").bookDepth.instrument,
+                    "dispatch selects only latest empty book");
+            dispatch.findChild<QMdiSubWindow*>("chart2")->showMinimized();
+            dispatch.findChild<QMdiSubWindow*>("bookDepth2")->showMinimized();
+            QMetaObject::invokeMethod(table, "cellDoubleClicked", Qt::DirectConnection, Q_ARG(int, 0), Q_ARG(int, 3));
+            state = dispatch.getState();
+            require(findWindow(state, "chart1").chart.instrument && findWindow(state, "bookDepth1").bookDepth.instrument,
+                    "dispatch skips minimized targets and fills eligible empty windows");
+            dispatch.close();
         }
         // Restart a maximized main window with children close to all desktop edges.
         require(ntrt::configManager->getWorkspaceManager()->saveConfig({}), "reset maximized restart fixture");

@@ -2,13 +2,11 @@
 #define NTRT_TRADEUTIL_H
 
 #include "main/trade/TradeDef.h"
+#include "main/trade/TradeDataDef.h"
 #include <string_view>
+#include <optional>
+#include <vector>
 #include <QString>
-
-namespace trtdata
-{
-    struct InstIdentifier;
-}
 
 namespace trttrade
 {
@@ -154,11 +152,15 @@ namespace trttrade
 
 namespace trtutils
 {
+    // Best-first input; depth limits raw levels, step zero preserves native prices.
+    std::vector<trttrade::BookLevel> aggregateBook(const std::vector<trttrade::BookLevel>& levels, bool bids,
+                                                int depth, double step, int rows);
+
+    std::optional<double> bookBuyShare(const std::vector<trttrade::BookLevel>& bids,
+                                       const std::vector<trttrade::BookLevel>& asks, int depth);
+
     QString instrumentLabel(const trtdata::InstIdentifier& identifier);
 }
-
-
-#include "main/data/Exchanges.h"
 
 namespace trtdata
 {

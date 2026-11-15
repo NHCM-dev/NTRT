@@ -19,11 +19,23 @@
 - Add settings and configuration UI in `SettingPage`. Use its sections and row helpers to expose controls, and delegate persistence to the corresponding configuration manager.
 - Use `switch` when behavior or values differ by enum member. Avoid enum-based `if` chains and ternary expressions for these branches.
 
+## Shared Type Definitions
+
+- Put shared domain enums, identifiers, data records, snapshots, and configuration structs in cohesive domain `XXXDef.h` headers. Use `TradeDef.h` for trading enums and identities, `TradeDataDef.h` for raw trading records, and `TradeSnapshotDef.h` for published trading snapshots and their read interfaces. Apply the same separation to configuration, workspace, network, and chart domains.
+- Do not scatter shared type definitions across manager, service, UI, or utility headers, create one header per trivial type, or collect unrelated domains in one global definitions file. Keep class-private implementation types with their owning class.
+- Keep definition headers self-contained and independent of manager, network-client, and UI implementation headers; use forward declarations for referenced classes when possible. Consumers should include the defining header directly. Keep snapshot query implementations with the snapshots and update callers and build/test inputs when moving types.
+
 ## Utility Extraction
 
 - Scan the affected code and callers for logic that belongs in `XXXUtil`: parsing, conversion, formatting, calculations, file operations, drawing primitives, and generic Qt operations. Extract suitable logic even when it has only one caller.
-- Reuse a suitable existing Util or create a focused `XXXUtil`; keep callers compact and remove duplicate implementations. Do not collect unrelated helpers into a catch-all Util or wrap simple calls without making their intent clearer.
+- Prefer an existing domain-level Util, such as `TradeUtil`, `NumberUtil`, `QtUtil`, or `PaintUtil`. Do not create implementation- or feature-specific utilities such as `BookUtil`; merge suitable logic into an existing Util or choose a broader, cohesive domain name when a new Util is necessary. Exchange-specific protocol utilities such as `OKXBookUtil` are an exception. Keep callers compact and remove duplicate implementations. Do not collect unrelated helpers into a catch-all Util or wrap simple calls without making their intent clearer.
 - Utilities take their dependencies as arguments. Keep feature state, configuration persistence policy, subscriptions, caches, scheduling, and lifecycle operations in their owning classes. Keep exchange-specific protocol helpers separate from general utilities. Update all callers and relevant build/test targets when extracting code.
+
+## Numeric Display and Market Visualization
+
+- Reuse `NumberUtil` for prices, quantities, tooltips and decimal controls. Trim unnecessary trailing zeros, normalize displayed negative zero, preserve supported small nonzero values, and do not expose binary floating-point residue with raw high-precision formatting. Test decimal step boundaries at realistic price magnitudes; use scale-aware rounding tolerance rather than exact floating-point equality or a fixed epsilon on the quotient.
+- Reuse shared price-flash phase calculation and text painting for latest-price views, following Instrument List. Respect the global appearance switch, clear highlighting for missing/stale data, and resolve colors from the current palette when painting.
+- Represent order-book size and cumulative depth with relative-length bars at constant opacity. State the normalization basis, units and scope of buy/sell percentages in tooltips; display an unavailable state for empty data rather than inventing a balanced percentage. Keep percentage calculations independent of presentation-only row limits and one-sided layouts.
 
 ## Class Responsibilities and Interfaces
 
@@ -42,7 +54,7 @@
 - Use a top menu bar and movable Workspace tabs for navigation. Each `Workspace` remains a QFrame with a `QMdiArea` desktop background and independent `QMdiSubWindow` child windows.
 - Tools live inside the desktop: allow moving, overlapping, resizing, minimizing and maximizing, but never detach them into native top-level OS windows. Do not use floating docking containers for workspace tools.
 - `Workspace` owns child-window construction and layout coordination; `MainWindow` owns navigation, menus and application actions. Keep panel content in `ui/panels` separate and reusable.
-- Give each child window a stable unique objectName. Titlebar close destroys the child window and its content, removes its Window-menu entry, and releases its chart subscriptions. Shared backend monitoring continues independently. Window menu checkmarks follow visibility for retained windows.
+- Give each child window a stable unique objectName. Titlebar close destroys the child window and its content, removes its Window-menu entry, and releases its market-data subscriptions. Shared backend monitoring continues independently. Window menu checkmarks follow visibility for retained windows.
 - Provide Reset Layout, Stack Windows and Sort Window actions in the Window menu.
 - Settings remains a standalone reusable `SettingsDialog` containing `SettingPage`; keep settings sections and row helpers in `SettingPage`.
 - UI panels only read backend data. DataMonitor's lifecycle is independent of window visibility. Keep styling in resource QSS files and support palette changes.
@@ -66,8 +78,16 @@
 
 - All project text files must use UTF-8. Always specify UTF-8 explicitly when reading or writing files; never rely on the Windows locale, GBK, ANSI, or shell redirection defaults. Preserve binary assets as binary.
 - Preserve readable text and normal line endings. Do not silently replace decoding errors, introduce mojibake, or duplicate carriage returns. Verify modified files decode as UTF-8 before finishing.
-- Documentation changes are not a routine completion step. Do not append task summaries, implementation walkthroughs, transient limitations, verification logs, or feature-by-feature notes to README.md, AGENTS.md, or other documents after every task. Put task results in the chat response.
-- Change documentation only when explicitly requested, or when a change directly makes existing essential setup, usage, or architecture instructions incorrect. In the latter case, correct the relevant existing passage with the smallest necessary edit; do not add unrelated sections.
+- Documentation changes are required for durable architecture and core maintenance contracts; they are not a routine task-log step. Do not append task summaries, implementation walkthroughs, transient limitations, verification logs, or feature-by-feature notes to README.md, AGENTS.md, or other documents after every task. Put task results in the chat response.
+- Change documentation when explicitly requested, when architecture or core maintenance contracts change, or when existing essential setup, usage, or architecture instructions become incorrect. In the latter case, correct the relevant existing passage with the smallest necessary edit; do not add unrelated sections.
 - Do not create README files, design notes, API guides, task reports, or other explanatory documents under src/. Source directories are for implementation and required runtime resources. Do not generate a new document elsewhere as a substitute unless requested.
 - Keep README.md short: project purpose, prerequisites, build and test commands. Do not duplicate source-level details or use it as a changelog.
 - Keep AGENTS.md focused on durable contributor instructions. Add rules only when requested or needed to correct an existing instruction; do not turn individual implementation choices into new repository-wide rules.
+
+## Instrument dispatch and durable architecture
+
+Workspace owns the `instRequiredWindow` registry and interaction ordering. Instrument List activation applies once to at most one Chart and one BookDepth in the current workspace. Exclude hidden, minimized and destroyed windows; prefer empty windows, then the most recently activated window of each type. Freeze targets before applying so activation cannot redirect the same dispatch. Register restored windows and preserve panel-owned subscription lifecycle.
+
+When a change affects architecture, ownership, core interfaces or behavior that future maintenance depends on, update the relevant existing agent documentation in the same task. Record durable contracts and maintenance constraints only, not task logs or implementation walkthroughs. Preserve unrelated documentation and staged changes.
+
+Order-book bucket quantities should accumulate in wider precision before conversion and use quantity formatting for cells and tooltips. Keep price precision separate. A deeper REST snapshot and a live WebSocket book have different timestamps and coverage; never stitch them into a purportedly synchronized live book without a supported synchronization protocol. Expose source limits and refresh cadence when adding depth sources.

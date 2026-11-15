@@ -2,7 +2,7 @@
 #define NTRT_MAINWINDOW_H
 
 #include <QMainWindow>
-#include "main/data/WorkspaceManager.h"
+#include "main/data/WorkspaceDef.h"
 
 class QTabWidget;
 class QAction;

@@ -5,9 +5,8 @@
 #ifndef NTRT_INSTRUMENTLISTPANEL_H
 #define NTRT_INSTRUMENTLISTPANEL_H
 #include <QTableWidget>
-#include "main/data/WorkspaceManager.h"
+#include "main/data/WorkspaceDef.h"
 #include <QObject>
-#include "main/market/abstract/Instrument.h"
 
 #include "main/ui/AbstractPage.h"
 

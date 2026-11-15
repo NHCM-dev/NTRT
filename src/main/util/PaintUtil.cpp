@@ -2,9 +2,50 @@
 #include <algorithm>
 #include <QWidget>
 #include <cmath>
+#include <QTextLayout>
+#include <QStyle>
 
 namespace trtutils
 {
+    void drawHighlightedText(QPainter& painter, const QRect& area, const QString& value, const QFont& font,
+                             const QColor& foreground, Qt::Alignment alignment, qsizetype start,
+                             qsizetype length, const QColor& highlight)
+    {
+        if (value.isEmpty() || area.isEmpty())
+            return;
+        QTextLayout text(value, font);
+        if (start >= 0 && start < value.size() && length > 0)
+        {
+            QTextLayout::FormatRange range;
+            range.start = static_cast<int>(start);
+            range.length = static_cast<int>(std::min(length, value.size() - start));
+            range.format.setForeground(highlight);
+            text.setFormats({range});
+        }
+        text.beginLayout();
+        QTextLine line = text.createLine();
+        line.setLineWidth(area.width());
+        text.endLayout();
+        const QSize size(static_cast<int>(std::ceil(line.naturalTextWidth())), static_cast<int>(std::ceil(line.height())));
+        const QRect aligned = QStyle::alignedRect(Qt::LeftToRight, alignment, size, area);
+        painter.save();
+        painter.setClipRect(area, Qt::IntersectClip);
+        painter.setPen(foreground);
+        text.draw(&painter, aligned.topLeft());
+        painter.restore();
+    }
+
+    void drawValueBar(QPainter& painter, const QRectF& area, double fraction, const QColor& color)
+    {
+        if (!std::isfinite(fraction) || fraction <= 0)
+            return;
+        QRectF bar = area;
+        bar.setLeft(area.right() - area.width() * std::clamp(fraction, 0.0, 1.0));
+        QColor fill = color;
+        fill.setAlphaF(0.22);
+        painter.fillRect(bar, fill);
+    }
+
     void clipToParentRect(QPainter& painter, const QWidget* widget)
     {
         if (!widget || !widget->parentWidget())

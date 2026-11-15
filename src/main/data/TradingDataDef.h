@@ -1,9 +1,7 @@
-#ifndef NTRT_TRADINGDATACONFIG_H
-#define NTRT_TRADINGDATACONFIG_H
+#ifndef NTRT_TRADINGDATADEF_H
+#define NTRT_TRADINGDATADEF_H
 
 #include <string>
-#include <cstdint>
-#include <string_view>
 
 namespace trtdata
 {
@@ -18,8 +16,6 @@ namespace trtdata
         TradingDataTimeZone timeZone = TradingDataTimeZone::UTC;
         std::string displayTimeZone = "UTC";
     };
-
-
 }
 
-#endif //NTRT_TRADINGDATACONFIG_H
+#endif //NTRT_TRADINGDATADEF_H

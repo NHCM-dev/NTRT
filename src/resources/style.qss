@@ -191,3 +191,21 @@ QToolButton#newWorkspaceButton:enabled:pressed, QToolButton#workspaceTabClose:en
     background-color: palette(highlight);
     color: palette(highlighted-text);
 }
+
+QFrame#bookDepthPanel, QFrame#bookDepthPanel QTableWidget {
+    background-color: palette(base);
+    color: palette(text);
+}
+QLabel#bookLatest {
+    background-color: palette(alternate-base);
+    color: palette(text);
+    border-top: 1px solid palette(mid);
+    border-bottom: 1px solid palette(mid);
+    padding: 3px;
+    font-size: 18px;
+    font-weight: bold;
+}
+QLabel#bookStatus {
+    color: palette(placeholder-text);
+    padding: 3px;
+}

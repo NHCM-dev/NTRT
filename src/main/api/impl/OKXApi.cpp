@@ -1,3 +1,4 @@
+#include "OKXBookStream.h"
 //
 // Created by NHCM on 2026/11/7.
 //
@@ -127,3 +128,11 @@ namespace trtdata::okx
         return OKXParser::readType(name);
     }
 } // trtdata
+
+namespace trtdata::okx
+{
+    std::unique_ptr<trtcore::BookStream> OKXApi::createBookStream() const
+    {
+        return std::make_unique<OKXBookStream>();
+    }
+}

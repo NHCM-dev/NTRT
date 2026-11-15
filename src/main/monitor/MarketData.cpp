@@ -55,10 +55,50 @@ namespace trtcore
         }
     }
 
+    void MarketData::setBookInstruments(const BookStream::Instruments& instruments)
+    {
+        for (trtdata::Exchange exchange : availableExchanges())
+        {
+            BookStream::Instruments desired;
+            for (const trtdata::InstIdentifier& instrument : instruments)
+            {
+                if (instrument.exchange == exchange)
+                    desired.insert(instrument);
+            }
+            if (!desired.empty() && !bookStreams.contains(exchange))
+            {
+                std::unique_ptr<BookStream> stream = exchangeApi(exchange).createBookStream();
+                if (stream)
+                {
+                    connect(stream.get(), &BookStream::bookReceived, this,
+                            [this](const trtdata::InstIdentifier& instrument, const trttrade::BookSnapshot& book)
+                    {
+                        snapshot.books.insert_or_assign(instrument, book);
+                    });
+                    bookStreams.emplace(exchange, std::move(stream));
+                }
+            }
+            if (bookStreams.contains(exchange))
+                bookStreams.at(exchange)->setInstruments(desired);
+            else
+            {
+                for (const trtdata::InstIdentifier& instrument : desired)
+                    snapshot.books[instrument].error = "Order book unavailable for this exchange";
+            }
+        }
+        std::erase_if(snapshot.books, [&instruments](const std::pair<const trtdata::InstIdentifier, trttrade::BookSnapshot>& entry)
+        {
+            return !instruments.contains(entry.first);
+        });
+    }
+
     void MarketData::stop()
     {
         for (std::pair<const trtdata::Exchange, std::unique_ptr<TickerStream>>& entry : streams)
             entry.second->stop();
+        for (std::pair<const trtdata::Exchange, std::unique_ptr<BookStream>>& entry : bookStreams)
+            entry.second->stop();
+        snapshot.books.clear();
         snapshot.failures.clear();
     }
 
@@ -117,24 +157,4 @@ namespace trtcore
         return snapshot;
     }
 
-    const MarketSnapshot* MarketDataSnapshot::getSnapshot(const trtdata::InstIdentifier& identifier) const
-    {
-        const Identifier2SnapshotMap* snapshots = getSnapshots(identifier.type);
-        if (snapshots)
-        {
-            const Identifier2SnapshotMap::const_iterator entry = snapshots->find(identifier);
-            if (entry != snapshots->end())
-                return &entry->second;
-        }
-
-        const std::map<trtdata::Exchange, MarketSnapshot>::const_iterator failure = failures.find(identifier.exchange);
-        return failure == failures.end() ? nullptr : &failure->second;
-    }
-
-    const MarketDataSnapshot::Identifier2SnapshotMap* MarketDataSnapshot::getSnapshots(
-        trttrade::InstType instType) const
-    {
-        const std::map<trttrade::InstType, Identifier2SnapshotMap>::const_iterator entry = tickersData.find(instType);
-        return entry == tickersData.end() ? nullptr : &entry->second;
-    }
 }

@@ -5,13 +5,21 @@
 #ifndef NTRT_TRADEDEF_H
 #define NTRT_TRADEDEF_H
 
+#include <compare>
 #include <cstdint>
+#include <string>
 
-#include "main/data/Exchanges.h"
+#include "main/data/ExchangeDef.h"
 
 namespace trttrade
 {
     using leverage = float;
+
+    enum class CandleTimeframe
+    {
+        Minute1, Minute3, Minute5, Minute15, Minute30,
+        Hour1, Hour2, Hour4, Day1, Week1, Month1
+    };
 
     enum class InstType : uint8_t
     {
@@ -69,6 +77,29 @@ namespace trttrade
         MMP = 6, // Market Maker Protection (only applicable to Option in Portfolio Margin mode)
         MMPAndPostOnly = 7,
         RPI = 8, // Retail Price Improvement order
+    };
+}
+
+namespace trtdata
+{
+    struct InstIdentifier
+    {
+        Exchange exchange;
+        trttrade::InstType type;
+        std::string id;
+
+        std::strong_ordering operator<=>(const InstIdentifier&) const = default;
+    };
+}
+
+namespace trtcore
+{
+    struct CandleSeriesKey
+    {
+        trtdata::InstIdentifier instrument;
+        trttrade::CandleTimeframe timeframe = trttrade::CandleTimeframe::Day1;
+
+        std::strong_ordering operator<=>(const CandleSeriesKey&) const = default;
     };
 }
 

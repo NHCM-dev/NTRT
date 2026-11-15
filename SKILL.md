@@ -21,26 +21,32 @@ Choose the smallest complete change that addresses the request. A question about
 | Navigation, menus, application actions | `ui/MainWindow` |
 | Desktop layout, child-window visibility and arrangement | `ui/Workspace` |
 | Child-window titlebar, frame, resizing and hover behavior | `ui/WorkspaceWindow` |
-| Instrument list and chart content | `ui/panels/InstrumentListPanel`, `ui/panels/ChartPanel` |
+| Instrument list, chart and book depth content | `ui/panels/InstrumentListPanel`, `ui/panels/ChartPanel`, `ui/panels/BookDepthPanel` |
 | Settings dialog and setting rows | `ui/dialog/SettingsDialog`, `ui/pages/SettingPage` |
 | Typed settings and persistence | `data/ConfigManager`, `data/AppearanceManager` |
 | Background subscriptions and lifecycle | `monitor/DataMonitor` |
-| Quotes, candles and icon caches | `monitor/MarketData`, `monitor/CandlesManager`, `monitor/InstrumentIconManager` |
-| Common exchange interface and OKX behavior | `api/AbstractApi`, `api/impl/OKXApi`, `api/impl/OKXTickerStream` |
+| Quotes, order books, candles and icon caches | `monitor/MarketData`, `monitor/CandlesManager`, `monitor/InstrumentIconManager` |
+| Common exchange interface and OKX behavior | `api/AbstractApi`, `api/impl/OKXApi`, `api/impl/OKXTickerStream`, `api/impl/OKXBookStream` |
 | Network lifecycle and request definitions | `network/` |
-| Candle types, timeframes and parsing | `trade/TradeDataDef.h`, `trade/CandleTimeframe.h`, `trade/parser/` |
+| Candle types, timeframes and parsing | `trade/TradeDef.h`, `trade/TradeDataDef.h`, `trade/parser/` |
 
 These are discovery hints, not permission to create missing components. Inspect existing account abstractions before extending them; do not invent exchange authentication or trading behavior as part of unrelated work.
 
+## Organize shared types by domain
+
+Before adding a struct or enum, inspect the existing domain definitions and its consumers. Keep trading enums and identities in `trade/TradeDef.h`, raw ticker/candle/book records in `trade/TradeDataDef.h`, and published snapshots plus read interfaces in `trade/TradeSnapshotDef.h`. Use the corresponding `data/*Def.h`, `network/NetworkDef.h`, `ui/chart/ChartDef.h`, or `monitor/DataSnapshotDef.h` for other domains. Keep configuration persistence and live-data lifecycle in their managers, and class-private subscription/cache/layout details in their owner classes.
+
+Definition headers must compile independently without importing managers, clients, or concrete widgets. Include the defining header directly when only its value types are needed; use forward declarations for class references. Keep cohesive types together rather than creating a header for every small type or an application-wide catch-all. Move snapshot query implementations with their read interfaces, migrate all callers, remove superseded headers, and update explicit build/test source lists.
+
 ## Extract focused utilities
 
-When scanning or changing code, move suitable independent logic into focused `XXXUtil` files in `src/main/util`, even if it currently has only one caller. Inspect existing utilities and callers first; extend a matching Util or create a new one. Prefer compact call sites and a single implementation for parsing, conversion, formatting, calculations, file operations, drawing primitives, and generic Qt operations. Pass dependencies explicitly, keep exchange protocol helpers separate, and retain state and lifecycle policy on the owning classes. Avoid catch-all collections and wrappers that add no clarity. Update callers, build inputs and relevant behavioral checks together.
+When scanning or changing code, move suitable independent logic into focused `XXXUtil` files in `src/main/util`, even if it currently has only one caller. Inspect existing utilities and callers first; extend a matching domain-level Util such as `TradeUtil`, `NumberUtil`, `QtUtil`, or `PaintUtil`. Avoid implementation- or feature-specific names such as `BookUtil`; use a broader, cohesive domain name only when no existing Util fits. Exchange protocol utilities such as `OKXBookUtil` may remain specialized. Prefer compact call sites and a single implementation for parsing, conversion, formatting, calculations, file operations, drawing primitives, and generic Qt operations. Pass dependencies explicitly, keep exchange protocol helpers separate, and retain state and lifecycle policy on the owning classes. Avoid catch-all collections and wrappers that add no clarity. Update callers, build inputs and relevant behavioral checks together.
 
 ## Preserve the desktop interaction model
 
 The workspace uses `QMdiArea` with child windows, not detachable docking windows. Do not reintroduce Qt Advanced Docking System merely because older code or previous requests mention it.
 
-Keep panel content separate from window chrome. Tool windows may move, overlap, resize, minimize and maximize within the desktop. Titlebar close destroys a tool and removes its Window-menu entry; recreate it through the element actions. Window-menu actions toggle visibility of retained tools with synchronized checkmarks. Closing a tool releases its chart subscriptions without stopping shared backend monitoring. Settings remains a separate reusable dialog.
+Keep panel content separate from window chrome. Tool windows may move, overlap, resize, minimize and maximize within the desktop. Titlebar close destroys a tool and removes its Window-menu entry; recreate it through the element actions. Window-menu actions toggle visibility of retained tools with synchronized checkmarks. Closing a tool releases its market-data subscriptions without stopping shared backend monitoring. Settings remains a separate reusable dialog.
 
 For window interaction changes, check the affected transitions: active/inactive, background-click deselection, hide/reopen, minimize/restore, move/resize, or arrangement. Preserve the usable resize hit area independently of the thin visible outline. Keep frame rendering consistent with titlebar geometry and repaint clipping; do not fix a paint problem by continually repainting the entire application.
 
@@ -48,8 +54,15 @@ Every enabled button must provide visible hover feedback, including text/icon bu
 
 For table changes, update column indices, delegates, visibility settings, width calculations, headers and tooltips together. Reuse cells and cached pixmaps; avoid recreating every item on periodic refresh. Skip unnecessary UI refresh for hidden/minimized panels while maintaining backend updates.
 
+## Format numeric data consistently
+
+Inspect `NumberUtil`, `PaintUtil` and `ui/widgets/NumericWidgets` before adding numeric rendering. Use shared decimal formatting for controls, table values and full-value tooltips; remove redundant trailing zeros and binary floating-point residue while preserving supported small nonzero values. Verify decimal aggregation on both sides of a tick boundary, including large price-to-step ratios. Do not use raw `g16` tooltips or fixed-decimal controls that expose implementation precision to the user.
+
+Latest-price widgets share Instrument List's full-flash and changed-digit phases, global enable setting and palette-based painting. Test enabled, disabled, expired and missing/stale quotes. Quantity and cumulative-depth bars use consistent opacity and relative lengths; specify each normalization basis. Buy/sell balance uses both sides within the selected raw depth, independent of displayed rows or one-sided layout. Empty books show unavailable percentages. Verify actual bars, flash text and percentages through Light → Dark → Light, including hidden and newly created panels.
+
 ## Preserve market-data semantics
 
+- Order book windows share reference-counted subscriptions through `DataMonitor` and `MarketData`. Keep sequence validation and snapshot recovery in the exchange implementation; aggregate price buckets with general trading utilities. Persist per-window instrument, aggregation and display options through `WorkspaceManager` while preserving old layouts.
 - Quote price and daily-candle close are different data sources. Displayed daily percentage change uses `(latest ticker price - daily open) / daily open * 100`, not the last REST candle close.
 - Daily volume comes from the selected daily candle. Keep spot versus derivative base-volume units correct and use the actual quote-volume field.
 - Trading-data time zone defaults to UTC. Calendar-bar requests and lookup boundaries must agree with the saved setting. Keep OKX protocol names in the exchange implementation.
@@ -73,8 +86,16 @@ Distinguish compilation from successful linking and packaging. A running `NTRT.e
 
 Write all text explicitly as UTF-8 and verify modified text decodes cleanly. Avoid locale-dependent shell output when writing documents or configuration.
 
-Do not create task reports, API guides, README files or design notes under `src/`. Do not append task history to README.md or AGENTS.md. Change documentation only when requested or to minimally correct essential instructions made inaccurate by the change; report routine work and verification in chat.
+Do not create task reports, API guides, README files or design notes under `src/`. Do not append task history to README.md or AGENTS.md. Update relevant agent documentation when architecture or core maintenance contracts change; otherwise change documentation only when requested or to minimally correct essential instructions made inaccurate by the change; report routine work and verification in chat.
 
 Commit only when requested. Inspect recent subjects and match their short lowercase English style, for example `adjust workspace design and ui performance`. Review the staged diff, include the requested work's new files and deletions, run relevant checks, and verify the resulting commit and working tree. Do not push unless asked.
 
 Reply concisely in the user's language: state what changed, what was verified, and any concrete remaining limitation. Do not turn a failed link or an unverified visual change into a claim that the user has already seen the fix.
+
+## Instrument dispatch and durable architecture
+
+Workspace owns the `instRequiredWindow` registry and interaction ordering. Instrument List activation applies once to at most one Chart and one BookDepth in the current workspace. Exclude hidden, minimized and destroyed windows; prefer empty windows, then the most recently activated window of each type. Freeze targets before applying so activation cannot redirect the same dispatch. Register restored windows and preserve panel-owned subscription lifecycle.
+
+When a change affects architecture, ownership, core interfaces or behavior that future maintenance depends on, update the relevant existing agent documentation in the same task. Record durable contracts and maintenance constraints only, not task logs or implementation walkthroughs. Preserve unrelated documentation and staged changes.
+
+Order-book bucket quantities should accumulate in wider precision before conversion and use quantity formatting for cells and tooltips. Keep price precision separate. A deeper REST snapshot and a live WebSocket book have different timestamps and coverage; never stitch them into a purportedly synchronized live book without a supported synchronization protocol. Expose source limits and refresh cadence when adding depth sources.

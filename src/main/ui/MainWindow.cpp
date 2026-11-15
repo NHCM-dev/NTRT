@@ -168,6 +168,11 @@ namespace trtui
         QMenu* elements = menuBar()->addMenu("Elements");
         elementsMenu = elements;
         elements->addAction(newChart);
+        connect(elements->addAction("New BookDepth Window"), &QAction::triggered, this, [this]
+        {
+            if (getCurrentWorkspace())
+                getCurrentWorkspace()->createBookDepthWindow();
+        });
         connect(elements->addAction("Instrument List"), &QAction::triggered, this, [this]
         {
             if (getCurrentWorkspace())

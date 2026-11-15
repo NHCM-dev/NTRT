@@ -301,6 +301,7 @@ namespace trtui
             return;
         if (!renderingError.isEmpty())
         {
+            status->show();
             status->setText("OpenGL unavailable: " + renderingError);
             status->setToolTip(renderingError);
             return;
@@ -335,14 +336,14 @@ namespace trtui
         } else
         {
             const qint64 age = QDateTime::currentMSecsSinceEpoch() - snapshot->updatedAt;
-            text = QString("%1 bars · %2 · Updated %3s ago").arg(snapshot->candles.size()).arg(zone).arg(age / 1000);
             if (snapshot->historyLoading)
-                text += " · Loading history…";
+                text = "Loading history…";
             if (age > 15000)
-                text += " · Waiting for feed";
+                text = "Waiting for feed";
         }
         if (status->text() != text)
             status->setText(text);
+        status->setVisible(!text.isEmpty());
         status->setToolTip(snapshot->error.isEmpty()
                                ? "Drag: pan · Wheel: zoom · Double-click: reset · End: latest\nLive candles via WebSocket. Pan left or click History to load older candles."
                                : snapshot->error);

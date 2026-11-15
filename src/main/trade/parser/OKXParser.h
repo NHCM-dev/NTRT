@@ -5,11 +5,11 @@
 #ifndef NTRT_OKXPARSER_H
 #define NTRT_OKXPARSER_H
 
-#include "main/market/abstract/Instrument.h"
+#include "main/trade/TradeDataDef.h"
 #include "main/trade/TradeDataDef.h"
 #include <QByteArray>
-#include "main/trade/CandleTimeframe.h"
-#include "main/data/TradingDataConfig.h"
+#include "main/trade/TradeDef.h"
+#include "main/data/TradingDataDef.h"
 
 #include "main/util/JsonUtil.h"
 

@@ -1,10 +1,10 @@
 #ifndef NTRT_CANDLESTREAM_H
 #define NTRT_CANDLESTREAM_H
-#include "main/market/abstract/Instrument.h"
-#include "main/trade/CandleTimeframe.h"
+#include "main/trade/TradeDef.h"
 #include "main/trade/TradeDataDef.h"
-#include "main/data/TradingDataConfig.h"
+#include "main/data/TradingDataDef.h"
 #include <QObject>
+#include <QString>
 #include <vector>
 
 namespace trtcore

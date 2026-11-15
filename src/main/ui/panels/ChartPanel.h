@@ -1,9 +1,8 @@
 #ifndef NTRT_CHARTPANEL_H
 #define NTRT_CHARTPANEL_H
 #include <QFrame>
-#include "main/data/WorkspaceManager.h"
-#include "main/market/abstract/Instrument.h"
-#include "main/trade/CandleTimeframe.h"
+#include "main/data/WorkspaceDef.h"
+#include "main/trade/TradeDef.h"
 #include <memory>
 #include <vector>
 

@@ -11,25 +11,14 @@
 
 #include "AppearanceManager.h"
 #include "WorkspaceManager.h"
-#include "TradingDataConfig.h"
+#include "TradingDataDef.h"
 #include "main/util/FileUtil.h"
 #include "main/market/abstract/Instrument.h"
 
+#include "ConfigDef.h"
+
 namespace trtdata
 {
-    struct MarketConfig
-    {
-        std::string fileName;
-        std::vector<std::shared_ptr<Instrument>> instruments;
-        TradingDataConfig tradingData;
-    };
-
-    struct ExchangeConfig
-    {
-        std::string fileName;
-        Exchange current{};
-    };
-
     inline static const QString DEFAULT_MARKET_CONFIG = "market.json";
     inline static const QString DEFAULT_EXCHANGE_CONFIG = "exchange.json";
     inline static const QString DEFAULT_DATA_PATH = "data/";

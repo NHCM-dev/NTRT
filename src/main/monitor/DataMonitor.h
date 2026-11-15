@@ -2,6 +2,7 @@
 #define NTRT_DATAMONITOR_H
 
 #include "MarketData.h"
+#include "DataSnapshotDef.h"
 #include "CandlesManager.h"
 #include "InstrumentIconManager.h"
 #include <QThread>
@@ -15,12 +16,6 @@ namespace trtdata
 
 namespace trtcore
 {
-    struct DataSnapshot
-    {
-        MarketDataSnapshot marketData;
-        CandlesSnapshot candles;
-    };
-
     class DataMonitor final : public QObject
     {
         class Worker;
@@ -31,8 +26,11 @@ namespace trtcore
         QObject* workerContext = nullptr;
         std::unique_ptr<Worker> worker;
         std::atomic<std::shared_ptr<const DataSnapshot>> snapshot;
-        std::map<CandlesManager::SeriesKey, std::size_t> chartReaders;
+        std::map<CandleSeriesKey, std::size_t> chartReaders;
+        std::map<trtdata::InstIdentifier, std::size_t> bookReaders;
         bool running = false;
+
+        void updateBookInstruments();
 
         void updateInstruments();
 
@@ -46,6 +44,10 @@ namespace trtcore
         void start();
 
         void stop();
+
+        void acquireBook(const trtdata::InstIdentifier& instrument);
+
+        void releaseBook(const trtdata::InstIdentifier& instrument);
 
         void acquireChartSeries(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe);
 

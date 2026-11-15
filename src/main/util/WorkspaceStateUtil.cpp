@@ -2,6 +2,7 @@
 #include "JsonUtil.h"
 #include <QSet>
 #include <limits>
+#include <cmath>
 
 namespace trtutils
 {
@@ -70,6 +71,8 @@ namespace trtutils
             builder.append_comma();
             builder.append_key_value("lastChart", workspace.lastChart.toStdString());
             builder.append_comma();
+            builder.append_key_value("nextBookDepthId", workspace.nextBookDepthId);
+            builder.append_comma();
             builder.append_key_value("nextChartId", workspace.nextChartId);
             builder.append_comma();
             builder.escape_and_append_with_quotes("instruments");
@@ -121,6 +124,38 @@ namespace trtutils
                 builder.escape_and_append_with_quotes("instrument");
                 builder.append_colon();
                 appendWorkspaceIdentifier(builder, window.chart.instrument);
+                switch (window.type)
+                {
+                    case trtdata::WorkspaceWindowType::Instruments:
+                    case trtdata::WorkspaceWindowType::Chart:
+                        break;
+                    case trtdata::WorkspaceWindowType::BookDepth:
+                    {
+                        builder.append_comma();
+                        builder.escape_and_append_with_quotes("bookDepth");
+                        builder.append_colon();
+                        builder.start_object();
+                        builder.append_key_value("depth", window.bookDepth.depth);
+                        builder.append_comma();
+                        builder.append_key_value("priceStep", window.bookDepth.priceStep);
+                        builder.append_comma();
+                        builder.append_key_value("rows", window.bookDepth.rows);
+                        builder.append_comma();
+                        builder.append_key_value("layout", static_cast<int>(window.bookDepth.layout));
+                        builder.append_comma();
+                        builder.append_key_value("priceAlignment", static_cast<int>(window.bookDepth.priceAlignment));
+                        builder.append_comma();
+                        builder.append_key_value("settingsExpanded", window.bookDepth.settingsExpanded);
+                        builder.append_comma();
+                        builder.append_key_value("cumulative", window.bookDepth.cumulative);
+                        builder.append_comma();
+                        builder.escape_and_append_with_quotes("instrument");
+                        builder.append_colon();
+                        appendWorkspaceIdentifier(builder, window.bookDepth.instrument);
+                        builder.end_object();
+                        break;
+                    }
+                }
                 builder.end_object();
             }
             builder.end_array();
@@ -155,6 +190,9 @@ namespace trtutils
                 workspace.activeWindow = readWorkspaceString(entry, "activeWindow");
                 workspace.lastChart = readWorkspaceString(entry, "lastChart");
                 workspace.nextChartId = readWorkspaceInt(entry, "nextChartId", 1, 1000000);
+                trtdata::jsonElement bookCounter;
+                if (entry["nextBookDepthId"].get(bookCounter) != simdjson::NO_SUCH_FIELD)
+                    workspace.nextBookDepthId = readWorkspaceInt(entry, "nextBookDepthId", 1, 1000000);
                 const trtdata::jsonElement list = entry["instruments"].value();
                 workspace.instruments.search = readWorkspaceString(list, "search");
                 workspace.instruments.typeFilter = readWorkspaceInt(list, "typeFilter", -1, 5);
@@ -170,7 +208,7 @@ namespace trtutils
                     if (window.id.isEmpty() || windowIds.contains(window.id))
                         return false;
                     windowIds.insert(window.id);
-                    window.type = static_cast<trtdata::WorkspaceWindowType>(readWorkspaceInt(item, "type", 0, 1));
+                    window.type = static_cast<trtdata::WorkspaceWindowType>(readWorkspaceInt(item, "type", 0, 2));
                     switch (window.type)
                     {
                         case trtdata::WorkspaceWindowType::Instruments:
@@ -184,6 +222,27 @@ namespace trtutils
                             if (!window.id.startsWith("chart") || window.id.mid(5).toInt() <= 0 || window.id.mid(5).toInt() >= 1000000)
                                 return false;
                             break;
+                        case trtdata::WorkspaceWindowType::BookDepth:
+                        {
+                            if (!window.id.startsWith("bookDepth") || window.id.mid(9).toInt() <= 0 || window.id.mid(9).toInt() >= 1000000)
+                                return false;
+                            const trtdata::jsonElement book = item["bookDepth"].value();
+                            window.bookDepth.instrument = readWorkspaceIdentifier(book["instrument"].value());
+                            window.bookDepth.depth = readWorkspaceInt(book, "depth", 1, 400);
+                            window.bookDepth.rows = readWorkspaceInt(book, "rows", 1, 100);
+                            window.bookDepth.layout = static_cast<trtdata::BookLayout>(readWorkspaceInt(book, "layout", 0, 2));
+                            window.bookDepth.priceStep = book["priceStep"].get_double().value();
+                            if (!std::isfinite(window.bookDepth.priceStep) || window.bookDepth.priceStep < 0 || window.bookDepth.priceStep > 1e12)
+                                return false;
+                            window.bookDepth.cumulative = book["cumulative"].get_bool().value();
+                            trtdata::jsonElement alignment;
+                            if (book["priceAlignment"].get(alignment) != simdjson::NO_SUCH_FIELD)
+                                window.bookDepth.priceAlignment = static_cast<trtdata::PriceAlignment>(readWorkspaceInt(book, "priceAlignment", 0, 2));
+                            trtdata::jsonElement expanded;
+                            if (book["settingsExpanded"].get(expanded) != simdjson::NO_SUCH_FIELD)
+                                window.bookDepth.settingsExpanded = expanded.get_bool().value();
+                            break;
+                        }
                     }
                     window.geometry = QRect(readWorkspaceInt(item, "x", -1000000, 1000000),
                         readWorkspaceInt(item, "y", -1000000, 1000000), readWorkspaceInt(item, "width", 1, 100000),

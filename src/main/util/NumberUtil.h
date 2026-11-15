@@ -32,12 +32,21 @@ namespace trtutils
 
     QString formatPrice(double value);
 
+    QString formatDecimal(double value, int maximumDecimals = 12);
+
+    double roundToStep(double value, double step, bool upward);
+
+    // -1 disables highlighting; full price for 500 ms, changed suffix for another 1000 ms.
+    qsizetype priceFlashOffset(const QString& price, double difference, qint64 age, bool enabled);
+
     QString formatPriceChange(double value);
 
     // pricePerPixel must be finite and positive.
     QString formatAxisPrice(double value, double pricePerPixel);
 
     QString formatVolume(double value);
+
+    QString formatQuantity(double value);
 
     // difference is the positive finite absolute price movement.
     qsizetype changedDigitOffset(const QString& price, double difference);

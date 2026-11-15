@@ -115,7 +115,7 @@ endif()
 
 set(NTRT_LAYOUT_TEST_SOURCES ${NTRT_SOURCES})
 list(FILTER NTRT_LAYOUT_TEST_SOURCES EXCLUDE REGEX "/NTRT\\.cpp$")
-add_executable(workspace_layout_test EXCLUDE_FROM_ALL tests/WorkspaceLayoutTest.cpp ${NTRT_LAYOUT_TEST_SOURCES})
+add_executable(workspace_layout_test EXCLUDE_FROM_ALL tests/WorkspaceLayoutTest.cpp tests/BookRecoveryTest.cpp ${NTRT_LAYOUT_TEST_SOURCES})
 target_include_directories(workspace_layout_test PRIVATE src)
 target_link_libraries(workspace_layout_test PRIVATE Qt6::Widgets Qt6::Network Qt6::WebSockets Qt6::OpenGL Qt6::OpenGLWidgets simdjson::simdjson)
 if(WIN32)
@@ -130,6 +130,7 @@ add_executable(candle_recovery_test EXCLUDE_FROM_ALL
     src/main/api/CandleStream.h
     src/main/api/TickerStream.h
     src/main/monitor/CandlesManager.cpp
+    src/main/trade/TradeSnapshotDef.cpp
     src/main/util/CandleUtil.cpp
     src/main/util/TimeUtil.cpp
     src/main/util/NumberUtil.cpp)
