@@ -1,6 +1,5 @@
 #include "ChartPanel.h"
 #include "main/util/TimeUtil.h"
-#include "main/util/ExchangeUtil.h"
 #include "main/util/TradeUtil.h"
 #include "main/NTRT.h"
 #include "main/ui/chart/ChartView.h"

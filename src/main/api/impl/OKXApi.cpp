@@ -3,10 +3,9 @@
 //
 
 #include "OKXApi.h"
-#include "main/util/OKXUtil.h"
+#include "main/trade/parser/OKXParser.h"
 #include "OKXTickerStream.h"
 #include "OKXCandleStream.h"
-#include "main/trade/parser/OKXParser.h"
 #include "main/market/abstract/instimpl/OKXInstrument.h"
 #include "main/util/NetworkUtil.h"
 
@@ -73,7 +72,7 @@ namespace trtdata::okx
     {
         QUrlQuery query;
         query.addQueryItem("instId", QString::fromStdString(instrument.id));
-        query.addQueryItem("bar", candleBar(timeframe, zone));
+        query.addQueryItem("bar", OKXParser::candleBar(timeframe, zone));
         query.addQueryItem("limit", "300");
         query.addQueryItem("after", QString::number(after));
         return trtnet::replyToFuture(CANDLE_HISTORY.request(query), [](const QByteArray& body)
@@ -88,7 +87,7 @@ namespace trtdata::okx
     {
         QUrlQuery query;
         query.addQueryItem("instId", QString::fromStdString(identifier.id));
-        const QString bar = candleBar(timeframe, timeZone);
+        const QString bar = OKXParser::candleBar(timeframe, timeZone);
         query.addQueryItem("bar", bar);
         query.addQueryItem("limit", QString::number(limit));
         return trtnet::replyToFuture(CANDLES.request(query), [](const QByteArray& body)

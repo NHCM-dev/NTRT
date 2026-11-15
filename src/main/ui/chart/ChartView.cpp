@@ -1,6 +1,6 @@
 #include "ChartView.h"
 #include "main/util/CandleUtil.h"
-#include "main/util/FormatUtil.h"
+#include "main/util/NumberUtil.h"
 #include "main/util/PaletteUtil.h"
 #include "main/util/PaintUtil.h"
 #include "main/util/TimeUtil.h"

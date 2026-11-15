@@ -8,11 +8,15 @@
 #include "main/market/abstract/Instrument.h"
 #include "main/trade/TradeDataDef.h"
 #include <QByteArray>
+#include "main/trade/CandleTimeframe.h"
+#include "main/data/TradingDataConfig.h"
 
 #include "main/util/JsonUtil.h"
 
 namespace trtdata::OKXParser
 {
+    QString candleBar(trttrade::CandleTimeframe timeframe, TradingDataTimeZone timeZone);
+
     std::string_view getInstType(trttrade::InstType type);
 
     trttrade::InstType readType(std::string_view type);

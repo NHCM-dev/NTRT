@@ -157,4 +157,24 @@ namespace trtutils
     QString instrumentLabel(const trtdata::InstIdentifier& identifier);
 }
 
+
+#include "main/data/Exchanges.h"
+
+namespace trtdata
+{
+    constexpr std::string_view getExchangeStr(Exchange exchange)
+    {
+        switch (exchange)
+        {
+            case Exchange::OKX:
+                return "OKX";
+        }
+
+        return "";
+    }
+
+    Exchange readExchange(std::string_view name);
+}
+
+
 #endif //NTRT_TRADEUTIL_H

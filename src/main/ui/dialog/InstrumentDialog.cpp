@@ -1,5 +1,4 @@
 #include "InstrumentDialog.h"
-#include "main/util/ExchangeUtil.h"
 #include "main/util/TradeUtil.h"
 #include "main/api/AbstractApi.h"
 #include "main/util/QtUtil.h"

@@ -1,5 +1,5 @@
 #include "SettingPage.h"
-#include "main/util/ExchangeUtil.h"
+#include "main/util/TradeUtil.h"
 #include "main/util/PaletteUtil.h"
 #include "main/NTRT.h"
 #include "main/Ver.h"

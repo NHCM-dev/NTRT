@@ -5,9 +5,7 @@
 #include "main/util/JsonUtil.h"
 #include "main/util/CandleUtil.h"
 #include "main/util/FileUtil.h"
-#include "main/util/FormatUtil.h"
 #include "main/util/NumberUtil.h"
-#include "main/util/OKXUtil.h"
 #include "main/util/StdUtil.h"
 #include <limits>
 #include <QFile>
@@ -89,9 +87,9 @@ class CandleTests final : public trtcore::AbstractApi
         const trtdata::TradingDataTimeZone zone = trtdata::TradingDataTimeZone::UTC8;
         require(trtutils::startOfTradingDay(57599999, zone) == -28800000 && trtutils::startOfTradingDay(57600000, zone) == 57600000, "UTC+8 midnight boundary changed");
         require(trtutils::formatTradingTime(0, zone, "yyyy-MM-dd HH:mm") == "1970-01-01 08:00", "Trading time conversion changed");
-        require(trtdata::okx::candleBar(trttrade::CandleTimeframe::Day1, trtdata::TradingDataTimeZone::UTC) == "1Dutc" &&
-            trtdata::okx::candleBar(trttrade::CandleTimeframe::Day1, zone) == "1D" &&
-            trtdata::okx::candleBar(trttrade::CandleTimeframe::Hour1, zone) == "1H", "Exchange calendar mapping changed");
+        require(trtdata::OKXParser::candleBar(trttrade::CandleTimeframe::Day1, trtdata::TradingDataTimeZone::UTC) == "1Dutc" &&
+            trtdata::OKXParser::candleBar(trttrade::CandleTimeframe::Day1, zone) == "1D" &&
+            trtdata::OKXParser::candleBar(trttrade::CandleTimeframe::Hour1, zone) == "1H", "Exchange calendar mapping changed");
 
         std::vector<trttrade::CandleData> stored{{10, 100, 120, 90, 110, 2, 3, 4, true}, {30, 110, 120, 90, 115, 5, 6, 7, false}};
         const std::vector<trttrade::CandleData> incoming{{0}, {10, 100, 120, 90, 105}, {20}, {30, 110, 120, 90, 118, 5, 6, 7, true}, {40}};

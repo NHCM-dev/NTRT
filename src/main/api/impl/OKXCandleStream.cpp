@@ -1,8 +1,7 @@
 #include "OKXCandleStream.h"
-#include "main/util/OKXUtil.h"
+#include "main/trade/parser/OKXParser.h"
 #include "OKXApi.h"
 #include "main/network/WebSocketAPITemplate.h"
-#include "main/trade/parser/OKXParser.h"
 #include <QJsonDocument>
 #include <QJsonArray>
 
@@ -26,7 +25,7 @@ namespace trtdata::okx
     void OKXCandleStream::start(const InstIdentifier& instrument, trttrade::CandleTimeframe timeframe,
                                 TradingDataTimeZone zone)
     {
-        const trtnet::WebSocketAPITemplate channel{CANDLE_ENDPOINT, "candle" + candleBar(timeframe, zone), {"instId"}};
+        const trtnet::WebSocketAPITemplate channel{CANDLE_ENDPOINT, "candle" + OKXParser::candleBar(timeframe, zone), {"instId"}};
         argument = channel.createArgument({{"instId", QString::fromStdString(instrument.id)}});
         client.start();
     }

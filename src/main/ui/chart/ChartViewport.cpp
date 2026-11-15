@@ -1,5 +1,5 @@
 #include "ChartViewport.h"
-#include "main/util/MathUtil.h"
+#include "main/util/NumberUtil.h"
 #include <algorithm>
 #include <cmath>
 #include <limits>

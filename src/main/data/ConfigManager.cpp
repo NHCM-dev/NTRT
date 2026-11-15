@@ -4,7 +4,7 @@
 
 #include "ConfigManager.h"
 #include "main/util/TimeUtil.h"
-#include "main/util/ExchangeUtil.h"
+#include "main/util/TradeUtil.h"
 
 #include "main/util/JsonUtil.h"
 #include "main/util/FileUtil.h"

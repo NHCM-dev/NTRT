@@ -5,7 +5,6 @@
 #include "InstrumentListPanel.h"
 #include "main/util/CandleUtil.h"
 #include "main/util/TimeUtil.h"
-#include "main/util/ExchangeUtil.h"
 #include "main/util/TradeUtil.h"
 #include "../dialog/InstrumentDialog.h"
 #include <QTableWidget>
@@ -30,7 +29,7 @@
 #include <QCursor>
 
 #include "main/util/QtUtil.h"
-#include "main/util/FormatUtil.h"
+#include "main/util/NumberUtil.h"
 #include "main/util/PaletteUtil.h"
 
 namespace trtui

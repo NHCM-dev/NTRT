@@ -2,7 +2,7 @@
 #define NTRT_CHARTLAYER_H
 
 #include "ChartViewport.h"
-#include "main/util/GeometryUtil.h"
+#include "main/util/PaintUtil.h"
 #include <QColor>
 #include <vector>
 
