@@ -5,6 +5,7 @@
 #ifndef NTRT_INSTRUMENTLISTPANEL_H
 #define NTRT_INSTRUMENTLISTPANEL_H
 #include <QTableWidget>
+#include "main/data/WorkspaceManager.h"
 #include <QObject>
 #include "main/market/abstract/Instrument.h"
 
@@ -48,6 +49,10 @@ namespace trtui
         QFrame* generateWidget(QWidget* parent) override;
 
         void update() override;
+
+        trtdata::InstrumentListState getState() const;
+
+        void restoreState(const trtdata::InstrumentListState& state);
 
         signals  :
 

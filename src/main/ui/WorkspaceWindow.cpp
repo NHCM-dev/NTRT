@@ -62,19 +62,20 @@ namespace trtui
             if (!title)
                 return;
 
+            const QPalette palette = widget ? widget->window()->palette() : title->palette;
             painter->save();
             trtutils::clipToParentRect(*painter, widget);
             painter->setClipRect(title->rect, Qt::IntersectClip);
-            painter->fillRect(title->rect, title->palette.brush(QPalette::Window));
-            painter->setPen(title->palette.color(QPalette::Mid));
+            painter->fillRect(title->rect, palette.brush(QPalette::Window));
+            painter->setPen(palette.color(QPalette::Mid));
             painter->drawLine(title->rect.bottomLeft(), title->rect.bottomRight());
             QRect label = subControlRect(CC_TitleBar, title, SC_TitleBarLabel, widget).adjusted(8, 0, -6, 0);
             if (widget->property("titleHovered").toBool() && label.contains(widget->mapFromGlobal(QCursor::pos())))
                 painter->fillRect(
                     QRect(title->rect.left(), title->rect.top(), label.right() - title->rect.left() + 1,
-                          title->rect.height()), title->palette.brush(QPalette::Mid));
+                          title->rect.height()), palette.brush(QPalette::Mid));
             painter->setFont(widget->font());
-            painter->setPen(title->palette.color(QPalette::WindowText));
+            painter->setPen(palette.color(QPalette::WindowText));
             painter->drawText(label, Qt::AlignLeft | Qt::AlignVCenter,
                               painter->fontMetrics().elidedText(title->text, Qt::ElideRight, label.width()));
 
@@ -97,7 +98,7 @@ namespace trtui
                 if (rect.isEmpty())
                     continue;
                 if (title->activeSubControls.testFlag(button) && title->state.testFlag(State_MouseOver))
-                    painter->fillRect(rect, title->palette.brush(QPalette::Mid));
+                    painter->fillRect(rect, palette.brush(QPalette::Mid));
                 const QPoint center = rect.center();
                 const QRect glyph(center.x() - 4, center.y() - 4, 8, 8);
                 switch (button)
@@ -212,6 +213,18 @@ namespace trtui
         // The one-pixel fringe can cross the viewport and touch adjacent chrome.
         QWidget* surface = desktop->window();
         trtutils::updateWidgetTreeRegion(surface, exposed.translated(desktop->mapTo(surface, QPoint())));
+    }
+
+    void WorkspaceWindow::changeEvent(QEvent* event)
+    {
+        QMdiSubWindow::changeEvent(event);
+        if (event->type() == QEvent::PaletteChange || event->type() == QEvent::StyleChange)
+        {
+            QTimer::singleShot(0, this, [this]
+            {
+                update();
+            });
+        }
     }
 
     void WorkspaceWindow::closeEvent(QCloseEvent* event)

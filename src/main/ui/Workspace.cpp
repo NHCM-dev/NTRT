@@ -15,9 +15,14 @@
 
 namespace trtui
 {
-    Workspace::Workspace(QWidget* parent) : QFrame(parent)
+    Workspace::Workspace(QWidget* parent, const trtdata::WorkspaceState* state) : QFrame(parent)
     {
         initDesktop();
+        if (state)
+        {
+            restoreState(*state);
+            return;
+        }
         initInstrumentPanel();
         addChartWindow();
         QTimer::singleShot(0, this, [this]
@@ -28,7 +33,115 @@ namespace trtui
                 active->focusWidget()->clearFocus();
             setFocus(Qt::OtherFocusReason);
             desktop->setActiveSubWindow(nullptr);
+            selectedWindow = nullptr;
         });
+    }
+
+    trtdata::WorkspaceState Workspace::getState() const
+    {
+        if (pendingState)
+            return *pendingState;
+        trtdata::WorkspaceState state;
+        state.id = objectName();
+        state.nextChartId = nextChartId;
+        if (selectedWindow)
+            state.activeWindow = selectedWindow->objectName();
+        if (lastChartWindow)
+            state.lastChart = lastChartWindow->objectName();
+        if (instruments)
+            state.instruments = instruments->getState();
+        for (QMdiSubWindow* window : desktop->subWindowList(QMdiArea::StackingOrder))
+        {
+            for (const WindowEntry& entry : windows)
+            {
+                if (entry.window != window)
+                    continue;
+                trtdata::WorkspaceWindowState saved;
+                saved.id = window->objectName();
+                saved.type = entry.chart ? trtdata::WorkspaceWindowType::Chart : trtdata::WorkspaceWindowType::Instruments;
+                saved.geometry = window->isMaximized() || window->isMinimized() ? entry.normalGeometry : window->geometry();
+                saved.visible = !window->isHidden();
+                if (window->isMaximized())
+                    saved.mode = trtdata::WorkspaceWindowMode::Maximized;
+                else if (window->isMinimized())
+                    saved.mode = trtdata::WorkspaceWindowMode::Minimized;
+                if (entry.chart)
+                    saved.chart = entry.chart->getState();
+                state.windows.push_back(std::move(saved));
+                break;
+            }
+        }
+        return state;
+    }
+
+    void Workspace::restoreState(const trtdata::WorkspaceState& state)
+    {
+        restoring = true;
+        for (const trtdata::WorkspaceWindowState& saved : state.windows)
+        {
+            switch (saved.type)
+            {
+                case trtdata::WorkspaceWindowType::Instruments:
+                    initInstrumentPanel();
+                    instruments->restoreState(state.instruments);
+                    break;
+                case trtdata::WorkspaceWindowType::Chart:
+                    nextChartId = saved.id.mid(5).toInt();
+                    addChartWindow();
+                    windows.back().chart->restoreState(saved.chart);
+                    break;
+            }
+            windows.back().window->setObjectName(saved.id);
+        }
+        nextChartId = state.nextChartId;
+        for (const WindowEntry& entry : windows)
+        {
+            if (entry.chart)
+                nextChartId = std::max(nextChartId, entry.window->objectName().mid(5).toInt() + 1);
+        }
+        pendingState = state;
+        QTimer::singleShot(0, this, &Workspace::applyRestoredLayout);
+    }
+
+    void Workspace::applyRestoredLayout()
+    {
+        if (!pendingState || !isVisible())
+            return;
+        const trtdata::WorkspaceState state = *pendingState;
+        QMdiSubWindow* active = nullptr;
+        lastChartWindow = nullptr;
+        for (std::size_t index = 0; index < state.windows.size(); index++)
+        {
+            const trtdata::WorkspaceWindowState& saved = state.windows[index];
+            QMdiSubWindow* window = windows[index].window;
+            window->showNormal();
+            window->setGeometry(saved.geometry);
+            switch (saved.mode)
+            {
+                case trtdata::WorkspaceWindowMode::Normal:
+                    break;
+                case trtdata::WorkspaceWindowMode::Minimized:
+                    window->showMinimized();
+                    break;
+                case trtdata::WorkspaceWindowMode::Maximized:
+                    window->showMaximized();
+                    break;
+            }
+            window->setVisible(saved.visible);
+            window->raise();
+            windows[index].normalGeometry = saved.geometry;
+            if (saved.id == state.activeWindow && saved.visible)
+                active = window;
+        }
+        desktop->setActiveSubWindow(active);
+        selectedWindow = active;
+        restoring = false;
+        pendingState.reset();
+        for (const WindowEntry& entry : windows)
+        {
+            if (entry.chart && entry.window->objectName() == state.lastChart)
+                lastChartWindow = entry.window;
+        }
     }
 
     Workspace::~Workspace()
@@ -59,6 +172,8 @@ namespace trtui
         layout->addWidget(desktop);
         connect(desktop, &QMdiArea::subWindowActivated, this, [this](QMdiSubWindow* active)
         {
+            if (active)
+                selectedWindow = active;
             for (const WindowEntry& entry : windows)
             {
                 if (entry.window == active && entry.chart)
@@ -77,7 +192,7 @@ namespace trtui
         window->setWindowTitle(title);
         window->setAttribute(Qt::WA_DeleteOnClose, true);
         window->installEventFilter(this);
-        windows.push_back({window, nullptr});
+        windows.push_back({window, nullptr, nullptr, window->geometry()});
         connect(window, &QObject::destroyed, this, [this, window]
         {
             std::erase_if(windows, [window](const WindowEntry& entry)
@@ -236,7 +351,7 @@ namespace trtui
             if (!entry.window->isHidden() && !entry.window->isMinimized())
             {
                 const QRect geometry = entry.window->isMaximized()
-                                           ? entry.window->normalGeometry()
+                                           ? entry.normalGeometry
                                            : entry.window->geometry();
                 placements.push_back({entry.window, geometry});
             }
@@ -290,7 +405,19 @@ namespace trtui
                 if (active && active->focusWidget())
                     active->focusWidget()->clearFocus();
                 desktop->setActiveSubWindow(nullptr);
+                selectedWindow = nullptr;
                 return true;
+            }
+        }
+        if (!restoring && (event->type() == QEvent::Move || event->type() == QEvent::Resize))
+        {
+            for (WindowEntry& entry : windows)
+            {
+                if (entry.window == watched && !entry.window->isMinimized() && !entry.window->isMaximized())
+                {
+                    entry.normalGeometry = entry.window->geometry();
+                    break;
+                }
             }
         }
         if (event->type() == QEvent::Show || event->type() == QEvent::Hide)
@@ -301,11 +428,29 @@ namespace trtui
                 {
                     const QSignalBlocker blocker(entry.action);
                     entry.action->setChecked(!entry.window->isHidden());
+                    if (entry.window->isHidden() && selectedWindow == entry.window)
+                        selectedWindow = nullptr;
                     break;
                 }
             }
         }
         return QFrame::eventFilter(watched, event);
+    }
+
+    void Workspace::showEvent(QShowEvent* event)
+    {
+        const QPointer<QMdiSubWindow> selected = selectedWindow;
+        QFrame::showEvent(event);
+        if (pendingState)
+            QTimer::singleShot(0, this, &Workspace::applyRestoredLayout);
+        else if (!restoring)
+        {
+            QTimer::singleShot(0, this, [this, selected]
+            {
+                desktop->setActiveSubWindow(selected);
+                selectedWindow = selected;
+            });
+        }
     }
 
     void Workspace::changeEvent(QEvent* event)
@@ -336,6 +481,7 @@ namespace trtui
         arrangeWindows(std::move(charts), QRect(listWidth + gap * 2, gap, std::max(480, width - listWidth - gap * 3),
                                                 std::max(340, height - gap * 2)));
         desktop->setActiveSubWindow(nullptr);
+        selectedWindow = nullptr;
     }
 
     void Workspace::updateData()

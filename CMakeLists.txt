@@ -96,3 +96,55 @@ if(MSVC)
 else()
     target_compile_options(NTRT PRIVATE -Wall -Wextra -Wpedantic)
 endif()
+
+add_executable(workspace_persistence_test EXCLUDE_FROM_ALL
+    tests/WorkspacePersistenceTest.cpp
+    src/main/data/WorkspaceManager.cpp
+    src/main/util/WorkspaceStateUtil.cpp
+    src/main/util/JsonUtil.cpp
+    src/main/util/FileUtil.cpp
+    src/main/util/NumberUtil.cpp)
+target_include_directories(workspace_persistence_test PRIVATE src)
+target_link_libraries(workspace_persistence_test PRIVATE Qt6::Widgets simdjson::simdjson)
+if(WIN32)
+    add_dependencies(workspace_persistence_test ntrt_runtime)
+endif()
+if(MSVC)
+    target_compile_options(workspace_persistence_test PRIVATE /utf-8)
+endif()
+
+set(NTRT_LAYOUT_TEST_SOURCES ${NTRT_SOURCES})
+list(FILTER NTRT_LAYOUT_TEST_SOURCES EXCLUDE REGEX "/NTRT\\.cpp$")
+add_executable(workspace_layout_test EXCLUDE_FROM_ALL tests/WorkspaceLayoutTest.cpp ${NTRT_LAYOUT_TEST_SOURCES})
+target_include_directories(workspace_layout_test PRIVATE src)
+target_link_libraries(workspace_layout_test PRIVATE Qt6::Widgets Qt6::Network Qt6::WebSockets Qt6::OpenGL Qt6::OpenGLWidgets simdjson::simdjson)
+if(WIN32)
+    add_dependencies(workspace_layout_test ntrt_runtime)
+endif()
+if(MSVC)
+    target_compile_options(workspace_layout_test PRIVATE /utf-8)
+endif()
+
+add_executable(candle_recovery_test EXCLUDE_FROM_ALL
+    tests/CandleRecoveryTest.cpp
+    src/main/api/CandleStream.h
+    src/main/api/TickerStream.h
+    src/main/monitor/CandlesManager.cpp
+    src/main/util/CandleUtil.cpp
+    src/main/util/TimeUtil.cpp
+    src/main/util/NumberUtil.cpp)
+target_include_directories(candle_recovery_test PRIVATE src)
+target_link_libraries(candle_recovery_test PRIVATE Qt6::Core)
+if(WIN32)
+    add_dependencies(candle_recovery_test ntrt_runtime)
+endif()
+if(MSVC)
+    target_compile_options(candle_recovery_test PRIVATE /utf-8)
+else()
+    target_compile_options(candle_recovery_test PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+enable_testing()
+add_test(NAME candle_recovery COMMAND candle_recovery_test)
+add_test(NAME workspace_persistence COMMAND workspace_persistence_test)
+add_test(NAME workspace_layout COMMAND workspace_layout_test)

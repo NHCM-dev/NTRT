@@ -49,6 +49,14 @@ namespace trtcore
             std::size_t readers = 0;
             bool tracked = false;
             std::unique_ptr<CandleStream> stream;
+            bool streamReady = false;
+            QString streamError;
+            bool refill = true;
+            std::optional<qint64> recoveryFrom;
+            std::optional<qint64> recoveryCursor;
+            std::uint64_t recoveryGeneration = 0;
+            std::vector<trttrade::CandleData> requestLiveCandles;
+            std::vector<trttrade::CandleData> historyLiveCandles;
             QFutureWatcher<std::vector<trttrade::CandleData>>* historyWatcher = nullptr;
             qint64 historyTarget = 0;
             qint64 historyRetry = 0;
@@ -61,6 +69,8 @@ namespace trtcore
         trtdata::TradingDataTimeZone timeZone = trtdata::TradingDataTimeZone::UTC;
 
         void ensureStream(const SeriesKey& key, Subscription& subscription);
+
+        void beginRecovery(Subscription& subscription);
 
         void fetchHistory(const SeriesKey& key, Subscription& subscription);
 

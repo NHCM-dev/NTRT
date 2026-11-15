@@ -16,7 +16,6 @@ namespace trtdata::okx
             client.sendText(QString::fromUtf8(
                 QJsonDocument(QJsonObject{{"op", "subscribe"}, {"args", QJsonArray{argument}}}).toJson(
                     QJsonDocument::Compact)));
-            emit connectionChanged({});
         });
         connect(&client, &trtnet::WebSocketClient::connectionFailed, this, &CandleStream::connectionChanged);
         connect(&client, &trtnet::WebSocketClient::messageReceived, this, &OKXCandleStream::handleMessage);
@@ -46,7 +45,12 @@ namespace trtdata::okx
         }
         if (object.value("event").toString() == "error")
         {
-            emit connectionChanged(object.value("msg").toString());
+            client.reconnect(object.value("msg").toString());
+            return;
+        }
+        if (object.value("event").toString() == "subscribe" && object.value("arg").toObject() == argument)
+        {
+            emit connectionChanged({});
             return;
         }
         if (object.value("arg").toObject() != argument || !object.contains("data"))
@@ -58,7 +62,7 @@ namespace trtdata::okx
             emit candlesReceived(OKXParser::parseCandles(body));
         } catch (const std::exception& error)
         {
-            emit connectionChanged(QString::fromUtf8(error.what()));
+            client.reconnect(QString::fromUtf8(error.what()));
         }
     }
 }

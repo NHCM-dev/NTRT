@@ -1,6 +1,7 @@
 #ifndef NTRT_CHARTPANEL_H
 #define NTRT_CHARTPANEL_H
 #include <QFrame>
+#include "main/data/WorkspaceManager.h"
 #include "main/market/abstract/Instrument.h"
 #include "main/trade/CandleTimeframe.h"
 #include <memory>
@@ -32,6 +33,7 @@ namespace trtui
         QComboBox* instrumentBox = nullptr;
         QComboBox* timeframeBox = nullptr;
         QToolButton* followButton = nullptr;
+        QToolButton* volumeButton = nullptr;
         QStackedWidget* content = nullptr;
         ChartView* chart = nullptr;
         QLabel* status = nullptr;
@@ -62,6 +64,10 @@ namespace trtui
         const std::optional<trtdata::InstIdentifier>& getInstrument() const;
 
         QString getTitle() const;
+
+        trtdata::ChartPanelState getState() const;
+
+        void restoreState(const trtdata::ChartPanelState& state);
 
         void updateData();
 

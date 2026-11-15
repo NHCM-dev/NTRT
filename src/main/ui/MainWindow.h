@@ -2,6 +2,7 @@
 #define NTRT_MAINWINDOW_H
 
 #include <QMainWindow>
+#include "main/data/WorkspaceManager.h"
 
 class QTabWidget;
 class QAction;
@@ -22,7 +23,15 @@ namespace trtui
 
         Workspace* getCurrentWorkspace() const;
 
-        void createWorkspace();
+        void createWorkspace(const trtdata::WorkspaceState* state = nullptr);
+
+        void initWorkspacePersistence();
+
+        void saveWorkspaceState(bool notify = false);
+
+        void closeEvent(QCloseEvent* event) override;
+
+        bool closing = false;
 
         void renameWorkspace(int index);
 

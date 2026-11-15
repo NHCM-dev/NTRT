@@ -76,6 +76,7 @@ namespace trtui
         timeframeBox->setToolTip("Candle interval");
         controls->addWidget(timeframeBox);
         QToolButton* volume = new QToolButton(toolbar);
+        volumeButton = volume;
         volume->setText("Vol");
         volume->setCheckable(true);
         volume->setChecked(true);
@@ -271,6 +272,20 @@ namespace trtui
     const std::optional<trtdata::InstIdentifier>& ChartPanel::getInstrument() const
     {
         return instrument;
+    }
+
+    trtdata::ChartPanelState ChartPanel::getState() const
+    {
+        return {instrument, timeframe, volumeButton->isChecked()};
+    }
+
+    void ChartPanel::restoreState(const trtdata::ChartPanelState& state)
+    {
+        timeframeBox->setCurrentIndex(timeframeBox->findData(static_cast<int>(state.timeframe)));
+        setTimeframe(state.timeframe);
+        if (state.instrument)
+            setInstrument(*state.instrument);
+        volumeButton->setChecked(state.volume);
     }
 
     QString ChartPanel::getTitle() const

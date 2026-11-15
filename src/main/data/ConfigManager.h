@@ -10,6 +10,7 @@
 #include <QObject>
 
 #include "AppearanceManager.h"
+#include "WorkspaceManager.h"
 #include "TradingDataConfig.h"
 #include "main/util/FileUtil.h"
 #include "main/market/abstract/Instrument.h"
@@ -42,6 +43,7 @@ namespace trtdata
         MarketConfig marketConfig;
         ExchangeConfig exchangeConfig;
         AppearanceManager appearanceManager;
+        WorkspaceManager workspaceManager;
 
 
         MarketConfig defaultMarketConfig();
@@ -50,7 +52,7 @@ namespace trtdata
 
     public:
         ConfigManager(QString dataPath = trtutils::relativePath(DEFAULT_DATA_PATH))
-        : dataPath(dataPath), appearanceManager(dataPath)
+        : dataPath(dataPath), appearanceManager(dataPath), workspaceManager(dataPath)
         {}
 
         /**
@@ -104,6 +106,8 @@ namespace trtdata
         void setExchange(Exchange exchange);
 
         AppearanceManager* getAppearanceManager();
+
+        WorkspaceManager* getWorkspaceManager();
 
         TradingDataTimeZone getTradingDataTimeZone() const;
 

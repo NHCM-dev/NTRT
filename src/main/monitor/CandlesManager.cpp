@@ -41,6 +41,9 @@ namespace trtcore
 
     void CandlesManager::cancelRequest(Subscription& subscription)
     {
+        subscription.streamReady = false;
+        subscription.requestLiveCandles.clear();
+        subscription.historyLiveCandles.clear();
         if (subscription.stream)
         {
             subscription.stream->stop();
@@ -83,6 +86,10 @@ namespace trtcore
                 {
                     Subscription& current = subscriptions.at(key);
                     current.publishedSnapshot.reset();
+                    if (current.watcher)
+                        trtutils::mergeCandles(current.requestLiveCandles, candles);
+                    if (current.historyWatcher)
+                        trtutils::mergeCandles(current.historyLiveCandles, candles);
                     mergeCandles(current, candles);
                     current.snapshot.updatedAt = QDateTime::currentMSecsSinceEpoch();
                 });
@@ -90,11 +97,22 @@ namespace trtcore
         {
             Subscription& current = subscriptions.at(key);
             current.publishedSnapshot.reset();
+            current.streamReady = error.isEmpty();
+            current.streamError = error;
             current.snapshot.error = error;
-            if (error.isEmpty())
-                current.nextRequest = 0; // Backfill bars missed during a disconnect.
+            beginRecovery(current);
         });
         subscription.stream->start(key.instrument, key.timeframe, timeZone);
+    }
+
+    void CandlesManager::beginRecovery(Subscription& subscription)
+    {
+        if (!subscription.recoveryFrom && !subscription.snapshot.candles.empty())
+            subscription.recoveryFrom = subscription.snapshot.candles.back().timestamp;
+        subscription.recoveryCursor.reset();
+        subscription.recoveryGeneration++;
+        subscription.refill = true;
+        subscription.nextRequest = 0;
     }
 
     void CandlesManager::requestHistory(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe)
@@ -115,6 +133,7 @@ namespace trtcore
         QFutureWatcher<std::vector<trttrade::CandleData>>* watcher = new QFutureWatcher<std::vector<
             trttrade::CandleData>>(this);
         subscription.historyWatcher = watcher;
+        subscription.historyLiveCandles.clear();
         connect(watcher, &QFutureWatcherBase::finished, this, [this, key, watcher, cursor]
         {
             Subscription& current = subscriptions.at(key);
@@ -129,16 +148,18 @@ namespace trtcore
                     throw std::runtime_error("History endpoint did not advance the pagination cursor");
                 else
                     mergeCandles(current, page);
+                mergeCandles(current, current.historyLiveCandles);
                 current.historyTarget = 0;
                 current.snapshot.historyLoading = false;
                 current.snapshot.historyExhausted = current.historyExhausted;
-                current.snapshot.error.clear();
+                current.snapshot.error = current.streamError;
                 current.snapshot.updatedAt = QDateTime::currentMSecsSinceEpoch();
             } catch (const std::exception& error)
             {
                 current.snapshot.error = QString::fromUtf8(error.what());
                 current.historyRetry = QDateTime::currentMSecsSinceEpoch() + 5000;
             }
+            current.historyLiveCandles.clear();
             watcher->deleteLater();
         });
         watcher->setFuture(
@@ -176,10 +197,13 @@ namespace trtcore
 
     void CandlesManager::fetchCandles(const SeriesKey& key, Subscription& subscription)
     {
+        const std::optional<qint64> cursor = subscription.recoveryCursor;
+        const std::uint64_t generation = subscription.recoveryGeneration;
         QFutureWatcher<std::vector<trttrade::CandleData>>* watcher = new QFutureWatcher<std::vector<
             trttrade::CandleData>>(this);
         subscription.watcher = watcher;
-        connect(watcher, &QFutureWatcherBase::finished, this, [this, key, watcher]
+        subscription.requestLiveCandles.clear();
+        connect(watcher, &QFutureWatcherBase::finished, this, [this, key, watcher, cursor, generation]
         {
             const std::map<SeriesKey, Subscription>::iterator entry = subscriptions.find(key);
             if (entry == subscriptions.end() || entry->second.watcher != watcher)
@@ -191,25 +215,42 @@ namespace trtcore
             {
                 const std::vector<trttrade::CandleData> candles = watcher->result();
                 if (candles.empty())
-                    throw std::runtime_error("OKX returned no candles");
+                    throw std::runtime_error(cursor ? "Recovery endpoint returned no candles before the gap was filled" : "OKX returned no candles");
+                if (cursor && !candles.empty() && candles.front().timestamp >= *cursor)
+                    throw std::runtime_error("Recovery endpoint did not advance the pagination cursor");
                 mergeCandles(current, candles);
-                current.snapshot.error.clear();
+                // Replay updates received after this request began, including across bar boundaries.
+                mergeCandles(current, current.requestLiveCandles);
+                current.snapshot.error = current.streamError;
                 current.snapshot.updatedAt = QDateTime::currentMSecsSinceEpoch();
-                current.nextRequest = current.stream
-                                          ? std::numeric_limits<qint64>::max()
-                                          : current.snapshot.updatedAt + 10000;
+                if (generation == current.recoveryGeneration)
+                {
+                    current.refill = false;
+                    if (current.recoveryFrom && !candles.empty() && candles.front().timestamp > *current.recoveryFrom)
+                    {
+                        current.recoveryCursor = candles.front().timestamp;
+                        current.nextRequest = 0;
+                    } else
+                    {
+                        current.recoveryFrom.reset();
+                        current.recoveryCursor.reset();
+                        current.nextRequest = current.streamReady ? std::numeric_limits<qint64>::max() : current.snapshot.updatedAt + 10000;
+                    }
+                }
             } catch (const std::exception& error)
             {
                 current.snapshot.error = QString::fromUtf8(error.what());
-                current.nextRequest = QDateTime::currentMSecsSinceEpoch() + 30000;
+                if (generation == current.recoveryGeneration)
+                    current.nextRequest = QDateTime::currentMSecsSinceEpoch() + 30000;
             }
+            current.requestLiveCandles.clear();
             watcher->deleteLater();
         });
-        const bool refill = subscription.snapshot.candles.empty() ||
-            QDateTime::currentMSecsSinceEpoch() - subscription.snapshot.updatedAt > 120000;
-        const int limit = refill ? 300 : 3;
-        watcher->setFuture(
-            exchangeApi(key.instrument.exchange).fetchCandles(key.instrument, key.timeframe, timeZone, limit));
+        const AbstractApi& api = exchangeApi(key.instrument.exchange);
+        if (cursor)
+            watcher->setFuture(api.fetchCandleHistory(key.instrument, key.timeframe, timeZone, *cursor));
+        else
+            watcher->setFuture(api.fetchCandles(key.instrument, key.timeframe, timeZone, subscription.refill ? 300 : 3));
     }
 
     void CandlesManager::mergeCandles(Subscription& subscription, const std::vector<trttrade::CandleData>& candles)
@@ -253,7 +294,10 @@ namespace trtcore
             entry.second.publishedSnapshot.reset();
             entry.second.historyTarget = 0;
             entry.second.historyExhausted = false;
-            entry.second.nextRequest = 0;
+            entry.second.historyRetry = 0;
+            entry.second.streamError.clear();
+            entry.second.recoveryFrom.reset();
+            beginRecovery(entry.second);
         }
     }
 

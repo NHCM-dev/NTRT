@@ -27,6 +27,7 @@
 #include <QMetaType>
 #include <QMouseEvent>
 #include <QCursor>
+#include <QTimer>
 
 #include "main/util/QtUtil.h"
 #include "main/util/NumberUtil.h"
@@ -339,6 +340,46 @@ namespace trtui
         table->setMinimumWidth(minimumWidth + 2 * table->frameWidth());
     }
 
+    trtdata::InstrumentListState InstrumentListPanel::getState() const
+    {
+        trtdata::InstrumentListState state;
+        state.search = search->text();
+        state.typeFilter = typeFilter->currentData().toInt();
+        state.header = table->horizontalHeader()->saveState();
+        state.scroll = table->verticalScrollBar()->value();
+        const QTableWidgetItem* item = table->item(table->currentRow(), 3);
+        if (item)
+            state.selected = trtdata::InstIdentifier{static_cast<trtdata::Exchange>(item->data(Qt::UserRole).toInt()),
+                static_cast<trttrade::InstType>(item->data(Qt::UserRole + 1).toInt()), item->text().toStdString()};
+        return state;
+    }
+
+    void InstrumentListPanel::restoreState(const trtdata::InstrumentListState& state)
+    {
+        search->setText(state.search);
+        typeFilter->setCurrentIndex(typeFilter->findData(state.typeFilter));
+        table->horizontalHeader()->restoreState(state.header);
+        update();
+        if (state.selected)
+        {
+            for (int row = 0; row < table->rowCount(); row++)
+            {
+                const QTableWidgetItem* item = table->item(row, 3);
+                if (item && item->text().toStdString() == state.selected->id &&
+                    item->data(Qt::UserRole).toInt() == static_cast<int>(state.selected->exchange) &&
+                    item->data(Qt::UserRole + 1).toInt() == static_cast<int>(state.selected->type))
+                {
+                    table->setCurrentCell(row, 3);
+                    break;
+                }
+            }
+        }
+        QTimer::singleShot(0, table, [this, state]
+        {
+            table->verticalScrollBar()->setValue(state.scroll);
+        });
+    }
+
     void InstrumentListPanel::update()
     {
         const QTableWidgetItem* selected = table->item(table->currentRow(), 3);
@@ -406,9 +447,7 @@ namespace trtui
             if (snapshot && snapshot->ticker)
             {
                 const trtdata::TickerData& data = *snapshot->ticker;
-                priceItem->setText(data.last >= 1
-                                       ? locale.toString(data.last, 'f', 2)
-                                       : locale.toString(data.last, 'g', 4));
+                priceItem->setText(trtutils::formatPrice(data.last));
                 PriceDelegate::setMovement(priceItem, *snapshot, table->palette(), flashEnabled);
             }
             if (snapshot && !snapshot->error.isEmpty())

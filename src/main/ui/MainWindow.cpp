@@ -1,4 +1,6 @@
 #include <QTimeZone>
+#include <QApplication>
+#include <QCloseEvent>
 #include "MainWindow.h"
 #include "main/util/QtUtil.h"
 #include "Workspace.h"
@@ -21,6 +23,7 @@
 #include <QTimer>
 #include <QVBoxLayout>
 #include <functional>
+#include <algorithm>
 
 namespace trtui
 {
@@ -29,10 +32,65 @@ namespace trtui
         initLayouts();
         initMenuBar();
         initWorkspaceTabs();
-        createWorkspace();
         initStatusBar();
         init200msSchedules();
-        initWindowGeometry();
+        initWorkspacePersistence();
+    }
+
+    void MainWindow::initWorkspacePersistence()
+    {
+        const trtdata::WorkspaceConfig& config = ntrt::configManager->getWorkspaceManager()->getConfig();
+        if (config.mainGeometry.isEmpty() || !restoreGeometry(config.mainGeometry))
+            initWindowGeometry();
+        nextWorkspaceId = config.nextWorkspaceId;
+        for (const trtdata::WorkspaceState& state : config.workspaces)
+        {
+            createWorkspace(&state);
+            nextWorkspaceId = std::max(nextWorkspaceId, state.id.mid(9).toInt() + 1);
+        }
+        if (workspaces->count() == 0)
+            createWorkspace();
+        else
+            workspaces->setCurrentIndex(config.currentWorkspace);
+        QTimer* saveTimer = new QTimer(this);
+        connect(saveTimer, &QTimer::timeout, this, [this]
+        {
+            if (!closing)
+                saveWorkspaceState();
+        });
+        saveTimer->start(2000);
+        connect(qApp, &QCoreApplication::aboutToQuit, this, [this]
+        {
+            if (!closing)
+                saveWorkspaceState();
+        });
+    }
+
+    void MainWindow::saveWorkspaceState(bool notify)
+    {
+        trtdata::WorkspaceConfig config;
+        config.mainGeometry = saveGeometry();
+        config.currentWorkspace = workspaces->currentIndex();
+        config.nextWorkspaceId = nextWorkspaceId;
+        for (int index = 0; index < workspaces->count(); index++)
+        {
+            const Workspace* workspace = static_cast<const Workspace*>(workspaces->widget(index));
+            trtdata::WorkspaceState state = workspace->getState();
+            state.name = workspaces->tabText(index);
+            config.workspaces.push_back(std::move(state));
+        }
+        const bool saved = ntrt::configManager->getWorkspaceManager()->saveConfig(config);
+        if (!saved || notify)
+            statusBar()->showMessage(saved ? "Workspace layout saved" : "Unable to save workspace layout; check workspaces.json and file permissions", 5000);
+    }
+
+    void MainWindow::closeEvent(QCloseEvent* event)
+    {
+        saveWorkspaceState();
+        closing = true;
+        QMainWindow::closeEvent(event);
+        if (!event->isAccepted())
+            closing = false;
     }
 
     void MainWindow::initWindowGeometry()
@@ -61,6 +119,11 @@ namespace trtui
     {
         menuBar()->setMouseTracking(true);
         QMenu* file = menuBar()->addMenu("File");
+        connect(file->addAction("Save Workspace Layout", QKeySequence::Save), &QAction::triggered, this, [this]
+        {
+            saveWorkspaceState(true);
+        });
+        file->addSeparator();
         QAction* preferences = file->addAction("Settings…");
         preferences->setShortcut(QKeySequence("Ctrl+,"));
         connect(preferences, &QAction::triggered, this, [this]
@@ -173,11 +236,12 @@ namespace trtui
         return static_cast<Workspace*>(workspaces->currentWidget());
     }
 
-    void MainWindow::createWorkspace()
+    void MainWindow::createWorkspace(const trtdata::WorkspaceState* state)
     {
-        Workspace* workspace = new Workspace(workspaces);
-        workspace->setObjectName(QString("workspace%1").arg(nextWorkspaceId));
-        const int index = workspaces->addTab(workspace, QString("Workspace %1").arg(nextWorkspaceId++));
+        Workspace* workspace = new Workspace(workspaces, state);
+        workspace->setObjectName(state ? state->id : QString("workspace%1").arg(nextWorkspaceId));
+        const QString name = state ? state->name : QString("Workspace %1").arg(nextWorkspaceId++);
+        const int index = workspaces->addTab(workspace, name);
         QToolButton* close = new QToolButton(workspaces->tabBar());
         close->setObjectName("workspaceTabClose");
         close->setText("×");

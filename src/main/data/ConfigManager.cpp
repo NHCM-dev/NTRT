@@ -26,6 +26,7 @@ namespace trtdata
 
     bool ConfigManager::loadAll()
     {
+        workspaceManager.loadConfig();
         bool success = true;
         success &= loadMarketConfig();
         success &= loadExchangeConfig();
@@ -300,6 +301,11 @@ namespace trtdata
     AppearanceManager* ConfigManager::getAppearanceManager()
     {
         return &appearanceManager;
+    }
+
+    WorkspaceManager* ConfigManager::getWorkspaceManager()
+    {
+        return &workspaceManager;
     }
 
     int ConfigManager::instrumentsCount()
