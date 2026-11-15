@@ -40,17 +40,22 @@ namespace trtdata
         explicit AppearanceManager(const QString& dataPath);
 
         bool tryInitOnce();
+
         bool loadConfig();
+
         bool saveConfig() const;
 
         EnumTheme getCurrentTheme() const;
+
         void setTheme(EnumTheme theme);
+
         bool isPriceFlashEnabled() const;
+
         bool setPriceFlashEnabled(bool enabled);
+
         const MarketColumnVisibility& getMarketColumns() const;
+
         bool setMarketColumns(const MarketColumnVisibility& columns);
-        static QPalette generatePalette(EnumTheme theme);
-        static void applyPalette(EnumTheme theme);
     };
 }
 

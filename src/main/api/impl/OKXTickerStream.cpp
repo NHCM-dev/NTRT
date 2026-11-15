@@ -10,10 +10,14 @@
 
 namespace trtdata::okx
 {
-    static const trtnet::WebSocketAPITemplate TICKERS_CHANNEL{QUrl{"wss://ws.okx.com/ws/v5/public"}, "tickers", {"instId"}};
+    static const trtnet::WebSocketAPITemplate TICKERS_CHANNEL{
+        QUrl{"wss://ws.okx.com/ws/v5/public"},
+        "tickers",
+        {"instId"}
+    };
 
     OKXTickerStream::OKXTickerStream()
-        : client(TICKERS_CHANNEL.getEndpoint(), "ping", "pong")
+    : client(TICKERS_CHANNEL.getEndpoint(), "ping", "pong")
     {
         initClient();
     }
@@ -131,7 +135,8 @@ namespace trtdata::okx
                     return;
                 }
 
-                const std::map<QString, Instruments>::iterator request = pendingSubscriptions.find(QString::fromUtf8(id));
+                const std::map<QString, Instruments>::iterator request = pendingSubscriptions.find(
+                    QString::fromUtf8(id));
                 if (request == pendingSubscriptions.end())
                     return;
 
@@ -144,8 +149,7 @@ namespace trtdata::okx
                             emit subscriptionFailed(identifier, error);
                     }
                     pendingSubscriptions.erase(request);
-                }
-                else if (event == "subscribe")
+                } else if (event == "subscribe")
                 {
                     const std::string_view instId = readString(response["arg"], "instId");
                     std::erase_if(request->second, [instId](const InstIdentifier& identifier)
@@ -166,12 +170,10 @@ namespace trtdata::okx
                 if (instruments.contains({Exchange::OKX, ticker.instType, ticker.instId}))
                     emit tickerReceived(ticker);
             }
-        }
-        catch (const simdjson::simdjson_error&)
+        } catch (const simdjson::simdjson_error&)
         {
             // Ignore malformed messages and tickers without a complete quote.
-        }
-        catch (const std::runtime_error&)
+        } catch (const std::runtime_error&)
         {
             // OKX can send empty quote fields before the first trade.
         }

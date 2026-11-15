@@ -8,15 +8,19 @@
 #include <QCloseEvent>
 #include <QVariant>
 #include <QCursor>
+#include <QMoveEvent>
+#include <QPaintEvent>
 
 namespace trtui
 {
     class WorkspaceWindowStyle final : public QProxyStyle
     {
     public:
-        WorkspaceWindowStyle() : QProxyStyle("Fusion") {}
+        WorkspaceWindowStyle() : QProxyStyle("Fusion")
+        {}
 
-        void drawPrimitive(PrimitiveElement element, const QStyleOption* option, QPainter* painter, const QWidget* widget) const override
+        void drawPrimitive(PrimitiveElement element, const QStyleOption* option, QPainter* painter,
+                           const QWidget* widget) const override
         {
             if (element == PE_FrameFocusRect)
                 return;
@@ -30,7 +34,8 @@ namespace trtui
             painter->restore();
         }
 
-        int styleHint(StyleHint hint, const QStyleOption* option, const QWidget* widget, QStyleHintReturn* data) const override
+        int styleHint(StyleHint hint, const QStyleOption* option, const QWidget* widget,
+                      QStyleHintReturn* data) const override
         {
             if (hint == SH_Workspace_FillSpaceOnMaximize)
                 return 1;
@@ -39,7 +44,8 @@ namespace trtui
             return QProxyStyle::styleHint(hint, option, widget, data);
         }
 
-        void drawComplexControl(ComplexControl control, const QStyleOptionComplex* option, QPainter* painter, const QWidget* widget) const override
+        void drawComplexControl(ComplexControl control, const QStyleOptionComplex* option, QPainter* painter,
+                                const QWidget* widget) const override
         {
             if (control != CC_TitleBar)
             {
@@ -57,13 +63,20 @@ namespace trtui
             painter->drawLine(title->rect.bottomLeft(), title->rect.bottomRight());
             QRect label = subControlRect(CC_TitleBar, title, SC_TitleBarLabel, widget).adjusted(8, 0, -6, 0);
             if (widget->property("titleHovered").toBool() && label.contains(widget->mapFromGlobal(QCursor::pos())))
-                painter->fillRect(label, title->palette.brush(QPalette::Mid));
+                painter->fillRect(
+                    QRect(title->rect.left(), title->rect.top(), label.right() - title->rect.left() + 1,
+                          title->rect.height()), title->palette.brush(QPalette::Mid));
             painter->setFont(widget->font());
             painter->setPen(title->palette.color(QPalette::WindowText));
             painter->drawText(label, Qt::AlignLeft | Qt::AlignVCenter,
-                painter->fontMetrics().elidedText(title->text, Qt::ElideRight, label.width()));
+                              painter->fontMetrics().elidedText(title->text, Qt::ElideRight, label.width()));
 
-            const std::array<SubControl, 4> buttons{SC_TitleBarMinButton, SC_TitleBarMaxButton, SC_TitleBarNormalButton, SC_TitleBarCloseButton};
+            const std::array<SubControl, 4> buttons{
+                SC_TitleBarMinButton,
+                SC_TitleBarMaxButton,
+                SC_TitleBarNormalButton,
+                SC_TitleBarCloseButton
+            };
             for (SubControl button : buttons)
             {
                 if (!title->subControls.testFlag(button))
@@ -82,22 +95,22 @@ namespace trtui
                 const QRect glyph(center.x() - 4, center.y() - 4, 8, 8);
                 switch (button)
                 {
-                case SC_TitleBarMinButton:
-                    painter->drawLine(glyph.bottomLeft(), glyph.bottomRight());
-                    break;
-                case SC_TitleBarMaxButton:
-                    painter->drawRect(glyph);
-                    break;
-                case SC_TitleBarNormalButton:
-                    painter->drawRect(glyph.adjusted(2, 0, 0, -2));
-                    painter->drawRect(glyph.adjusted(0, 2, -2, 0));
-                    break;
-                case SC_TitleBarCloseButton:
-                    painter->drawLine(glyph.topLeft(), glyph.bottomRight());
-                    painter->drawLine(glyph.topRight(), glyph.bottomLeft());
-                    break;
-                default:
-                    break;
+                    case SC_TitleBarMinButton:
+                        painter->drawLine(glyph.bottomLeft(), glyph.bottomRight());
+                        break;
+                    case SC_TitleBarMaxButton:
+                        painter->drawRect(glyph);
+                        break;
+                    case SC_TitleBarNormalButton:
+                        painter->drawRect(glyph.adjusted(2, 0, 0, -2));
+                        painter->drawRect(glyph.adjusted(0, 2, -2, 0));
+                        break;
+                    case SC_TitleBarCloseButton:
+                        painter->drawLine(glyph.topLeft(), glyph.bottomRight());
+                        painter->drawLine(glyph.topRight(), glyph.bottomLeft());
+                        break;
+                    default:
+                        break;
                 }
             }
             painter->restore();
@@ -121,26 +134,48 @@ namespace trtui
     void WorkspaceWindow::initAppearance()
     {
         setWindowFlags(Qt::SubWindow | Qt::CustomizeWindowHint | Qt::WindowTitleHint |
-                       Qt::WindowMinMaxButtonsHint | Qt::WindowCloseButtonHint);
+            Qt::WindowMinMaxButtonsHint | Qt::WindowCloseButtonHint);
         WorkspaceWindowStyle* appearance = new WorkspaceWindowStyle;
         appearance->setParent(this);
         setStyle(appearance);
         setAttribute(Qt::WA_DeleteOnClose, true);
         setMouseTracking(true);
     }
+
     void WorkspaceWindow::paintEvent(QPaintEvent* event)
     {
         QMdiSubWindow::paintEvent(event);
-        // Draw the outline last, over the complete frame, independently of native titlebar state.
+        // Restrict custom chrome to the actual damaged frame pixels. A partial titlebar
+        // repaint must never draw an entire active outline into the backing store.
         const bool active = mdiArea() && mdiArea()->activeSubWindow() == this;
-        QPainter painter(this);
-        painter.setBrush(Qt::NoBrush);
         const int thickness = active ? 2 : 1;
-        QPen pen(palette().color(active ? QPalette::Highlight : QPalette::Mid), thickness);
-        pen.setJoinStyle(Qt::MiterJoin);
-        painter.setPen(pen);
-        const qreal inset = thickness / 2.0;
-        painter.drawRect(QRectF(rect()).adjusted(inset, inset, -inset, -inset));
+        const QRegion frame = QRegion(rect()).subtracted(
+            QRegion(rect().adjusted(thickness, thickness, -thickness, -thickness)));
+        QPainter painter(this);
+        painter.setClipRegion(event->region().intersected(frame));
+        painter.fillRect(rect(), palette().brush(active ? QPalette::Highlight : QPalette::Mid));
+    }
+
+    void WorkspaceWindow::moveEvent(QMoveEvent* event)
+    {
+        QMdiSubWindow::moveEvent(event);
+        QWidget* desktop = parentWidget();
+        if (!desktop)
+            return;
+        const QRegion exposed = QRegion(QRect(event->oldPos(), size())).subtracted(QRegion(geometry()));
+        desktop->update(exposed);
+        if (mdiArea())
+        {
+            for (QMdiSubWindow* sibling : mdiArea()->subWindowList())
+            {
+                if (sibling == this || !sibling->isVisible())
+                    continue;
+                const QRegion damage = exposed.intersected(sibling->geometry()).translated(-sibling->pos());
+                if (!damage.isEmpty())
+                    sibling->update(damage);
+            }
+        }
+        update();
     }
 
     void WorkspaceWindow::closeEvent(QCloseEvent* event)

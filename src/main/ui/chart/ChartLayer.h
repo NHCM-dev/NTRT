@@ -2,21 +2,12 @@
 #define NTRT_CHARTLAYER_H
 
 #include "ChartViewport.h"
+#include "main/util/GeometryUtil.h"
 #include <QColor>
 #include <vector>
 
 namespace trtui
 {
-    struct ChartVertex
-    {
-        float x;
-        float y;
-        float red;
-        float green;
-        float blue;
-        float alpha;
-    };
-
     struct ChartLayerContext
     {
         const ChartViewport& viewport;
@@ -29,11 +20,9 @@ namespace trtui
     // Layers only emit geometry in logical pixels. Indicators and drawing tools can use the same transforms.
     class ChartLayer
     {
-    protected:
-        static void addRect(std::vector<ChartVertex>& vertices, const QRectF& rect, const QColor& color, const QRectF& clip);
-
     public:
         virtual ~ChartLayer() = default;
+
         virtual void build(const ChartLayerContext& context, std::vector<ChartVertex>& vertices) const = 0;
     };
 

@@ -9,11 +9,6 @@
 #include <QUrlQuery>
 #include <QtNetwork/QNetworkReply>
 
-namespace ntrt
-{
-    inline QNetworkAccessManager* netManager = nullptr;
-}
-
 namespace trtnet
 {
     enum class HTTPMethod : uint8_t
@@ -41,11 +36,11 @@ namespace trtnet
         const QSet<QString> requiredParameters;
         const QSet<QString> optionalParameters;
 
-        RestAPITemplate(HTTPMethod method, QUrl domain, QString endpoint, QSet<QString> required, QSet<QString> optional = {})
-            : httpMethod(method), domain(std::move(domain)), endpoint(std::move(endpoint)),
-              requiredParameters(std::move(required)), optionalParameters(std::move(optional))
-        {
-        }
+        RestAPITemplate(HTTPMethod method, QUrl domain, QString endpoint, QSet<QString> required,
+                        QSet<QString> optional = {})
+        : httpMethod(method), domain(std::move(domain)), endpoint(std::move(endpoint)),
+          requiredParameters(std::move(required)), optionalParameters(std::move(optional))
+        {}
 
         QNetworkReply* request(const QUrlQuery& parameters) const;
     };

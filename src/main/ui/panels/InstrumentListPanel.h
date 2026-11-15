@@ -24,12 +24,20 @@ namespace trtui
         QComboBox* typeFilter = nullptr;
 
         void initFilters(QFrame* page, QVBoxLayout* layout);
+
         void initTable(QFrame* page, QVBoxLayout* layout);
+
+        void initActions(QFrame* page, QVBoxLayout* layout);
+
         void updateColumnVisibility();
-        QTableWidgetItem* updateItem(int row, int column, const QString& text);
+
+        void updateHoveredRow();
+
+        void setHoveredRow(int row);
+
+        bool eventFilter(QObject* watched, QEvent* event) override;
 
     public:
-
         explicit InstrumentListPanel(QWidget* parent = nullptr) : QObject(parent)
         {
             initialize(parent);
@@ -39,7 +47,11 @@ namespace trtui
 
         void update() override;
 
-    signals:
+        signals  :
+
+
+
+
         void instrumentActivated(const trtdata::InstIdentifier& identifier);
     };
 } // trtui

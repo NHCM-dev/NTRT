@@ -29,33 +29,53 @@ namespace trtdata::okx
     };
 
     const trtnet::RestAPITemplate CANDLES{
-        trtnet::HTTPMethod::GET, QUrl{"https://www.okx.com"}, "/api/v5/market/candles",
-        {"instId"}, {"bar", "limit"}
+        trtnet::HTTPMethod::GET,
+        QUrl{"https://www.okx.com"},
+        "/api/v5/market/candles",
+        {"instId"},
+        {"bar", "limit"}
     };
 
     const trtnet::RestAPITemplate CANDLE_HISTORY{
-        trtnet::HTTPMethod::GET, QUrl{"https://www.okx.com"}, "/api/v5/market/history-candles",
-        {"instId"}, {"bar", "limit", "after"}
+        trtnet::HTTPMethod::GET,
+        QUrl{"https://www.okx.com"},
+        "/api/v5/market/history-candles",
+        {"instId"},
+        {"bar", "limit", "after"}
     };
 
     class OKXApi final : public trtcore::AbstractApi
     {
     public:
-        static QString candleBar(trttrade::CandleTimeframe timeframe, TradingDataTimeZone zone);
         std::unique_ptr<trtcore::CandleStream> createCandleStream() const override;
-        QFuture<std::vector<trttrade::CandleData>> fetchCandleHistory(const InstIdentifier& instrument, trttrade::CandleTimeframe timeframe, TradingDataTimeZone zone, qint64 after) const override;
+
+        QFuture<std::vector<trttrade::CandleData>> fetchCandleHistory(const InstIdentifier& instrument,
+                                                                      trttrade::CandleTimeframe timeframe,
+                                                                      TradingDataTimeZone zone,
+                                                                      qint64 after) const override;
+
         static QFuture<TickerData> requestTicker(const std::string& instId);
+
         /**
          * @param instFamily the prefix of instId
          */
-        static QFuture<std::shared_ptr<std::vector<TickerData>>> requestTickers(trttrade::InstType instType, const std::string& instFamily = {});
+        static QFuture<std::shared_ptr<std::vector<TickerData>>> requestTickers(
+            trttrade::InstType instType, const std::string& instFamily = {});
 
         std::vector<trttrade::InstType> instrumentTypes() const override;
+
         std::unique_ptr<trtcore::TickerStream> createTickerStream() const override;
-        QFuture<std::vector<trttrade::CandleData>> fetchCandles(const InstIdentifier& identifier, trttrade::CandleTimeframe timeframe, TradingDataTimeZone timeZone, int limit) const override;
+
+        QFuture<std::vector<trttrade::CandleData>> fetchCandles(const InstIdentifier& identifier,
+                                                                trttrade::CandleTimeframe timeframe,
+                                                                TradingDataTimeZone timeZone, int limit) const override;
+
         QFuture<std::shared_ptr<std::vector<TickerData>>> fetchTickers(trttrade::InstType type) const override;
+
         QFuture<std::vector<std::shared_ptr<Instrument>>> fetchInstruments(trttrade::InstType type) const override;
+
         std::shared_ptr<Instrument> createInstrument(const std::string& id, trttrade::InstType type) const override;
+
         trttrade::InstType parseInstrumentType(std::string_view name) const override;
 
         int getRequestInterval() const override

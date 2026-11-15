@@ -33,12 +33,19 @@ QWidget#chartToolbar QToolButton {
     background-color: palette(window);
     color: palette(window-text);
 }
-QWidget#chartToolbar QToolButton:hover {
+QWidget#chartToolbar QToolButton:enabled:hover {
     background-color: palette(mid);
 }
 QWidget#chartToolbar QToolButton:checked {
     border-color: palette(highlight);
     background-color: palette(alternate-base);
+}
+QWidget#chartToolbar QToolButton:checked:enabled:hover {
+    background-color: palette(mid);
+}
+QWidget#chartToolbar QToolButton:enabled:pressed {
+    background-color: palette(highlight);
+    color: palette(highlighted-text);
 }
 QWidget#chartEmpty {
     background-color: palette(base);
@@ -71,8 +78,12 @@ QPushButton:focus, QToolButton:focus {
     border-color: palette(mid);
     outline: none;
 }
-QPushButton:pressed, QToolButton:pressed {
+QPushButton:enabled:hover, QToolButton:enabled:hover {
     background-color: palette(mid);
+}
+QPushButton:enabled:pressed, QToolButton:enabled:pressed {
+    background-color: palette(highlight);
+    color: palette(highlighted-text);
 }
 QPushButton:checked, QToolButton:checked {
     border-color: palette(highlight);
@@ -83,8 +94,11 @@ QPushButton:checked:focus, QToolButton:checked:focus {
 }
 
 QMenuBar {
+    border: none;
+    margin: 0px;
     background-color: palette(window);
     color: palette(window-text);
+    border-bottom: 1px solid #4b535f;
 }
 QMenuBar::item {
     padding: 5px 10px;
@@ -125,7 +139,7 @@ QToolButton#newWorkspaceButton {
     border-radius: 0px;
     background-color: palette(window);
 }
-QToolButton#newWorkspaceButton:hover {
+QToolButton#newWorkspaceButton:enabled:hover {
     background-color: palette(mid);
 }
 QToolButton#workspaceTabClose {
@@ -134,6 +148,46 @@ QToolButton#workspaceTabClose {
     border: none;
     background-color: transparent;
 }
-QToolButton#workspaceTabClose:hover {
+QToolButton#workspaceTabClose:enabled:hover {
     background-color: palette(midlight);
+}
+
+QMenu {
+    background-color: palette(window);
+    color: palette(window-text);
+    border: 1px solid palette(mid);
+    padding: 4px 0px;
+}
+QMenu::item {
+    padding: 5px 24px;
+    background-color: transparent;
+}
+QMenu::item:selected {
+    background-color: palette(highlight);
+    color: palette(highlighted-text);
+}
+QMenu::separator {
+    height: 1px;
+    background-color: palette(mid);
+    margin: 4px 8px;
+}
+
+QListWidget#settingsCategories::item:selected {
+    background-color: palette(alternate-base);
+    color: palette(text);
+}
+QListWidget#settingsCategories::item:hover {
+    background-color: palette(midlight);
+    color: palette(text);
+}
+
+QLabel#instrumentListHint {
+    color: palette(placeholder-text);
+    padding-top: 3px;
+    font-size: 11px;
+}
+
+QToolButton#newWorkspaceButton:enabled:pressed, QToolButton#workspaceTabClose:enabled:pressed {
+    background-color: palette(highlight);
+    color: palette(highlighted-text);
 }

@@ -12,12 +12,18 @@
 - Match the surrounding code. Use four spaces for indentation and put opening braces on their own line.
 - Keep error handling at the boundary that can act on it. Validate external input and check I/O results where they matter. Let errors propagate through intermediate code and avoid repeated checks or blanket catches.
 - Use postfix increment and decrement: `index++` and `index--`.
-- Do not use anonymous or nested helper namespaces. Use private class methods for helpers that belong to a class.
+- Do not use anonymous or nested helper namespaces. Use private class methods for helpers that depend on their owning class state; extract independent utility logic into focused `XXXUtil` files under `src/main/util`.
 - Put Qt styles in QSS resource files. Do not embed style sheets as string literals in C++ code.
 - Split UI initialization into focused private `initXXX()` methods. Keep constructors and widget factory methods short and use them to coordinate the initialization steps.
 - Follow `ConfigManager` and `AppearanceManager` for JSON persistence. Keep settings in a typed config struct, load them with the existing simdjson helpers, and use `newBuilder()` and `writeJsonFile()` to save formatted JSON atomically. Create defaults only when the file is missing and replace in-memory settings only after a successful parse.
 - Add settings and configuration UI in `SettingPage`. Use its sections and row helpers to expose controls, and delegate persistence to the corresponding configuration manager.
 - Use `switch` when behavior or values differ by enum member. Avoid enum-based `if` chains and ternary expressions for these branches.
+
+## Utility Extraction
+
+- Scan the affected code and callers for logic that belongs in `XXXUtil`: parsing, conversion, formatting, calculations, file operations, drawing primitives, and generic Qt operations. Extract suitable logic even when it has only one caller.
+- Reuse a suitable existing Util or create a focused `XXXUtil`; keep callers compact and remove duplicate implementations. Do not collect unrelated helpers into a catch-all Util or wrap simple calls without making their intent clearer.
+- Utilities take their dependencies as arguments. Keep feature state, configuration persistence policy, subscriptions, caches, scheduling, and lifecycle operations in their owning classes. Keep exchange-specific protocol helpers separate from general utilities. Update all callers and relevant build/test targets when extracting code.
 
 ## Class Responsibilities and Interfaces
 
@@ -40,6 +46,8 @@
 - Provide Reset Layout, Stack Windows and Sort Window actions in the Window menu.
 - Settings remains a standalone reusable `SettingsDialog` containing `SettingPage`; keep settings sections and row helpers in `SettingPage`.
 - UI panels only read backend data. DataMonitor's lifecycle is independent of window visibility. Keep styling in resource QSS files and support palette changes.
+- Every UI change must support both Light and Dark themes, including runtime switching. Use palette roles for theme-dependent colors; keep foregrounds, backgrounds, borders, hover/selection states, and chart colors consistent. Invalidate resolved QSS palettes and custom render caches when the theme changes; do not leave widgets using colors from the previous theme.
+- Verify Light → Dark → Light switching on existing, hidden, and newly created UI. Cover menus, Workspace tabs, child-window chrome, tables, inputs, settings, and OpenGL charts; check contrast and actual rendered output, not only the application palette.
 
 ## Git Commits
 

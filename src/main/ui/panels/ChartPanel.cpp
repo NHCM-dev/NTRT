@@ -1,4 +1,7 @@
 #include "ChartPanel.h"
+#include "main/util/TimeUtil.h"
+#include "main/util/ExchangeUtil.h"
+#include "main/util/TradeUtil.h"
 #include "main/NTRT.h"
 #include "main/ui/chart/ChartView.h"
 #include <QComboBox>
@@ -25,7 +28,10 @@ namespace trtui
         initContent(layout);
         initStatus(layout);
         rebuildInstruments();
-        connect(ntrt::configManager.get(), &trtdata::ConfigManager::instrumentsChanged, this, [this] { rebuildInstruments(); });
+        connect(ntrt::configManager.get(), &trtdata::ConfigManager::instrumentsChanged, this, [this]
+        {
+            rebuildInstruments();
+        });
     }
 
     ChartPanel::~ChartPanel()
@@ -53,11 +59,18 @@ namespace trtui
         timeframeBox = new QComboBox(toolbar);
         timeframeBox->setObjectName("chartTimeframe");
         const std::pair<const char*, trttrade::CandleTimeframe> frames[] = {
-            {"1m", trttrade::CandleTimeframe::Minute1}, {"3m", trttrade::CandleTimeframe::Minute3},
-            {"5m", trttrade::CandleTimeframe::Minute5}, {"15m", trttrade::CandleTimeframe::Minute15},
-            {"30m", trttrade::CandleTimeframe::Minute30}, {"1h", trttrade::CandleTimeframe::Hour1},
-            {"2h", trttrade::CandleTimeframe::Hour2}, {"4h", trttrade::CandleTimeframe::Hour4},
-            {"1D", trttrade::CandleTimeframe::Day1}, {"1W", trttrade::CandleTimeframe::Week1}, {"1M", trttrade::CandleTimeframe::Month1}};
+            {"1m", trttrade::CandleTimeframe::Minute1},
+            {"3m", trttrade::CandleTimeframe::Minute3},
+            {"5m", trttrade::CandleTimeframe::Minute5},
+            {"15m", trttrade::CandleTimeframe::Minute15},
+            {"30m", trttrade::CandleTimeframe::Minute30},
+            {"1h", trttrade::CandleTimeframe::Hour1},
+            {"2h", trttrade::CandleTimeframe::Hour2},
+            {"4h", trttrade::CandleTimeframe::Hour4},
+            {"1D", trttrade::CandleTimeframe::Day1},
+            {"1W", trttrade::CandleTimeframe::Week1},
+            {"1M", trttrade::CandleTimeframe::Month1}
+        };
         for (const std::pair<const char*, trttrade::CandleTimeframe>& frame : frames)
             timeframeBox->addItem(frame.first, static_cast<int>(frame.second));
         timeframeBox->setCurrentIndex(3);
@@ -101,9 +114,18 @@ namespace trtui
         {
             setTimeframe(static_cast<trttrade::CandleTimeframe>(timeframeBox->currentData().toInt()));
         });
-        connect(volume, &QToolButton::toggled, this, [this](bool visible) { chart->setVolumeVisible(visible); });
-        connect(followButton, &QToolButton::clicked, this, [this] { chart->followLatest(); });
-        connect(reset, &QToolButton::clicked, this, [this] { chart->resetView(); });
+        connect(volume, &QToolButton::toggled, this, [this](bool visible)
+        {
+            chart->setVolumeVisible(visible);
+        });
+        connect(followButton, &QToolButton::clicked, this, [this]
+        {
+            chart->followLatest();
+        });
+        connect(reset, &QToolButton::clicked, this, [this]
+        {
+            chart->resetView();
+        });
     }
 
     void ChartPanel::initContent(QVBoxLayout* layout)
@@ -118,7 +140,9 @@ namespace trtui
         title->setObjectName("chartEmptyTitle");
         title->setAlignment(Qt::AlignCenter);
         prompt->addWidget(title);
-        QLabel* help = new QLabel("Select an instrument above, or double-click one in the Instrument List.\nUse Elements → New Chart to compare instruments.", empty);
+        QLabel* help = new QLabel(
+            "Select an instrument above, or double-click one in the Instrument List.\nUse Elements → New Chart to compare instruments.",
+            empty);
         help->setAlignment(Qt::AlignCenter);
         help->setWordWrap(true);
         prompt->addWidget(help);
@@ -136,8 +160,14 @@ namespace trtui
             if (backend && instrument)
                 backend->requestChartHistory(*instrument, timeframe);
         });
-        connect(choose, &QPushButton::clicked, this, [this] { selectInstrument(); });
-        connect(chart, &ChartView::followChanged, this, [this](bool following) { followButton->setChecked(following); });
+        connect(choose, &QPushButton::clicked, this, [this]
+        {
+            selectInstrument();
+        });
+        connect(chart, &ChartView::followChanged, this, [this](bool following)
+        {
+            followButton->setChecked(following);
+        });
         connect(chart, &ChartView::renderingFailed, this, [this](const QString& error)
         {
             renderingError = error;
@@ -150,14 +180,9 @@ namespace trtui
         status = new QLabel("Select an instrument to begin", this);
         status->setObjectName("chartStatus");
         status->setWordWrap(true);
-        status->setToolTip("Drag: pan · Wheel: zoom · Double-click: reset · End: latest\nPan left or click History to load older candles.");
+        status->setToolTip(
+            "Drag: pan · Wheel: zoom · Double-click: reset · End: latest\nPan left or click History to load older candles.");
         layout->addWidget(status);
-    }
-
-    QString ChartPanel::instrumentLabel(const trtdata::InstIdentifier& identifier) const
-    {
-        return QString::fromStdString(identifier.id) + " · " + QString::fromUtf8(trtdata::getExchangeStr(identifier.exchange)) +
-            " · " + QString::fromUtf8(trttrade::instDisplayStr(identifier.type));
     }
 
     void ChartPanel::rebuildInstruments()
@@ -169,22 +194,23 @@ namespace trtui
         for (const std::shared_ptr<trtdata::Instrument>& tracked : ntrt::configManager->getInstruments())
         {
             choices.push_back(tracked->getUniqueIdentifier());
-            instrumentBox->addItem(instrumentLabel(choices.back()));
+            instrumentBox->addItem(trtutils::instrumentLabel(choices.back()));
         }
         if (instrument)
         {
-            const std::vector<trtdata::InstIdentifier>::const_iterator found = std::find(choices.cbegin(), choices.cend(), *instrument);
+            const std::vector<trtdata::InstIdentifier>::const_iterator found = std::find(
+                choices.cbegin(), choices.cend(), *instrument);
             if (found == choices.cend())
             {
                 choices.push_back(*instrument);
-                instrumentBox->addItem(instrumentLabel(*instrument));
+                instrumentBox->addItem(trtutils::instrumentLabel(*instrument));
                 instrumentBox->setCurrentIndex(static_cast<int>(choices.size()));
-            }
-            else
+            } else
                 instrumentBox->setCurrentIndex(static_cast<int>(found - choices.cbegin()) + 1);
-        }
-        else
-            status->setText(choices.empty() ? "Add an instrument with Elements → Add Instruments, then select it here." : "Select an instrument to begin");
+        } else
+            status->setText(choices.empty()
+                                ? "Add an instrument with Elements → Add Instruments, then select it here."
+                                : "Select an instrument to begin");
     }
 
     void ChartPanel::selectInstrument()
@@ -207,7 +233,7 @@ namespace trtui
     {
         // identifier may refer to choices, which rebuildInstruments replaces.
         const trtdata::InstIdentifier selected = identifier;
-        if (instrument && *instrument == selected)
+        if (instrument&& * instrument == selected)
         {
             rebuildInstruments();
             return;
@@ -243,13 +269,16 @@ namespace trtui
         emit titleChanged(getTitle());
     }
 
-    const std::optional<trtdata::InstIdentifier>& ChartPanel::getInstrument() const { return instrument; }
+    const std::optional<trtdata::InstIdentifier>& ChartPanel::getInstrument() const
+    {
+        return instrument;
+    }
 
     QString ChartPanel::getTitle() const
     {
         if (!instrument)
             return "Choose instrument";
-        return instrumentLabel(*instrument) + " · " + timeframeBox->currentText();
+        return trtutils::instrumentLabel(*instrument) + " · " + timeframeBox->currentText();
     }
 
     void ChartPanel::updateData()
@@ -265,7 +294,8 @@ namespace trtui
         const std::shared_ptr<trtcore::DataMonitor> backend = monitor.lock();
         if (!backend)
             return;
-        const trtcore::CandlesManager& manager = backend->getCandlesManager();
+        const std::shared_ptr<const trtcore::CandlesSnapshot> data = backend->getCandlesManager();
+        const trtcore::CandlesSnapshot& manager = *data;
         chart->setTimeZone(manager.getTimeZone());
         const trtcore::CandleSnapshot* snapshot = manager.getSnapshot(*instrument, timeframe);
         if (!snapshot)
@@ -280,15 +310,15 @@ namespace trtui
         QString text;
         if (!snapshot->error.isEmpty())
         {
-            text = snapshot->candles.empty() ? "Unable to load candles · Retrying automatically" : "Cached candles · Feed unavailable · Retrying automatically";
+            text = snapshot->candles.empty()
+                       ? "Unable to load candles · Retrying automatically"
+                       : "Cached candles · Feed unavailable · Retrying automatically";
             chart->setMessage("Unable to load candles\n" + snapshot->error + "\nRetrying automatically");
-        }
-        else if (snapshot->candles.empty())
+        } else if (snapshot->candles.empty())
         {
             text = "Loading candles… · " + zone;
             chart->setMessage("Loading candles…");
-        }
-        else
+        } else
         {
             const qint64 age = QDateTime::currentMSecsSinceEpoch() - snapshot->updatedAt;
             text = QString("%1 bars · %2 · Updated %3s ago").arg(snapshot->candles.size()).arg(zone).arg(age / 1000);
@@ -299,7 +329,8 @@ namespace trtui
         }
         if (status->text() != text)
             status->setText(text);
-        status->setToolTip(snapshot->error.isEmpty() ?
-            "Drag: pan · Wheel: zoom · Double-click: reset · End: latest\nLive candles via WebSocket. Pan left or click History to load older candles." : snapshot->error);
+        status->setToolTip(snapshot->error.isEmpty()
+                               ? "Drag: pan · Wheel: zoom · Double-click: reset · End: latest\nLive candles via WebSocket. Pan left or click History to load older candles."
+                               : snapshot->error);
     }
 }

@@ -15,6 +15,7 @@ namespace trtui
 {
     class InstrumentListPanel;
     class ChartPanel;
+
     class Workspace final : public QFrame
     {
         struct WindowEntry
@@ -23,6 +24,7 @@ namespace trtui
             QAction* action = nullptr;
             ChartPanel* chart = nullptr;
         };
+
         QMdiArea* desktop = nullptr;
         QMdiSubWindow* instrumentWindow = nullptr;
         QMdiSubWindow* lastChartWindow = nullptr;
@@ -37,26 +39,44 @@ namespace trtui
             QMdiSubWindow* window = nullptr;
             QRect geometry;
         };
+
         void sortWindows();
+
         void arrangeWindows(std::vector<WindowPlacement> placements, const QRect& area);
+
         void initDesktop();
+
         void initInstrumentPanel();
+
         QMdiSubWindow* addChartWindow();
+
         void showInstrument(const trtdata::InstIdentifier& identifier);
+
         void showWindow(QMdiSubWindow* window);
+
         void addWindowAction(WindowEntry& entry);
+
         QMdiSubWindow* addWindow(QWidget* content, const QString& title, const QString& id);
+
         bool eventFilter(QObject* watched, QEvent* event) override;
+
         void changeEvent(QEvent* event) override;
 
     public:
         explicit Workspace(QWidget* parent = nullptr);
+
         ~Workspace() override;
+
         QMenu* getWindowMenu();
+
         void showInstrumentList();
+
         void addWindowActions(QMenu* menu);
+
         void resetLayout();
+
         void updateData();
+
         void createChartWindow();
     };
 }

@@ -8,20 +8,12 @@
 
 namespace trtdata
 {
-   enum class Exchange
-   {
-      OKX
-   };
+    enum class Exchange
+    {
+        OKX
+    };
 
-   constexpr std::string_view getExchangeStr(Exchange exchange)
-   {
-      switch (exchange)
-      {
-         case Exchange::OKX: return "OKX";
-      }
 
-      return "";
-   }
 } // trtdata
 
 #endif //NTRT_EXCHANGES_H

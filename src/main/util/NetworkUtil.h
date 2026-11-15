@@ -6,6 +6,7 @@
 #define NTRT_NETWORKUTIL_H
 
 #include <QNetworkReply>
+#include <QNetworkAccessManager>
 #include <QPromise>
 #include <exception>
 #include <functional>
@@ -16,10 +17,14 @@
 
 namespace trtnet
 {
+    // Call on a thread with a running Qt event dispatcher; owned by that thread.
+    QNetworkAccessManager& getNetworkManager();
+
     // Takes responsibility for deleting the reply after completion.
     // Call on the reply's thread. The handler receives the response body there.
     template<class Handler>
-    QFuture<std::remove_cvref_t<std::invoke_result_t<Handler&, const QByteArray&>>> replyToFuture(QNetworkReply* reply, Handler&& onSuccess)
+    QFuture<std::remove_cvref_t<std::invoke_result_t<Handler&, const QByteArray&>>> replyToFuture(
+        QNetworkReply* reply, Handler&& onSuccess)
     {
         using Result = std::remove_cvref_t<std::invoke_result_t<Handler&, const QByteArray&>>;
         std::shared_ptr<QPromise<Result>> promise = std::make_shared<QPromise<Result>>();
@@ -33,27 +38,27 @@ namespace trtnet
             return future;
         }
 
-        std::move_only_function<void()> complete = [reply, promise, handler = std::forward<Handler>(onSuccess)]() mutable
-        {
-            try
+        std::move_only_function < void() > complete = [reply, promise, handler = std::forward<Handler>(onSuccess)
+            ]() mutable
             {
-                if (reply->error() != QNetworkReply::NoError)
-                    throw std::runtime_error(reply->errorString().toStdString());
+                try
+                {
+                    if (reply->error() != QNetworkReply::NoError)
+                        throw std::runtime_error(reply->errorString().toStdString());
 
-                const QByteArray body = reply->readAll();
-                if constexpr (std::is_void_v<Result>)
-                    std::invoke(handler, body);
-                else
-                    promise->addResult(std::invoke(handler, body));
-            }
-            catch (...)
-            {
-                promise->setException(std::current_exception());
-            }
+                    const QByteArray body = reply->readAll();
+                    if constexpr (std::is_void_v<Result>)
+                        std::invoke(handler, body);
+                    else
+                        promise->addResult(std::invoke(handler, body));
+                } catch (...)
+                {
+                    promise->setException(std::current_exception());
+                }
 
-            reply->deleteLater();
-            promise->finish();
-        };
+                reply->deleteLater();
+                promise->finish();
+            };
 
         if (reply->isFinished())
             complete();

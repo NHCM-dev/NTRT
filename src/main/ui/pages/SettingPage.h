@@ -24,7 +24,9 @@ namespace trtui
         explicit SettingPage(QWidget* parent = nullptr);
 
         QFrame* generateWidget(QWidget* parent) override;
-        void update() override {}
+
+        void update() override
+        {}
 
     private:
         QLineEdit* search = nullptr;
@@ -32,23 +34,34 @@ namespace trtui
         QStackedWidget* sections = nullptr;
 
         void initSidebar(QFrame* page, QHBoxLayout* layout);
+
         void initGeneralSection();
+
         void initAppearanceSection();
+
         void initTradingSection();
+
         void initAboutSection();
+
         void initSearch();
-        void updateCategoryPalette();
+
         bool saveAppearance(trtdata::EnumTheme theme);
 
         QVBoxLayout* addSection(const QString& title, const QString& group, const QString& keywords = {});
+
         void addRow(QVBoxLayout* rows, const QString& name, const QString& description, QWidget* control);
+
         void addDropdown(QVBoxLayout* rows, const QString& name, const QString& description, const QStringList& options,
-            int selected, std::function<bool(int)> onChange);
-        void addToggle(QVBoxLayout* rows, const QString& name, const QString& description, bool checked, std::function<bool(bool)> onChange);
+                         int selected, std::function<bool(int)> onChange);
+
+        void addToggle(QVBoxLayout* rows, const QString& name, const QString& description, bool checked,
+                       std::function<bool(bool)> onChange);
+
         void addText(QVBoxLayout* rows, const QString& name, const QString& description, const QString& value,
-            std::function<void(const QString&)> onEdit);
+                     std::function<void(const QString &)> onEdit);
+
         void addButton(QVBoxLayout* rows, const QString& name, const QString& description, const QString& caption,
-            std::function<void()> onClick);
+                       std::function<void()> onClick);
     };
 }
 

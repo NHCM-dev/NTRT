@@ -5,5 +5,4 @@
 #include "TradingAccount.h"
 
 namespace trttrade
-{
-} // trttrade
+{} // trttrade

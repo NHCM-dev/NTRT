@@ -10,8 +10,8 @@ namespace trtcore
     {
         switch (exchange)
         {
-        case trtdata::Exchange::OKX:
-            return okxApi;
+            case trtdata::Exchange::OKX:
+                return okxApi;
         }
         throw std::invalid_argument("Unsupported exchange");
     }

@@ -1,4 +1,5 @@
 #include "InstrumentIconManager.h"
+#include "main/util/PaintUtil.h"
 #include <QDateTime>
 #include <QNetworkDiskCache>
 #include <QNetworkReply>
@@ -16,30 +17,15 @@ namespace trtcore
         cache->setMaximumCacheSize(16 * 1024 * 1024);
         network.setCache(cache);
         requestTimer.setInterval(250);
-        connect(&requestTimer, &QTimer::timeout, this, [this] { fetchNext(); });
+        connect(&requestTimer, &QTimer::timeout, this, [this]
+        {
+            fetchNext();
+        });
     }
 
     InstrumentIconManager::~InstrumentIconManager()
     {
         stop();
-    }
-
-    QIcon InstrumentIconManager::createFallback(const QString& symbol) const
-    {
-        QPixmap image(40, 40);
-        image.fill(Qt::transparent);
-        QPainter painter(&image);
-        painter.setRenderHint(QPainter::Antialiasing);
-        painter.setPen(Qt::NoPen);
-        painter.setBrush(QColor(0x53647c));
-        painter.drawEllipse(0, 0, 40, 40);
-        painter.setPen(Qt::white);
-        QFont font = painter.font();
-        font.setPixelSize(20);
-        font.setBold(true);
-        painter.setFont(font);
-        painter.drawText(image.rect(), Qt::AlignCenter, symbol.left(1));
-        return QIcon(image);
     }
 
     void InstrumentIconManager::setInstruments(std::span<const std::shared_ptr<trtdata::Instrument>> instruments)
@@ -50,7 +36,7 @@ namespace trtcore
             const QString symbol = QString::fromStdString(instrument->instId).section('-', 0, 0).toUpper();
             desired.insert(symbol);
             if (!icons.contains(symbol))
-                icons.insert(symbol, IconEntry{createFallback(symbol)});
+                icons.insert(symbol, IconEntry{trtutils::createLetterIcon(symbol)});
         }
         for (QHash<QString, IconEntry>::iterator entry = icons.begin(); entry != icons.end();)
         {
@@ -113,7 +99,9 @@ namespace trtcore
     void InstrumentIconManager::requestIcon(const QString& symbol, bool crypto)
     {
         const QString route = crypto ? "crypto/" : "icon/ticker/";
-        QNetworkRequest request(QUrl("https://logoapi.sh/" + route + QString::fromLatin1(QUrl::toPercentEncoding(symbol)) + ".png?size=128&fallback=404"));
+        QNetworkRequest request(QUrl(
+            "https://logoapi.sh/" + route + QString::fromLatin1(QUrl::toPercentEncoding(symbol)) +
+            ".png?size=128&fallback=404"));
         request.setAttribute(QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::PreferCache);
         QNetworkReply* reply = network.get(request);
         icons[symbol].reply = reply;

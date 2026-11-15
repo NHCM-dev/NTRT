@@ -3,8 +3,9 @@
 
 namespace trtnet
 {
-    WebSocketClient::WebSocketClient(const QUrl& endpoint, const QString& heartbeatRequest, const QString& heartbeatResponse)
-        : endpoint(endpoint), heartbeatRequest(heartbeatRequest), heartbeatResponse(heartbeatResponse)
+    WebSocketClient::WebSocketClient(const QUrl& endpoint, const QString& heartbeatRequest,
+                                     const QString& heartbeatResponse)
+    : endpoint(endpoint), heartbeatRequest(heartbeatRequest), heartbeatResponse(heartbeatResponse)
     {
         initSocket();
         initTimers();

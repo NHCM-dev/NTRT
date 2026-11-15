@@ -3,6 +3,7 @@
 //
 
 #include "RestAPITemplate.h"
+#include "main/util/NetworkUtil.h"
 
 namespace trtnet
 {
@@ -10,19 +11,14 @@ namespace trtnet
         const QUrlQuery& parameters
     ) const
     {
-        if (!ntrt::netManager)
-        {
-            qWarning() << "Network manager is not initialized";
-            return nullptr;
-        }
-
-        const auto items = parameters.queryItems();
+        const QList<QPair<QString, QString>> items = parameters.queryItems();
 
         // Validate parameters
         QSet<QString> provided;
 
-        for (const auto& [key, value] : items)
+        for (const QPair<QString, QString>& item : items)
         {
+            const QString& key = item.first;
             provided.insert(key);
 
             if (!requiredParameters.contains(key) &&
@@ -34,7 +30,7 @@ namespace trtnet
         }
 
         // Check required parameters
-        for (const auto& key : requiredParameters)
+        for (const QString& key : requiredParameters)
         {
             if (!provided.contains(key))
             {
@@ -49,9 +45,9 @@ namespace trtnet
 
         QUrlQuery query;
 
-        for (const auto& [key, value] : items)
+        for (const QPair<QString, QString>& item : items)
         {
-            query.addQueryItem(key, value);
+            query.addQueryItem(item.first, item.second);
         }
 
         url.setQuery(query);
@@ -61,38 +57,38 @@ namespace trtnet
         // Execute request
         switch (httpMethod)
         {
-        case HTTPMethod::GET:
-            return ntrt::netManager->get(req);
+            case HTTPMethod::GET:
+                return getNetworkManager().get(req);
 
-        case HTTPMethod::POST:
-            return ntrt::netManager->post(req, QByteArray{});
+            case HTTPMethod::POST:
+                return getNetworkManager().post(req, QByteArray{});
 
-        case HTTPMethod::PUT:
-            return ntrt::netManager->put(req, QByteArray{});
+            case HTTPMethod::PUT:
+                return getNetworkManager().put(req, QByteArray{});
 
-        case HTTPMethod::PATCH:
-            return ntrt::netManager->sendCustomRequest(
-                req, "PATCH", QByteArray{}
-            );
+            case HTTPMethod::PATCH:
+                return getNetworkManager().sendCustomRequest(
+                    req, "PATCH", QByteArray{}
+                );
 
-        case HTTPMethod::DELETE:
-            return ntrt::netManager->deleteResource(req);
+            case HTTPMethod::DELETE:
+                return getNetworkManager().deleteResource(req);
 
-        case HTTPMethod::HEAD:
-            return ntrt::netManager->head(req);
+            case HTTPMethod::HEAD:
+                return getNetworkManager().head(req);
 
-        case HTTPMethod::OPTIONS:
-            return ntrt::netManager->sendCustomRequest(
-                req, "OPTIONS", QByteArray{}
-            );
+            case HTTPMethod::OPTIONS:
+                return getNetworkManager().sendCustomRequest(
+                    req, "OPTIONS", QByteArray{}
+                );
 
-        case HTTPMethod::TRACE:
-            return ntrt::netManager->sendCustomRequest(
-                req, "TRACE", QByteArray{}
-            );
+            case HTTPMethod::TRACE:
+                return getNetworkManager().sendCustomRequest(
+                    req, "TRACE", QByteArray{}
+                );
 
-        default:
-            return nullptr;
+            default:
+                return nullptr;
         }
     }
 } // trtnet

@@ -22,6 +22,7 @@ namespace trtui
         }
 
         virtual QFrame* generateWidget(QWidget* parent) = 0;
+
         virtual void update() = 0;
     };
 } // trtui

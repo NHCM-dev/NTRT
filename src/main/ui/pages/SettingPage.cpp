@@ -1,4 +1,6 @@
 #include "SettingPage.h"
+#include "main/util/ExchangeUtil.h"
+#include "main/util/PaletteUtil.h"
 #include "main/NTRT.h"
 #include "main/Ver.h"
 #include "main/api/AbstractApi.h"
@@ -59,9 +61,10 @@ namespace trtui
         search->setPlaceholderText("Search settings");
         navigation->addWidget(search);
         categories = new QListWidget(sidebar);
+        categories->setObjectName("settingsCategories");
         categories->setFrameShape(QFrame::NoFrame);
         categories->setSpacing(2);
-        updateCategoryPalette();
+
         navigation->addWidget(categories, 1);
         layout->addWidget(sidebar);
         QFrame* sidebarDivider = new QFrame(page);
@@ -85,16 +88,16 @@ namespace trtui
         }
 
         addDropdown(rows, "Default exchange", "Preselected when you open Add Trading Pairs.", names, selected,
-            [exchanges, &config](int index) -> bool
-            {
-                const trtdata::Exchange previous = config.getExchange();
-                config.setExchange(exchanges[index]);
-                if (config.saveExchangeConfig())
-                    return true;
+                    [exchanges, &config](int index) -> bool
+                    {
+                        const trtdata::Exchange previous = config.getExchange();
+                        config.setExchange(exchanges[index]);
+                        if (config.saveExchangeConfig())
+                            return true;
 
-                config.setExchange(previous);
-                return false;
-            });
+                        config.setExchange(previous);
+                        return false;
+                    });
     }
 
     void SettingPage::initAppearanceSection()
@@ -119,85 +122,86 @@ namespace trtui
             return false;
         }
 
-        trtdata::AppearanceManager::applyPalette(theme);
-        updateCategoryPalette();
-        return true;
-    }
+        trtutils::applyPalette(theme);
 
-    void SettingPage::updateCategoryPalette()
-    {
-        QPalette colors = QApplication::palette();
-        const QColor base = colors.color(QPalette::Base);
-        const QColor text = colors.color(QPalette::Text);
-        const QColor selection = QColor::fromRgbF(
-            base.redF() * 0.88 + text.redF() * 0.12,
-            base.greenF() * 0.88 + text.greenF() * 0.12,
-            base.blueF() * 0.88 + text.blueF() * 0.12);
-        colors.setColor(QPalette::Highlight, selection);
-        colors.setColor(QPalette::HighlightedText, text);
-        categories->setPalette(colors);
+        return true;
     }
 
     void SettingPage::initTradingSection()
     {
-        QVBoxLayout* rows = addSection("Trading", "Market", "price flash color exchange type volume columns data time zone timezone UTC");
+        QVBoxLayout* rows = addSection("Trading", "Market",
+                                       "price flash color exchange type volume columns data time zone timezone UTC");
         trtdata::ConfigManager& config = *ntrt::configManager;
         int selectedTimeZone = 0;
         switch (config.getTradingDataTimeZone())
         {
-        case trtdata::TradingDataTimeZone::UTC: selectedTimeZone = 0; break;
-        case trtdata::TradingDataTimeZone::UTC8: selectedTimeZone = 1; break;
+            case trtdata::TradingDataTimeZone::UTC:
+                selectedTimeZone = 0;
+                break;
+            case trtdata::TradingDataTimeZone::UTC8:
+                selectedTimeZone = 1;
+                break;
         }
-        addDropdown(rows, "Trading data time zone", "Daily open and volume reset at midnight in this time zone. OKX supports UTC and UTC+8.",
-            {"UTC", "UTC+8"}, selectedTimeZone, [&config](int index)
-            {
-                switch (index)
-                {
-                case 0: return config.setTradingDataTimeZone(trtdata::TradingDataTimeZone::UTC);
-                case 1: return config.setTradingDataTimeZone(trtdata::TradingDataTimeZone::UTC8);
-                default: return false;
-                }
-            });
+        addDropdown(rows, "Trading data time zone",
+                    "Daily open and volume reset at midnight in this time zone. OKX supports UTC and UTC+8.",
+                    {"UTC", "UTC+8"}, selectedTimeZone, [&config](int index)
+                    {
+                        switch (index)
+                        {
+                            case 0:
+                                return config.setTradingDataTimeZone(trtdata::TradingDataTimeZone::UTC);
+                            case 1:
+                                return config.setTradingDataTimeZone(trtdata::TradingDataTimeZone::UTC8);
+                            default:
+                                return false;
+                        }
+                    });
         trtdata::AppearanceManager* appearance = ntrt::configManager->getAppearanceManager();
         addToggle(rows, "Flash on price change", "Flash the latest price and highlight the changed digits.",
-            appearance->isPriceFlashEnabled(), [appearance](bool enabled)
-            {
-                return appearance->setPriceFlashEnabled(enabled);
-            });
+                  appearance->isPriceFlashEnabled(), [appearance](bool enabled)
+                  {
+                      return appearance->setPriceFlashEnabled(enabled);
+                  });
         addToggle(rows, "Show Icon", "Show the icon for each instrument.", appearance->getMarketColumns().icon,
-            [appearance](bool enabled)
-            {
-                trtdata::MarketColumnVisibility columns = appearance->getMarketColumns();
-                columns.icon = enabled;
-                return appearance->setMarketColumns(columns);
-            });
-        addToggle(rows, "Show Exchange", "Show the exchange for each instrument.", appearance->getMarketColumns().exchange,
-            [appearance](bool enabled)
-            {
-                trtdata::MarketColumnVisibility columns = appearance->getMarketColumns();
-                columns.exchange = enabled;
-                return appearance->setMarketColumns(columns);
-            });
+                  [appearance](bool enabled)
+                  {
+                      trtdata::MarketColumnVisibility columns = appearance->getMarketColumns();
+                      columns.icon = enabled;
+                      return appearance->setMarketColumns(columns);
+                  });
+        addToggle(rows, "Show Exchange", "Show the exchange for each instrument.",
+                  appearance->getMarketColumns().exchange,
+                  [appearance](bool enabled)
+                  {
+                      trtdata::MarketColumnVisibility columns = appearance->getMarketColumns();
+                      columns.exchange = enabled;
+                      return appearance->setMarketColumns(columns);
+                  });
         addToggle(rows, "Show Type", "Show the instrument type.", appearance->getMarketColumns().type,
-            [appearance](bool enabled)
-            {
-                trtdata::MarketColumnVisibility columns = appearance->getMarketColumns();
-                columns.type = enabled;
-                return appearance->setMarketColumns(columns);
-            });
-        addToggle(rows, "Show Day Volume", "Show today's candle volume in the trading data time zone.", appearance->getMarketColumns().volume24h,
-            [appearance](bool enabled)
-            {
-                trtdata::MarketColumnVisibility columns = appearance->getMarketColumns();
-                columns.volume24h = enabled;
-                return appearance->setMarketColumns(columns);
-            });
+                  [appearance](bool enabled)
+                  {
+                      trtdata::MarketColumnVisibility columns = appearance->getMarketColumns();
+                      columns.type = enabled;
+                      return appearance->setMarketColumns(columns);
+                  });
+        addToggle(rows, "Show Day Volume", "Show today's candle volume in the trading data time zone.",
+                  appearance->getMarketColumns().volume24h,
+                  [appearance](bool enabled)
+                  {
+                      trtdata::MarketColumnVisibility columns = appearance->getMarketColumns();
+                      columns.volume24h = enabled;
+                      return appearance->setMarketColumns(columns);
+                  });
     }
 
     void SettingPage::initAboutSection()
     {
         QVBoxLayout* rows = addSection("About", "Application", "app version");
-        addButton(rows, QString::fromStdString("About " + NTRT_NAME), QString::fromStdString(NTRT_NAME + " " + NTRT_FULL_VER), "About", [this]{ntrt::displayAbout(this->widget);});
+        addButton(rows, QString::fromStdString("About " + NTRT_NAME),
+                  QString::fromStdString(NTRT_NAME + " " + NTRT_FULL_VER), "About", [this]
+                  {
+                      ntrt::displayAbout(this->widget);
+                  });
     }
 
     void SettingPage::initSearch()
@@ -309,8 +313,9 @@ namespace trtui
         rows->addWidget(panel);
     }
 
-    void SettingPage::addDropdown(QVBoxLayout* rows, const QString& name, const QString& description, const QStringList& options,
-        int selected, std::function<bool(int)> onChange)
+    void SettingPage::addDropdown(QVBoxLayout* rows, const QString& name, const QString& description,
+                                  const QStringList& options,
+                                  int selected, std::function<bool(int)> onChange)
     {
         QComboBox* control = new QComboBox(rows->parentWidget());
         control->addItems(options);
@@ -322,25 +327,26 @@ namespace trtui
         status->hide();
         rows->addWidget(status);
         QObject::connect(control, &QComboBox::currentIndexChanged, control,
-            [control, status, selected, onChange = std::move(onChange)](int index) mutable
-            {
-                if (index < 0)
-                    return;
-                if (onChange(index))
-                {
-                    selected = index;
-                    status->hide();
-                    return;
-                }
+                         [control, status, selected, onChange = std::move(onChange)](int index) mutable
+                         {
+                             if (index < 0)
+                                 return;
+                             if (onChange(index))
+                             {
+                                 selected = index;
+                                 status->hide();
+                                 return;
+                             }
 
-                const QSignalBlocker blocker(control);
-                control->setCurrentIndex(selected);
-                status->setText("Could not save settings.");
-                status->show();
-            });
+                             const QSignalBlocker blocker(control);
+                             control->setCurrentIndex(selected);
+                             status->setText("Could not save settings.");
+                             status->show();
+                         });
     }
 
-    void SettingPage::addToggle(QVBoxLayout* rows, const QString& name, const QString& description, bool checked, std::function<bool(bool)> onChange)
+    void SettingPage::addToggle(QVBoxLayout* rows, const QString& name, const QString& description, bool checked,
+                                std::function<bool(bool)> onChange)
     {
         QCheckBox* control = new QCheckBox(rows->parentWidget());
         control->setChecked(checked);
@@ -356,7 +362,7 @@ namespace trtui
     }
 
     void SettingPage::addText(QVBoxLayout* rows, const QString& name, const QString& description, const QString& value,
-        std::function<void(const QString&)> onEdit)
+                              std::function<void(const QString &)> onEdit)
     {
         QLineEdit* control = new QLineEdit(value, rows->parentWidget());
         addRow(rows, name, description, control);
@@ -366,8 +372,9 @@ namespace trtui
         });
     }
 
-    void SettingPage::addButton(QVBoxLayout* rows, const QString& name, const QString& description, const QString& caption,
-        std::function<void()> onClick)
+    void SettingPage::addButton(QVBoxLayout* rows, const QString& name, const QString& description,
+                                const QString& caption,
+                                std::function<void()> onClick)
     {
         QPushButton* control = new QPushButton(caption, rows->parentWidget());
         addRow(rows, name, description, control);

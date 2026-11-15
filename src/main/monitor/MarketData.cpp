@@ -26,9 +26,9 @@ namespace trtcore
         });
         connect(stream.get(), &TickerStream::subscriptionFailed, this,
                 [this](const trtdata::InstIdentifier& identifier, const QString& error)
-        {
-            updateError(identifier, error);
-        });
+                {
+                    updateError(identifier, error);
+                });
         streams.emplace(exchange, std::move(stream));
     }
 
@@ -42,11 +42,11 @@ namespace trtcore
         {
             const TickerStream::Instruments& identifiers = desired[entry.first];
             if (identifiers.empty())
-                failures.erase(entry.first);
+                snapshot.failures.erase(entry.first);
             entry.second->setInstruments(identifiers);
         }
 
-        for (std::pair<const trttrade::InstType, Identifier2SnapshotMap>& group : tickersData)
+        for (std::pair<const trttrade::InstType, Identifier2SnapshotMap>& group : snapshot.tickersData)
         {
             std::erase_if(group.second, [&desired](const Identifier2SnapshotMap::value_type& entry)
             {
@@ -59,13 +59,14 @@ namespace trtcore
     {
         for (std::pair<const trtdata::Exchange, std::unique_ptr<TickerStream>>& entry : streams)
             entry.second->stop();
-        failures.clear();
+        snapshot.failures.clear();
     }
 
     void MarketData::updateTicker(trtdata::Exchange exchange, trtdata::TickerData ticker)
     {
         const trtdata::InstIdentifier identifier{exchange, ticker.instType, ticker.instId};
-        MarketSnapshot& snapshot = tickersData[ticker.instType].try_emplace(identifier, MarketSnapshot{exchange}).first->second;
+        MarketSnapshot& snapshot = this->snapshot.tickersData[ticker.instType].try_emplace(
+            identifier, MarketSnapshot{exchange}).first->second;
         if (snapshot.ticker && ticker.ts < snapshot.ticker->ts)
             return;
 
@@ -77,8 +78,7 @@ namespace trtcore
                 {
                     ticker.previousLast = snapshot.ticker->last;
                     snapshot.priceChangeAge.start();
-                }
-                else
+                } else
                 {
                     ticker.previousLast = snapshot.ticker->previousLast;
                 }
@@ -91,11 +91,11 @@ namespace trtcore
     void MarketData::updateConnection(trtdata::Exchange exchange, const QString& error)
     {
         if (error.isEmpty())
-            failures.erase(exchange);
+            snapshot.failures.erase(exchange);
         else
-            failures.insert_or_assign(exchange, MarketSnapshot{exchange, std::nullopt, error});
+            snapshot.failures.insert_or_assign(exchange, MarketSnapshot{exchange, std::nullopt, error});
 
-        for (std::pair<const trttrade::InstType, Identifier2SnapshotMap>& group : tickersData)
+        for (std::pair<const trttrade::InstType, Identifier2SnapshotMap>& group : snapshot.tickersData)
         {
             for (Identifier2SnapshotMap::value_type& entry : group.second)
             {
@@ -107,12 +107,17 @@ namespace trtcore
 
     void MarketData::updateError(const trtdata::InstIdentifier& identifier, const QString& error)
     {
-        MarketSnapshot& snapshot = tickersData[identifier.type]
-            .try_emplace(identifier, MarketSnapshot{identifier.exchange}).first->second;
+        MarketSnapshot& snapshot = this->snapshot.tickersData[identifier.type]
+                                   .try_emplace(identifier, MarketSnapshot{identifier.exchange}).first->second;
         snapshot.error = error;
     }
 
-    const MarketSnapshot* MarketData::getSnapshot(const trtdata::InstIdentifier& identifier) const
+    MarketDataSnapshot MarketData::getSnapshot() const
+    {
+        return snapshot;
+    }
+
+    const MarketSnapshot* MarketDataSnapshot::getSnapshot(const trtdata::InstIdentifier& identifier) const
     {
         const Identifier2SnapshotMap* snapshots = getSnapshots(identifier.type);
         if (snapshots)
@@ -126,7 +131,8 @@ namespace trtcore
         return failure == failures.end() ? nullptr : &failure->second;
     }
 
-    const MarketData::Identifier2SnapshotMap* MarketData::getSnapshots(trttrade::InstType instType) const
+    const MarketDataSnapshot::Identifier2SnapshotMap* MarketDataSnapshot::getSnapshots(
+        trttrade::InstType instType) const
     {
         const std::map<trttrade::InstType, Identifier2SnapshotMap>::const_iterator entry = tickersData.find(instType);
         return entry == tickersData.end() ? nullptr : &entry->second;

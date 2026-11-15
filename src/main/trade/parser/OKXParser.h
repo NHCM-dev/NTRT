@@ -18,11 +18,15 @@ namespace trtdata::OKXParser
     trttrade::InstType readType(std::string_view type);
 
     void ensureSuccess(const elementResult& json);
+
     jsonArray getDataField(const elementResult& json);
 
     const TickerData parseTickerFromElement(const jsonElement& json);
+
     const TickerData parseTicker(const QByteArray& json);
+
     const std::shared_ptr<std::vector<TickerData>> parseTickers(const QByteArray& json);
+
     std::vector<trttrade::CandleData> parseCandles(const QByteArray& json);
 } // trtdata
 

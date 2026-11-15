@@ -5,9 +5,8 @@ namespace trtnet
 {
     WebSocketAPITemplate::WebSocketAPITemplate(const QUrl& endpoint, const QString& channel,
                                                const QStringList& requiredParameters)
-        : endpoint(endpoint), channel(channel), requiredParameters(requiredParameters)
-    {
-    }
+    : endpoint(endpoint), channel(channel), requiredParameters(requiredParameters)
+    {}
 
     const QUrl& WebSocketAPITemplate::getEndpoint() const
     {

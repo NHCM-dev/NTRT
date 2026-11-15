@@ -8,6 +8,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QSaveFile>
 
 namespace trtutils
 {
@@ -51,6 +52,14 @@ namespace trtutils
             offset += written;
         }
         return file.flush();
+    }
+
+    bool writeAllBytesAtomically(const QString& path, const QByteArray& data)
+    {
+        if (!QDir().mkpath(QFileInfo(path).absolutePath()))
+            return false;
+        QSaveFile file(path);
+        return file.open(QIODevice::WriteOnly) && file.write(data) == data.size() && file.commit();
     }
 
     QString relativePath(const QString& path)

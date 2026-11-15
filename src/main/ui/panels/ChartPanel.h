@@ -20,6 +20,7 @@ namespace trtcore
 namespace trtui
 {
     class ChartView;
+
     class ChartPanel final : public QFrame
     {
         Q_OBJECT
@@ -38,23 +39,37 @@ namespace trtui
         QString renderingError;
 
         void initToolbar(QVBoxLayout* layout);
+
         void initContent(QVBoxLayout* layout);
+
         void initStatus(QVBoxLayout* layout);
+
         void rebuildInstruments();
+
         void selectInstrument();
+
         void setTimeframe(trttrade::CandleTimeframe value);
+
         void releaseSeries();
-        QString instrumentLabel(const trtdata::InstIdentifier& identifier) const;
 
     public:
         explicit ChartPanel(QWidget* parent = nullptr);
+
         ~ChartPanel() override;
+
         void setInstrument(const trtdata::InstIdentifier& identifier);
+
         const std::optional<trtdata::InstIdentifier>& getInstrument() const;
+
         QString getTitle() const;
+
         void updateData();
 
-    signals:
+        signals  :
+
+
+
+
         void titleChanged(const QString& title);
     };
 }

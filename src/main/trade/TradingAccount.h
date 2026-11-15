@@ -8,8 +8,7 @@
 namespace trttrade
 {
     class TradingAccount
-    {
-    };
+    {};
 } // trttrade
 
 #endif //NTRT_TRADINGACCOUNT_H

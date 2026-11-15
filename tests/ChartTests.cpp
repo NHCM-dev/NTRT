@@ -1,4 +1,6 @@
 #include "main/NTRT.h"
+#include "main/util/PaletteUtil.h"
+#include "main/util/QtUtil.h"
 #include "main/api/AbstractApi.h"
 #include "main/api/TickerStream.h"
 #include "main/ui/Workspace.h"
@@ -21,10 +23,13 @@
 #include <QTest>
 #include <QTabWidget>
 #include <QPointer>
+#include <QMouseEvent>
 #include <QStyle>
 #include <QTabBar>
 #include <QToolButton>
 #include <QMenuBar>
+#include <QListWidget>
+#include "main/ui/dialog/SettingsDialog.h"
 #include <cmath>
 
 class ChartTestInstrument final : public trtdata::Instrument
@@ -106,6 +111,23 @@ class ChartTests final : public QObject
     }
 
 private slots:
+    void tableUtilityPreservesItems()
+    {
+        QTableWidget table(2, 2);
+        QTableWidgetItem* first = trtutils::updateTableItem(&table, 0, 0, "first");
+        first->setData(Qt::UserRole, 42);
+        first->setCheckState(Qt::Checked);
+        QTableWidgetItem* second = trtutils::updateTableItem(&table, 1, 0, "second");
+        QCOMPARE(trtutils::updateTableItem(&table, 0, 0, "updated"), first);
+        trtutils::swapTableRows(&table, 0, 1);
+        QCOMPARE(table.item(1, 0), first);
+        QCOMPARE(table.item(0, 0), second);
+        QCOMPARE(first->text(), QString("updated"));
+        QCOMPARE(first->data(Qt::UserRole).toInt(), 42);
+        QCOMPARE(first->checkState(), Qt::Checked);
+        QVERIFY(!table.item(0, 1) && !table.item(1, 1));
+    }
+
     void initTestCase()
     {
         QVERIFY(directory.isValid());
@@ -119,7 +141,7 @@ private slots:
             std::make_shared<ChartTestInstrument>("BTC-USDT-SWAP", trttrade::InstType::Swap)};
         QVERIFY(ntrt::configManager->replaceInstruments(instruments));
         ntrt::dataMonitor = std::make_shared<trtcore::DataMonitor>(*ntrt::configManager);
-        trtdata::AppearanceManager::applyPalette(trtdata::EnumTheme::Dark);
+        trtutils::applyPalette(trtdata::EnumTheme::Dark);
         QFile stylesheet(QCoreApplication::applicationDirPath() + "/res/style.qss");
         QVERIFY(stylesheet.open(QIODevice::ReadOnly));
         qApp->setStyleSheet(QString::fromUtf8(stylesheet.readAll()));
@@ -151,12 +173,16 @@ private slots:
         viewport.pan(1e6);
         QCOMPARE(viewport.getFirstVisible(), std::size_t(0));
         const double leftLimit = viewport.indexFromX(viewport.getPriceRect().left());
-        QVERIFY(leftLimit < -1 && leftLimit >= -41);
+        QVERIFY(leftLimit < -1);
+        QCOMPARE(viewport.getLastVisible(), std::size_t(2));
         viewport.pan(1e6);
         QCOMPARE(viewport.indexFromX(viewport.getPriceRect().left()), leftLimit);
         viewport.updateRange(candles);
         const double step = viewport.getPriceStep();
         QVERIFY(step > 0);
+        viewport.setSize(QSize(960, 940));
+        QVERIFY(viewport.getPriceStep() < step);
+        viewport.setSize(QSize(960, 540));
         for (double tick : viewport.getPriceTicks())
         {
             QVERIFY(std::abs(tick / step - std::round(tick / step)) < 1e-8);
@@ -164,6 +190,10 @@ private slots:
         }
         viewport.pan(-1e6);
         QCOMPARE(viewport.getLastVisible(), std::size_t(300));
+        QCOMPARE(viewport.getFirstVisible(), std::size_t(298));
+        const double rightLimit = viewport.indexFromX(viewport.getPriceRect().left());
+        viewport.pan(-1e6);
+        QCOMPARE(viewport.indexFromX(viewport.getPriceRect().left()), rightLimit);
         viewport.followLatest();
         QVERIFY(viewport.isFollowing());
         viewport.setVolumeVisible(false, QSize(960, 540));
@@ -242,14 +272,16 @@ private slots:
         for (int index = 0; index < 40; index++)
             QTest::keyClick(&view, Qt::Key_Left);
         view.setHistoryState(true, false);
+        QTest::mouseMove(&view, QPoint(220, 200));
+        QVERIFY(view.grabFramebuffer().save(QCoreApplication::applicationDirPath() + "/chart-crosshair-blank-test.png"));
         QVERIFY(view.grabFramebuffer().save(QCoreApplication::applicationDirPath() + "/chart-loading-test.png"));
         view.setHistoryState(false, false);
         QTest::keyClick(&view, Qt::Key_End);
         QVERIFY(follow.back().front().toBool());
-        trtdata::AppearanceManager::applyPalette(trtdata::EnumTheme::Light);
+        trtutils::applyPalette(trtdata::EnumTheme::Light);
         QCoreApplication::processEvents();
         QVERIFY(view.grabFramebuffer().save(QCoreApplication::applicationDirPath() + "/chart-test-light.png"));
-        trtdata::AppearanceManager::applyPalette(trtdata::EnumTheme::Dark);
+        trtutils::applyPalette(trtdata::EnumTheme::Dark);
     }
 
     void workspaceRouting()
@@ -337,6 +369,62 @@ private slots:
         QVERIFY(workspace.findChild<QMdiSubWindow*>("instrumentList"));
     }
 
+    void movingActiveWindowLeavesNoOutline()
+    {
+        trtui::Workspace workspace;
+        workspace.resize(1450, 850);
+        workspace.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&workspace));
+        QCoreApplication::processEvents();
+        QMdiArea* desktop = workspace.findChild<QMdiArea*>();
+        QMdiSubWindow* chart = workspace.findChild<QMdiSubWindow*>("chart1");
+        QMdiSubWindow* list = workspace.findChild<QMdiSubWindow*>("instrumentList");
+        trtui::ChartPanel* panel = chart->findChild<trtui::ChartPanel*>();
+        panel->setInstrument(ntrt::configManager->getInstruments().front()->getUniqueIdentifier());
+        panel->findChild<trtui::ChartView*>()->setCandles(sampleCandles());
+        chart->setGeometry(430, 20, 900, 750);
+        list->setGeometry(30, 70, 430, 600);
+        desktop->setActiveSubWindow(list);
+        list->raise();
+        QTest::qWait(60);
+        const QImage baseline = workspace.screen()->grabWindow(workspace.winId()).toImage();
+        const QPoint dragStart(130, 15);
+        const QPoint globalStart = list->mapToGlobal(dragStart);
+        const QPoint initialPosition = list->pos();
+        QTest::mouseMove(list, dragStart);
+        QMouseEvent hover(QEvent::MouseMove, QPointF(dragStart), QPointF(globalStart), Qt::NoButton, Qt::NoButton, Qt::NoModifier);
+        QCoreApplication::sendEvent(list, &hover);
+        QTest::mousePress(list, Qt::LeftButton, Qt::NoModifier, dragStart);
+        for (int index = 0; index < 28; index++)
+        {
+            const QPoint global = globalStart + QPoint(20 + index * 18, 10 + index % 5 * 7);
+            QMouseEvent move(QEvent::MouseMove, QPointF(list->mapFromGlobal(global)), QPointF(global), Qt::NoButton, Qt::LeftButton, Qt::NoModifier);
+            QCoreApplication::sendEvent(list, &move);
+            QTest::qWait(5);
+        }
+        QTest::mouseRelease(list, Qt::LeftButton, Qt::NoModifier, dragStart);
+        QVERIFY(list->pos() != initialPosition);
+        QTest::qWait(80);
+        const QImage screenshot = workspace.screen()->grabWindow(workspace.winId()).toImage();
+        QVERIFY(!screenshot.isNull());
+        const double ratio = screenshot.width() / static_cast<double>(workspace.width());
+        const QPoint origin = list->mapTo(&workspace, QPoint(0, 0));
+        const QRect current(static_cast<int>(origin.x() * ratio) - 3, static_cast<int>(origin.y() * ratio) - 3,
+            static_cast<int>(list->width() * ratio) + 6, static_cast<int>(list->height() * ratio) + 6);
+        const QColor outline = workspace.palette().color(QPalette::Highlight);
+        int leftovers = 0;
+        for (int y = 0; y < screenshot.height(); y++)
+        {
+            for (int x = 0; x < screenshot.width(); x++)
+            {
+                if (!current.contains(x, y) && screenshot.pixelColor(x, y).rgb() == outline.rgb() && baseline.pixelColor(x, y).rgb() != outline.rgb())
+                    leftovers++;
+            }
+        }
+        QVERIFY(screenshot.save(QCoreApplication::applicationDirPath() + "/workspace-drag-test.png"));
+        QVERIFY2(leftovers == 0, qPrintable(QString("Active outline pixels outside the moved window: %1").arg(leftovers)));
+    }
+
     void workspaceTabs()
     {
         trtui::MainWindow window;
@@ -361,7 +449,7 @@ private slots:
         QWidget* second = tabs->currentWidget();
         QVERIFY(first != second);
         QAction* newChart = nullptr;
-        for (QAction* action : window.menuBar()->actions())
+        for (QAction* action : window.findChildren<QAction*>())
         {
             if (action->text() == "New Chart")
                 newChart = action;
@@ -384,6 +472,92 @@ private slots:
         QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
         QTest::qWait(50);
         QVERIFY(window.screen()->grabWindow(window.winId()).save(QCoreApplication::applicationDirPath() + "/workspace-tabs-test.png"));
+    }
+
+    void themeSwitchAcrossWorkspaces()
+    {
+        trtui::MainWindow window;
+        window.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&window));
+        QTabWidget* tabs = window.findChild<QTabWidget*>("workspaceTabs");
+        QWidget* first = tabs->currentWidget();
+        trtui::SettingsDialog settings(&window);
+        QTest::mouseClick(window.findChild<QToolButton*>("newWorkspaceButton"), Qt::LeftButton);
+        QWidget* second = tabs->currentWidget();
+        for (QWidget* workspace : {first, second})
+        {
+            trtui::ChartPanel* panel = workspace->findChild<trtui::ChartPanel*>();
+            panel->setInstrument(ntrt::configManager->getInstruments().front()->getUniqueIdentifier());
+            panel->findChild<trtui::ChartView*>()->setCandles(sampleCandles());
+        }
+        for (trtdata::EnumTheme theme : {trtdata::EnumTheme::Light, trtdata::EnumTheme::Dark, trtdata::EnumTheme::Light})
+        {
+            trtutils::applyPalette(theme);
+            QTest::qWait(60);
+            const QPalette expected = trtutils::generatePalette(theme);
+            QCOMPARE(settings.palette().color(QPalette::Window), expected.color(QPalette::Window));
+            QCOMPARE(settings.findChild<QListWidget*>("settingsCategories")->palette().color(QPalette::Base), expected.color(QPalette::Base));
+            QCOMPARE(window.menuBar()->palette().color(QPalette::Window), expected.color(QPalette::Window));
+            for (QWidget* workspace : {first, second})
+            {
+                tabs->setCurrentWidget(workspace);
+                QCoreApplication::processEvents();
+                QWidget* toolbar = workspace->findChild<QWidget*>("chartToolbar");
+                trtui::ChartView* chart = workspace->findChild<trtui::ChartView*>();
+                QCOMPARE(toolbar->palette().color(QPalette::Window), expected.color(QPalette::Window));
+                QCOMPARE(workspace->findChild<QMdiArea*>()->background().color(), expected.color(QPalette::Shadow));
+                QCOMPARE(workspace->findChild<QTableWidget*>()->palette().color(QPalette::Base), expected.color(QPalette::Base));
+                QCOMPARE(workspace->findChild<QMdiSubWindow*>()->palette().color(QPalette::Window), expected.color(QPalette::Window));
+                QCOMPARE(chart->palette().color(QPalette::Base), expected.color(QPalette::Base));
+                const QImage frame = chart->grabFramebuffer();
+                QCOMPARE(frame.pixelColor(frame.width() - 4, frame.height() / 2).rgb(), expected.color(QPalette::Base).rgb());
+            }
+            const QString suffix = theme == trtdata::EnumTheme::Light ? "light" : "dark";
+            QVERIFY(window.screen()->grabWindow(window.winId()).save(QCoreApplication::applicationDirPath() + "/workspace-theme-" + suffix + ".png"));
+        }
+        QTest::mouseClick(window.findChild<QToolButton*>("newWorkspaceButton"), Qt::LeftButton);
+        QCoreApplication::processEvents();
+        QCOMPARE(tabs->currentWidget()->findChild<QWidget*>("chartToolbar")->palette().color(QPalette::Window),
+            trtutils::generatePalette(trtdata::EnumTheme::Light).color(QPalette::Window));
+        settings.show();
+        QTest::qWait(60);
+        QVERIFY(settings.screen()->grabWindow(settings.winId()).save(QCoreApplication::applicationDirPath() + "/settings-theme-light.png"));
+        settings.hide();
+        trtutils::applyPalette(trtdata::EnumTheme::Dark);
+    }
+
+    void instrumentFeedback()
+    {
+        trtui::Workspace workspace;
+        workspace.resize(1450, 850);
+        workspace.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&workspace));
+        workspace.updateData();
+        QTableWidget* table = workspace.findChild<QTableWidget*>("instrumentTable");
+        QVERIFY(table && table->rowCount() >= 2);
+        for (trtdata::EnumTheme theme : {trtdata::EnumTheme::Light, trtdata::EnumTheme::Dark})
+        {
+            trtutils::applyPalette(theme);
+            QCoreApplication::processEvents();
+            QTest::mouseClick(table->viewport(), Qt::LeftButton, Qt::NoModifier, table->visualItemRect(table->item(0, 3)).center());
+            QTest::mouseMove(&workspace, QPoint(2, 2));
+            QTest::qWait(10);
+            QTest::mouseMove(table->viewport(), table->visualItemRect(table->item(1, 3)).center());
+            const QPoint hoverPosition = table->visualItemRect(table->item(1, 3)).center();
+            QMouseEvent hover(QEvent::MouseMove, QPointF(hoverPosition), QPointF(table->viewport()->mapToGlobal(hoverPosition)), Qt::NoButton, Qt::NoButton, Qt::NoModifier);
+            QCoreApplication::sendEvent(table->viewport(), &hover);
+            QTest::qWait(40);
+            QCOMPARE(table->selectionModel()->selectedRows().size(), 1);
+            QCOMPARE(table->selectionModel()->selectedRows().front().row(), 0);
+            QCOMPARE(table->property("hoveredRow").toInt(), 1);
+            workspace.updateData();
+            QCOMPARE(table->selectionModel()->selectedRows().front().row(), 0);
+            const QString suffix = theme == trtdata::EnumTheme::Light ? "light" : "dark";
+            QVERIFY(workspace.screen()->grabWindow(workspace.winId()).save(QCoreApplication::applicationDirPath() + "/instrument-feedback-" + suffix + ".png"));
+        }
+        QLineEdit* search = workspace.findChild<QLineEdit*>("instrumentSearch");
+        search->setText("ETH");
+        QVERIFY(table->selectionModel()->selectedRows().isEmpty());
     }
 
     void cleanupTestCase()

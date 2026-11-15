@@ -21,22 +21,35 @@ namespace trtnet
         bool awaitingHeartbeat = false;
 
         void initSocket();
+
         void initTimers();
+
         void open();
+
         void handleTimeout();
 
     public:
         WebSocketClient(const QUrl& endpoint, const QString& heartbeatRequest, const QString& heartbeatResponse);
+
         ~WebSocketClient() override;
+
         void start();
+
         void stop();
+
         void reconnect(const QString& reason);
+
         bool isConnected() const;
+
         bool sendText(const QString& message);
 
-    signals:
+        signals :
+
+
         void connected();
+
         void messageReceived(const QString& message);
+
         void connectionFailed(const QString& reason);
     };
 }

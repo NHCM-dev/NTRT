@@ -3,32 +3,30 @@
 //
 
 #include "JsonUtil.h"
-#include <QDir>
-#include <QFileInfo>
-#include <QSaveFile>
+#include "NumberUtil.h"
+#include "FileUtil.h"
 #include <cstdint>
 
 namespace trtdata
 {
+    thread_local simdjson::dom::parser parser{};
+
     template<class Number>
     Number readNumber(const jsonElement& element, const char* key)
     {
-        const auto value = element[key].get_string().value();
-        Number number{};
-        const auto end = value.data() + value.size();
-        const auto [ptr, error] = std::from_chars(value.data(), end, number);
-        if (error != std::errc{} || ptr != end || !std::isfinite(number))
-            throw std::runtime_error(std::string("Invalid json number field: ") + key);
-        return number;
+        return trtutils::parseNumber<Number>(readString(element, key),
+                                             std::string("Invalid json number field: ") + key);
     }
 
     template double readNumber<double>(const jsonElement&, const char*);
+
     template std::int64_t readNumber<std::int64_t>(const jsonElement&, const char*);
 
     std::string_view readString(const jsonElement& element, const char* key)
     {
         return element[key].get_string().value();
     }
+
     std::string_view readString(const elementResult& element, const char* key)
     {
         return element[key].get_string().value();
@@ -38,6 +36,7 @@ namespace trtdata
     {
         return element[key].get_array().value();
     }
+
     jsonArray readArray(const elementResult& element, const char* key)
     {
         return element[key].get_array().value();
@@ -67,14 +66,11 @@ namespace trtdata
 
         return simdjson::prettify(element);
     }
+
     bool writeJsonFile(const QString& path, std::string_view json)
     {
         const std::string formatted = prettyJson(json);
-        if (!QDir().mkpath(QFileInfo(path).absolutePath()))
-            return false;
-        QSaveFile file(path);
-        const qint64 size = static_cast<qint64>(formatted.size());
-        return file.open(QIODevice::WriteOnly) && file.write(formatted.data(), size) == size && file.commit();
+        return trtutils::writeAllBytesAtomically(path, QByteArray::fromStdString(formatted));
     }
 
 } // trtutils

@@ -3,6 +3,7 @@
 //
 
 #include "NTRT.h"
+#include "main/util/PaletteUtil.h"
 #include "ui/MainWindow.h"
 #include <QApplication>
 #include <QMessageBox>
@@ -25,8 +26,6 @@ int main(int argc, char** argv)
     char* qtArgv[] = {appName, nullptr};
 
     ntrt::app = std::make_shared<QApplication>(qtArgc, qtArgv);
-    ntrt::netManager = new QNetworkAccessManager();
-    ntrt::netManager->setTransferTimeout(10000);
 
     return runQtApp();
 }
@@ -40,16 +39,16 @@ namespace ntrt
 
     void displayAbout(QWidget* parent)
     {
-        std::string aboutString = "About "+ NTRT_NAME + "\n\n" +
+        std::string aboutString = "About " + NTRT_NAME + "\n\n" +
             NTRT_DESCRIPTION + "\n" +
             "Version " + NTRT_VERSION + " " + NTRT_RELEASE + " " + NTRT_BUILD + "\n\n" +
             "Made by " + NTRT_AUTHOR + "\n\n" +
-                "Build date " + NTRT_DATE + "\n";
+            "Build date " + NTRT_DATE + "\n";
         QMessageBox::about(
-                parent,
-                "About",
-                QString::fromStdString(aboutString)
-                );
+            parent,
+            "About",
+            QString::fromStdString(aboutString)
+        );
     }
 }
 
@@ -96,7 +95,7 @@ void initQtStyles()
 {
     QApplication::setStyle("Fusion");
     const trtdata::AppearanceManager* appearance = ntrt::configManager->getAppearanceManager();
-    trtdata::AppearanceManager::applyPalette(appearance->getCurrentTheme());
+    trtutils::applyPalette(appearance->getCurrentTheme());
 
     QFile styleFile(trtutils::relativePath("res/style.qss"));
     if (!styleFile.open(QIODevice::ReadOnly | QIODevice::Text))

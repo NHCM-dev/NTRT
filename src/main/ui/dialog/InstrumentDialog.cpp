@@ -1,4 +1,6 @@
 #include "InstrumentDialog.h"
+#include "main/util/ExchangeUtil.h"
+#include "main/util/TradeUtil.h"
 #include "main/api/AbstractApi.h"
 #include "main/util/QtUtil.h"
 #include <QComboBox>
@@ -18,7 +20,7 @@
 namespace trtui
 {
     InstrumentDialog::InstrumentDialog(Mode mode, QWidget* parent)
-        : QDialog(parent), mode(mode)
+    : QDialog(parent), mode(mode)
     {
         const bool adding = mode == Mode::Add;
         setWindowTitle(adding ? "Add Trading Pairs" : "Manage Trading Pairs");
@@ -69,8 +71,14 @@ namespace trtui
             actions->addWidget(downButton);
             actions->addStretch();
             layout->addLayout(actions);
-            connect(upButton, &QPushButton::clicked, this, [this] { moveCurrent(-1); });
-            connect(downButton, &QPushButton::clicked, this, [this] { moveCurrent(1); });
+            connect(upButton, &QPushButton::clicked, this, [this]
+            {
+                moveCurrent(-1);
+            });
+            connect(downButton, &QPushButton::clicked, this, [this]
+            {
+                moveCurrent(1);
+            });
             connect(table, &QTableWidget::currentCellChanged, this, &InstrumentDialog::updateMoveButtons);
         }
 
@@ -110,8 +118,7 @@ namespace trtui
             connect(exchange, &QComboBox::currentIndexChanged, this, &InstrumentDialog::loadTypes);
             connect(type, &QComboBox::currentIndexChanged, this, &InstrumentDialog::fetchCatalog);
             loadTypes();
-        }
-        else
+        } else
         {
             const std::span<const InstrumentPtr> saved = ntrt::configManager->getInstruments();
             entries.assign(saved.begin(), saved.end());
@@ -124,7 +131,8 @@ namespace trtui
     {
         const QSignalBlocker blocker(type);
         type->clear();
-        const trtcore::AbstractApi& api = trtcore::exchangeApi(static_cast<trtdata::Exchange>(exchange->currentData().toInt()));
+        const trtcore::AbstractApi& api = trtcore::exchangeApi(
+            static_cast<trtdata::Exchange>(exchange->currentData().toInt()));
         for (trttrade::InstType item : api.instrumentTypes())
             type->addItem(QString::fromUtf8(trttrade::instDisplayStr(item)), static_cast<int>(item));
         fetchCatalog();
@@ -158,7 +166,8 @@ namespace trtui
                 {
                     const bool exists = std::ranges::any_of(saved, [&candidate](const InstrumentPtr& instrument)
                     {
-                        return instrument->exchange == candidate->exchange && instrument->instType == candidate->instType && instrument->instId == candidate->instId;
+                        return instrument->exchange == candidate->exchange && instrument->instType == candidate->
+                            instType && instrument->instId == candidate->instId;
                     });
                     if (!exists)
                         entries.push_back(candidate);
@@ -166,8 +175,7 @@ namespace trtui
                 std::ranges::sort(entries, {}, &trtdata::Instrument::instId);
                 populate();
                 status->setText(entries.empty() ? "No instruments to add." : "Check the instruments you want to add.");
-            }
-            catch (const std::exception& error)
+            } catch (const std::exception& error)
             {
                 status->setText(QString::fromUtf8(error.what()));
             }
@@ -191,7 +199,8 @@ namespace trtui
             check->setFlags(Qt::ItemIsEnabled | Qt::ItemIsUserCheckable);
             check->setCheckState(Qt::Unchecked);
             table->setItem(row, 0, check);
-            table->setItem(row, 1, new QTableWidgetItem(QString::fromUtf8(trtdata::getExchangeStr(instrument->exchange))));
+            table->setItem(
+                row, 1, new QTableWidgetItem(QString::fromUtf8(trtdata::getExchangeStr(instrument->exchange))));
             table->setItem(row, 2, new QTableWidgetItem(QString::fromUtf8(instDisplayStr(instrument->instType))));
             table->setItem(row, 3, new QTableWidgetItem(QString::fromStdString(instrument->instId)));
         }
@@ -203,7 +212,8 @@ namespace trtui
         const QString query = search->text().trimmed();
         for (int row = 0; row < table->rowCount(); row++)
         {
-            const QString text = table->item(row, 1)->text() + " " + table->item(row, 2)->text() + " " + table->item(row, 3)->text();
+            const QString text = table->item(row, 1)->text() + " " + table->item(row, 2)->text() + " " + table->
+                item(row, 3)->text();
             table->setRowHidden(row, !text.contains(query, Qt::CaseInsensitive));
         }
         updateMoveButtons();
@@ -214,13 +224,7 @@ namespace trtui
         const int row = table->currentRow();
         const int target = row + direction;
         std::swap(entries[row], entries[target]);
-        for (int column = 0; column < table->columnCount(); column++)
-        {
-            QTableWidgetItem* source = table->takeItem(row, column);
-            QTableWidgetItem* destination = table->takeItem(target, column);
-            table->setItem(row, column, destination);
-            table->setItem(target, column, source);
-        }
+        trtutils::swapTableRows(table, row, target);
         table->setCurrentCell(target, 3);
         updateMoveButtons();
     }
@@ -261,8 +265,7 @@ namespace trtui
                     status->setText("Could not save the market configuration.");
                     return;
                 }
-            }
-            catch (const std::exception& error)
+            } catch (const std::exception& error)
             {
                 status->setText(QString::fromUtf8(error.what()));
                 return;

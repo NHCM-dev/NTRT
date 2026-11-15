@@ -6,12 +6,16 @@
 namespace trtui
 {
     class SettingPage;
+
     class SettingsDialog final : public QDialog
     {
         std::unique_ptr<SettingPage> page;
+
         void initContent();
+
     public:
         explicit SettingsDialog(QWidget* parent = nullptr);
+
         ~SettingsDialog() override;
     };
 }

@@ -1,4 +1,5 @@
 #include "MainWindow.h"
+#include "main/util/QtUtil.h"
 #include "Workspace.h"
 #include "dialog/SettingsDialog.h"
 #include "dialog/InstrumentDialog.h"
@@ -38,9 +39,7 @@ namespace trtui
         resize(1400, 700);
         QTimer::singleShot(0, this, [this]
         {
-            QRect geometry = frameGeometry();
-            geometry.moveCenter(screen()->availableGeometry().center());
-            move(geometry.topLeft());
+            trtutils::centerOnScreen(this);
         });
     }
 
@@ -53,6 +52,7 @@ namespace trtui
         workspaces->setTabsClosable(true);
         workspaces->setUsesScrollButtons(true);
         workspaces->tabBar()->setElideMode(Qt::ElideRight);
+        workspaces->tabBar()->setDrawBase(false);
         setCentralWidget(workspaces);
     }
 
@@ -60,28 +60,55 @@ namespace trtui
     {
         menuBar()->setMouseTracking(true);
         QMenu* file = menuBar()->addMenu("File");
-        connect(file->addAction("Settings…", QKeySequence("Ctrl+,")), &QAction::triggered, this, [this] { showSettings(); });
-        file->addSeparator();
-        connect(file->addAction("Exit"), &QAction::triggered, this, [] { ntrt::quitApp(); });
-        QMenu* workspaceMenu = menuBar()->addMenu("Workspace");
-        connect(workspaceMenu->addAction("New Workspace", QKeySequence("Ctrl+T")), &QAction::triggered, this, [this] { createWorkspace(); });
-        connect(workspaceMenu->addAction("Rename Workspace…", QKeySequence("F2")), &QAction::triggered, this, [this] { renameWorkspace(workspaces->currentIndex()); });
-        connect(workspaceMenu->addAction("Close Workspace", QKeySequence("Ctrl+W")), &QAction::triggered, this, [this] { closeWorkspace(workspaces->currentIndex()); });
-        connect(workspaceMenu->addAction("Previous Workspace", QKeySequence("Ctrl+Shift+Tab")), &QAction::triggered, this, [this]
+        QAction* preferences = file->addAction("Settings…");
+        preferences->setShortcut(QKeySequence("Ctrl+,"));
+        connect(preferences, &QAction::triggered, this, [this]
         {
-            workspaces->setCurrentIndex((workspaces->currentIndex() + workspaces->count() - 1) % workspaces->count());
+            showSettings();
         });
+        file->addSeparator();
+        connect(file->addAction("Exit"), &QAction::triggered, this, []
+        {
+            ntrt::quitApp();
+        });
+        QMenu* workspaceMenu = menuBar()->addMenu("Workspace");
+        connect(workspaceMenu->addAction("New Workspace", QKeySequence("Ctrl+T")), &QAction::triggered, this, [this]
+        {
+            createWorkspace();
+        });
+        connect(workspaceMenu->addAction("Rename Workspace…", QKeySequence("F2")), &QAction::triggered, this, [this]
+        {
+            renameWorkspace(workspaces->currentIndex());
+        });
+        connect(workspaceMenu->addAction("Close Workspace", QKeySequence("Ctrl+W")), &QAction::triggered, this, [this]
+        {
+            closeWorkspace(workspaces->currentIndex());
+        });
+        connect(workspaceMenu->addAction("Previous Workspace", QKeySequence("Ctrl+Shift+Tab")), &QAction::triggered,
+                this, [this]
+                {
+                    workspaces->setCurrentIndex(
+                        (workspaces->currentIndex() + workspaces->count() - 1) % workspaces->count());
+                });
         connect(workspaceMenu->addAction("Next Workspace", QKeySequence("Ctrl+Tab")), &QAction::triggered, this, [this]
         {
             workspaces->setCurrentIndex((workspaces->currentIndex() + 1) % workspaces->count());
         });
-        QAction* newChart = menuBar()->addAction("New Chart");
+        QAction* newChart = new QAction("New Chart", this);
         newChart->setShortcut(QKeySequence::New);
-        connect(newChart, &QAction::triggered, this, [this] { if (getCurrentWorkspace()) getCurrentWorkspace()->createChartWindow(); });
+        connect(newChart, &QAction::triggered, this, [this]
+        {
+            if (getCurrentWorkspace())
+                getCurrentWorkspace()->createChartWindow();
+        });
         QMenu* elements = menuBar()->addMenu("Elements");
         elementsMenu = elements;
         elements->addAction(newChart);
-        connect(elements->addAction("Instrument List"), &QAction::triggered, this, [this] { if (getCurrentWorkspace()) getCurrentWorkspace()->showInstrumentList(); });
+        connect(elements->addAction("Instrument List"), &QAction::triggered, this, [this]
+        {
+            if (getCurrentWorkspace())
+                getCurrentWorkspace()->showInstrumentList();
+        });
         elements->addSeparator();
         connect(elements->addAction("Add Instruments…"), &QAction::triggered, this, [this]
         {
@@ -95,7 +122,10 @@ namespace trtui
         });
         windowAction = menuBar()->addAction("Window");
         QMenu* about = menuBar()->addMenu("About");
-        connect(about->addAction("About NTRT"), &QAction::triggered, this, [this] { ntrt::displayAbout(this); });
+        connect(about->addAction("About NTRT"), &QAction::triggered, this, [this]
+        {
+            ntrt::displayAbout(this);
+        });
     }
 
     void MainWindow::initWorkspaceTabs()
@@ -111,7 +141,10 @@ namespace trtui
         add->setToolTip("New Workspace (Ctrl+T)");
         cornerLayout->addWidget(add);
         workspaces->setCornerWidget(corner, Qt::TopRightCorner);
-        connect(add, &QToolButton::clicked, this, [this] { createWorkspace(); });
+        connect(add, &QToolButton::clicked, this, [this]
+        {
+            createWorkspace();
+        });
         connect(workspaces, &QTabWidget::currentChanged, this, [this](int)
         {
             Workspace* current = getCurrentWorkspace();
@@ -119,7 +152,10 @@ namespace trtui
             if (current)
                 current->updateData();
         });
-        connect(workspaces, &QTabWidget::tabCloseRequested, this, [this](int index) { closeWorkspace(index); });
+        connect(workspaces, &QTabWidget::tabCloseRequested, this, [this](int index)
+        {
+            closeWorkspace(index);
+        });
         connect(workspaces->tabBar(), &QTabBar::tabBarDoubleClicked, this, [this](int index)
         {
             if (index < 0)
@@ -159,7 +195,8 @@ namespace trtui
         if (index < 0)
             return;
         bool accepted = false;
-        const QString name = QInputDialog::getText(this, "Rename Workspace", "Name", QLineEdit::Normal, workspaces->tabText(index), &accepted).trimmed();
+        const QString name = QInputDialog::getText(this, "Rename Workspace", "Name", QLineEdit::Normal,
+                                                   workspaces->tabText(index), &accepted).trimmed();
         if (accepted && !name.isEmpty())
             workspaces->setTabText(index, name);
     }
@@ -180,24 +217,42 @@ namespace trtui
         QTabBar* bar = workspaces->tabBar();
         const int index = bar->tabAt(position);
         QMenu menu(this);
-        connect(menu.addAction("New Workspace"), &QAction::triggered, this, [this] { createWorkspace(); });
+        connect(menu.addAction("New Workspace"), &QAction::triggered, this, [this]
+        {
+            createWorkspace();
+        });
         if (index >= 0)
         {
             workspaces->setCurrentIndex(index);
-            connect(menu.addAction("Rename…"), &QAction::triggered, this, [this, index] { renameWorkspace(index); });
+            connect(menu.addAction("Rename…"), &QAction::triggered, this, [this, index]
+            {
+                renameWorkspace(index);
+            });
             QAction* left = menu.addAction("Move Left");
             left->setEnabled(index > 0);
-            connect(left, &QAction::triggered, this, [bar, index] { bar->moveTab(index, index - 1); });
+            connect(left, &QAction::triggered, this, [bar, index]
+            {
+                bar->moveTab(index, index - 1);
+            });
             QAction* right = menu.addAction("Move Right");
             right->setEnabled(index + 1 < workspaces->count());
-            connect(right, &QAction::triggered, this, [bar, index] { bar->moveTab(index, index + 1); });
-            connect(menu.addAction("Close Workspace"), &QAction::triggered, this, [this, index] { closeWorkspace(index); });
+            connect(right, &QAction::triggered, this, [bar, index]
+            {
+                bar->moveTab(index, index + 1);
+            });
+            connect(menu.addAction("Close Workspace"), &QAction::triggered, this, [this, index]
+            {
+                closeWorkspace(index);
+            });
             menu.addSeparator();
             menu.addMenu(elementsMenu);
             menu.addMenu(getCurrentWorkspace()->getWindowMenu());
         }
         menu.addSeparator();
-        connect(menu.addAction("Settings…"), &QAction::triggered, this, [this] { showSettings(); });
+        connect(menu.addAction("Settings…"), &QAction::triggered, this, [this]
+        {
+            showSettings();
+        });
         menu.exec(bar->mapToGlobal(position));
     }
 
@@ -251,7 +306,11 @@ namespace trtui
     void MainWindow::init200msSchedules()
     {
         timer200ms = new QTimer(this);
-        connect(timer200ms, &QTimer::timeout, this, [this] { if (getCurrentWorkspace()) getCurrentWorkspace()->updateData(); });
+        connect(timer200ms, &QTimer::timeout, this, [this]
+        {
+            if (getCurrentWorkspace())
+                getCurrentWorkspace()->updateData();
+        });
         if (getCurrentWorkspace())
             getCurrentWorkspace()->updateData();
         timer200ms->start(200);

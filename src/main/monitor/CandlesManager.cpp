@@ -1,4 +1,6 @@
 #include "CandlesManager.h"
+#include "main/util/TimeUtil.h"
+#include "main/util/CandleUtil.h"
 #include "main/api/AbstractApi.h"
 #include <QDateTime>
 #include <algorithm>
@@ -10,7 +12,10 @@ namespace trtcore
     CandlesManager::CandlesManager()
     {
         requestTimer.setInterval(100);
-        connect(&requestTimer, &QTimer::timeout, this, [this] { fetchNext(); });
+        connect(&requestTimer, &QTimer::timeout, this, [this]
+        {
+            fetchNext();
+        });
     }
 
     void CandlesManager::setInstruments(std::span<const std::shared_ptr<trtdata::Instrument>> instruments)
@@ -73,15 +78,18 @@ namespace trtcore
         subscription.stream = exchangeApi(key.instrument.exchange).createCandleStream();
         if (!subscription.stream)
             return;
-        connect(subscription.stream.get(), &CandleStream::candlesReceived, this, [this, key](const std::vector<trttrade::CandleData>& candles)
-        {
-            Subscription& current = subscriptions.at(key);
-            mergeCandles(current, candles);
-            current.snapshot.updatedAt = QDateTime::currentMSecsSinceEpoch();
-        });
+        connect(subscription.stream.get(), &CandleStream::candlesReceived, this,
+                [this, key](const std::vector<trttrade::CandleData>& candles)
+                {
+                    Subscription& current = subscriptions.at(key);
+                    current.publishedSnapshot.reset();
+                    mergeCandles(current, candles);
+                    current.snapshot.updatedAt = QDateTime::currentMSecsSinceEpoch();
+                });
         connect(subscription.stream.get(), &CandleStream::connectionChanged, this, [this, key](const QString& error)
         {
             Subscription& current = subscriptions.at(key);
+            current.publishedSnapshot.reset();
             current.snapshot.error = error;
             if (error.isEmpty())
                 current.nextRequest = 0; // Backfill bars missed during a disconnect.
@@ -96,6 +104,7 @@ namespace trtcore
             return;
         entry->second.historyTarget = entry->second.snapshot.candles.front().timestamp;
         entry->second.snapshot.historyLoading = true;
+        entry->second.publishedSnapshot.reset();
     }
 
     void CandlesManager::fetchHistory(const SeriesKey& key, Subscription& subscription)
@@ -103,11 +112,13 @@ namespace trtcore
         if (subscription.snapshot.candles.empty())
             return;
         const qint64 cursor = subscription.snapshot.candles.front().timestamp;
-        QFutureWatcher<std::vector<trttrade::CandleData>>* watcher = new QFutureWatcher<std::vector<trttrade::CandleData>>(this);
+        QFutureWatcher<std::vector<trttrade::CandleData>>* watcher = new QFutureWatcher<std::vector<
+            trttrade::CandleData>>(this);
         subscription.historyWatcher = watcher;
         connect(watcher, &QFutureWatcherBase::finished, this, [this, key, watcher, cursor]
         {
             Subscription& current = subscriptions.at(key);
+            current.publishedSnapshot.reset();
             current.historyWatcher = nullptr;
             try
             {
@@ -123,15 +134,15 @@ namespace trtcore
                 current.snapshot.historyExhausted = current.historyExhausted;
                 current.snapshot.error.clear();
                 current.snapshot.updatedAt = QDateTime::currentMSecsSinceEpoch();
-            }
-            catch (const std::exception& error)
+            } catch (const std::exception& error)
             {
                 current.snapshot.error = QString::fromUtf8(error.what());
                 current.historyRetry = QDateTime::currentMSecsSinceEpoch() + 5000;
             }
             watcher->deleteLater();
         });
-        watcher->setFuture(exchangeApi(key.instrument.exchange).fetchCandleHistory(key.instrument, key.timeframe, timeZone, cursor));
+        watcher->setFuture(
+            exchangeApi(key.instrument.exchange).fetchCandleHistory(key.instrument, key.timeframe, timeZone, cursor));
     }
 
     void CandlesManager::fetchNext()
@@ -139,7 +150,8 @@ namespace trtcore
         const qint64 now = QDateTime::currentMSecsSinceEpoch();
         int pending = 0;
         std::map<SeriesKey, Subscription>::iterator next = subscriptions.end();
-        for (std::map<SeriesKey, Subscription>::iterator entry = subscriptions.begin(); entry != subscriptions.end(); entry++)
+        for (std::map<SeriesKey, Subscription>::iterator entry = subscriptions.begin(); entry != subscriptions.end();
+             entry++)
         {
             if (!entry->second.stream && nextStreamStart <= now)
             {
@@ -155,7 +167,7 @@ namespace trtcore
             if (entry->second.watcher)
                 pending++;
             else if (entry->second.nextRequest <= now &&
-                     (next == subscriptions.end() || entry->second.nextRequest < next->second.nextRequest))
+                (next == subscriptions.end() || entry->second.nextRequest < next->second.nextRequest))
                 next = entry;
         }
         if (pending < 4 && next != subscriptions.end())
@@ -164,7 +176,8 @@ namespace trtcore
 
     void CandlesManager::fetchCandles(const SeriesKey& key, Subscription& subscription)
     {
-        QFutureWatcher<std::vector<trttrade::CandleData>>* watcher = new QFutureWatcher<std::vector<trttrade::CandleData>>(this);
+        QFutureWatcher<std::vector<trttrade::CandleData>>* watcher = new QFutureWatcher<std::vector<
+            trttrade::CandleData>>(this);
         subscription.watcher = watcher;
         connect(watcher, &QFutureWatcherBase::finished, this, [this, key, watcher]
         {
@@ -172,6 +185,7 @@ namespace trtcore
             if (entry == subscriptions.end() || entry->second.watcher != watcher)
                 return;
             Subscription& current = entry->second;
+            current.publishedSnapshot.reset();
             current.watcher = nullptr;
             try
             {
@@ -181,9 +195,10 @@ namespace trtcore
                 mergeCandles(current, candles);
                 current.snapshot.error.clear();
                 current.snapshot.updatedAt = QDateTime::currentMSecsSinceEpoch();
-                current.nextRequest = current.stream ? std::numeric_limits<qint64>::max() : current.snapshot.updatedAt + 10000;
-            }
-            catch (const std::exception& error)
+                current.nextRequest = current.stream
+                                          ? std::numeric_limits<qint64>::max()
+                                          : current.snapshot.updatedAt + 10000;
+            } catch (const std::exception& error)
             {
                 current.snapshot.error = QString::fromUtf8(error.what());
                 current.nextRequest = QDateTime::currentMSecsSinceEpoch() + 30000;
@@ -191,66 +206,39 @@ namespace trtcore
             watcher->deleteLater();
         });
         const bool refill = subscription.snapshot.candles.empty() ||
-                            QDateTime::currentMSecsSinceEpoch() - subscription.snapshot.updatedAt > 120000;
+            QDateTime::currentMSecsSinceEpoch() - subscription.snapshot.updatedAt > 120000;
         const int limit = refill ? 300 : 3;
-        watcher->setFuture(exchangeApi(key.instrument.exchange).fetchCandles(key.instrument, key.timeframe, timeZone, limit));
+        watcher->setFuture(
+            exchangeApi(key.instrument.exchange).fetchCandles(key.instrument, key.timeframe, timeZone, limit));
     }
 
     void CandlesManager::mergeCandles(Subscription& subscription, const std::vector<trttrade::CandleData>& candles)
     {
-        // The parser supplies ascending, unique timestamps. Merge without tree allocation per bar.
-        std::vector<trttrade::CandleData>& stored = subscription.snapshot.candles;
+        subscription.publishedSnapshot.reset();
         if (candles.empty())
             return;
-        const std::vector<trttrade::CandleData>::iterator first = std::lower_bound(stored.begin(), stored.end(), candles.front().timestamp,
-            [](const trttrade::CandleData& candle, std::int64_t value) { return candle.timestamp < value; });
-        const std::size_t prefixSize = static_cast<std::size_t>(first - stored.begin());
-        std::vector<trttrade::CandleData> merged;
-        merged.reserve(stored.size() - prefixSize + candles.size());
-        std::size_t oldIndex = prefixSize;
-        std::size_t newIndex = 0;
-        while (oldIndex < stored.size() || newIndex < candles.size())
-        {
-            if (newIndex == candles.size() || (oldIndex < stored.size() && stored[oldIndex].timestamp < candles[newIndex].timestamp))
-                merged.push_back(stored[oldIndex++]);
-            else
-            {
-                if (oldIndex < stored.size() && stored[oldIndex].timestamp == candles[newIndex].timestamp)
-                {
-                    // A delayed incomplete bar must not replace an already confirmed bar.
-                    if (stored[oldIndex].confirmed && !candles[newIndex].confirmed)
-                        merged.push_back(stored[oldIndex]);
-                    else
-                        merged.push_back(candles[newIndex]);
-                    oldIndex++;
-                    newIndex++;
-                }
-                else
-                    merged.push_back(candles[newIndex++]);
-            }
-        }
-        stored.resize(prefixSize);
-        stored.insert(stored.end(), merged.begin(), merged.end());
-        if (subscription.readers == 0 && stored.size() > 300)
-            stored.erase(stored.begin(), stored.end() - 300);
+        trtutils::mergeCandles(subscription.snapshot.candles, candles);
+        if (subscription.readers == 0 && subscription.snapshot.candles.size() > 300)
+            subscription.snapshot.candles.erase(subscription.snapshot.candles.begin(),
+                                                subscription.snapshot.candles.end() - 300);
     }
 
-    const CandleSnapshot* CandlesManager::getSnapshot(const trtdata::InstIdentifier& identifier, trttrade::CandleTimeframe timeframe) const
+    const CandleSnapshot* CandlesManager::getSnapshot(const trtdata::InstIdentifier& identifier,
+                                                      trttrade::CandleTimeframe timeframe) const
     {
-        const std::map<SeriesKey, Subscription>::const_iterator entry = subscriptions.find(SeriesKey{identifier, timeframe});
+        const std::map<SeriesKey, Subscription>::const_iterator entry = subscriptions.find(SeriesKey{
+            identifier,
+            timeframe
+        });
         return entry == subscriptions.end() ? nullptr : &entry->second.snapshot;
     }
 
     const trttrade::CandleData* CandlesManager::getDailyCandle(const trtdata::InstIdentifier& identifier) const
     {
         const CandleSnapshot* snapshot = getSnapshot(identifier);
-        if (!snapshot || snapshot->candles.empty())
+        if (!snapshot)
             return nullptr;
-        const qint64 dayMs = 86400000;
-        const qint64 offsetMs = trtdata::tradingDataTimeZoneOffsetMs(timeZone);
-        const qint64 today = (QDateTime::currentMSecsSinceEpoch() + offsetMs) / dayMs * dayMs - offsetMs;
-        const trttrade::CandleData& candle = snapshot->candles.back();
-        return candle.timestamp == today ? &candle : nullptr;
+        return trtutils::dailyCandle(snapshot->candles, QDateTime::currentMSecsSinceEpoch(), timeZone);
     }
 
     void CandlesManager::setTimeZone(trtdata::TradingDataTimeZone value)
@@ -262,6 +250,7 @@ namespace trtcore
         {
             cancelRequest(entry.second);
             entry.second.snapshot = {};
+            entry.second.publishedSnapshot.reset();
             entry.second.historyTarget = 0;
             entry.second.historyExhausted = false;
             entry.second.nextRequest = 0;
@@ -273,13 +262,13 @@ namespace trtcore
         return timeZone;
     }
 
-    std::optional<double> CandlesManager::getDailyChangePercent(const trtdata::InstIdentifier& identifier, double latestPrice) const
+    std::optional<double> CandlesManager::getDailyChangePercent(const trtdata::InstIdentifier& identifier,
+                                                                double latestPrice) const
     {
         const trttrade::CandleData* candle = getDailyCandle(identifier);
-        if (!candle || candle->open <= 0 || !std::isfinite(latestPrice) || latestPrice <= 0)
-            return std::nullopt;
-        return (latestPrice - candle->open) / candle->open * 100.0;
+        return trtutils::dailyChangePercent(candle, latestPrice);
     }
+
     void CandlesManager::subscribe(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe)
     {
         Subscription& subscription = subscriptions[SeriesKey{instrument, timeframe}];
@@ -303,44 +292,92 @@ namespace trtcore
             requestTimer.stop();
     }
 
-    std::span<const trttrade::CandleData> CandlesManager::getCandles(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe) const
+    std::span<const trttrade::CandleData> CandlesManager::getCandles(const trtdata::InstIdentifier& instrument,
+                                                                     trttrade::CandleTimeframe timeframe) const
     {
         const CandleSnapshot* snapshot = getSnapshot(instrument, timeframe);
-        return snapshot ? std::span<const trttrade::CandleData>(snapshot->candles) : std::span<const trttrade::CandleData>();
+        return snapshot
+                   ? std::span<const trttrade::CandleData>(snapshot->candles)
+                   : std::span<const trttrade::CandleData>();
     }
 
-    const trttrade::CandleData* CandlesManager::getCandle(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe, std::int64_t timestamp) const
+    const trttrade::CandleData* CandlesManager::getCandle(const trtdata::InstIdentifier& instrument,
+                                                          trttrade::CandleTimeframe timeframe,
+                                                          std::int64_t timestamp) const
     {
         const std::span<const trttrade::CandleData> candles = getCandles(instrument, timeframe);
-        const std::span<const trttrade::CandleData>::iterator entry = std::lower_bound(candles.begin(), candles.end(), timestamp,
-            [](const trttrade::CandleData& candle, std::int64_t value) { return candle.timestamp < value; });
+        const std::span<const trttrade::CandleData>::iterator entry = trtutils::candleLowerBound(candles, timestamp);
         return entry != candles.end() && entry->timestamp == timestamp ? &*entry : nullptr;
     }
 
-    std::span<const trttrade::CandleData> CandlesManager::getCandles(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe, std::int64_t from, std::int64_t to) const
+    std::span<const trttrade::CandleData> CandlesManager::getCandles(const trtdata::InstIdentifier& instrument,
+                                                                     trttrade::CandleTimeframe timeframe,
+                                                                     std::int64_t from, std::int64_t to) const
     {
         if (from >= to)
             return {};
         const std::span<const trttrade::CandleData> candles = getCandles(instrument, timeframe);
-        const std::span<const trttrade::CandleData>::iterator begin = std::lower_bound(candles.begin(), candles.end(), from,
-            [](const trttrade::CandleData& candle, std::int64_t value) { return candle.timestamp < value; });
-        const std::span<const trttrade::CandleData>::iterator end = std::lower_bound(begin, candles.end(), to,
-            [](const trttrade::CandleData& candle, std::int64_t value) { return candle.timestamp < value; });
+        const std::span<const trttrade::CandleData>::iterator begin = trtutils::candleLowerBound(candles, from);
+        const std::span<const trttrade::CandleData>::iterator end = trtutils::candleLowerBound(
+            {begin, candles.end()}, to);
         return {begin, end};
     }
 
-    std::span<const trttrade::CandleData> CandlesManager::getLatestCandles(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe, std::size_t count) const
+    std::span<const trttrade::CandleData> CandlesManager::getLatestCandles(
+        const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe, std::size_t count) const
     {
         const std::span<const trttrade::CandleData> candles = getCandles(instrument, timeframe);
         return candles.last(std::min(count, candles.size()));
     }
 
-    CandlesManager::CandleMap CandlesManager::getCandleMap(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe) const
+    CandlesManager::CandleMap CandlesManager::getCandleMap(const trtdata::InstIdentifier& instrument,
+                                                           trttrade::CandleTimeframe timeframe) const
     {
         CandleMap result;
         for (const trttrade::CandleData& candle : getCandles(instrument, timeframe))
             result.emplace_hint(result.end(), candle.timestamp, candle);
         return result;
+    }
+
+    CandlesSnapshot CandlesManager::getReadSnapshot()
+    {
+        CandlesSnapshot result;
+        result.timeZone = timeZone;
+        for (std::pair<const SeriesKey, Subscription>& entry : subscriptions)
+        {
+            if (!entry.second.publishedSnapshot)
+                entry.second.publishedSnapshot = std::make_shared<const CandleSnapshot>(entry.second.snapshot);
+            result.series.emplace(entry.first, entry.second.publishedSnapshot);
+        }
+        return result;
+    }
+
+    trtdata::TradingDataTimeZone CandlesSnapshot::getTimeZone() const
+    {
+        return timeZone;
+    }
+
+    const CandleSnapshot* CandlesSnapshot::getSnapshot(const trtdata::InstIdentifier& identifier,
+                                                       trttrade::CandleTimeframe timeframe) const
+    {
+        const std::map<CandlesManager::SeriesKey, std::shared_ptr<const CandleSnapshot>>::const_iterator entry = series.
+            find({identifier, timeframe});
+        return entry == series.end() ? nullptr : entry->second.get();
+    }
+
+    const trttrade::CandleData* CandlesSnapshot::getDailyCandle(const trtdata::InstIdentifier& identifier) const
+    {
+        const CandleSnapshot* snapshot = getSnapshot(identifier);
+        if (!snapshot)
+            return nullptr;
+        return trtutils::dailyCandle(snapshot->candles, QDateTime::currentMSecsSinceEpoch(), timeZone);
+    }
+
+    std::optional<double> CandlesSnapshot::getDailyChangePercent(const trtdata::InstIdentifier& identifier,
+                                                                 double latestPrice) const
+    {
+        const trttrade::CandleData* candle = getDailyCandle(identifier);
+        return trtutils::dailyChangePercent(candle, latestPrice);
     }
 
 }

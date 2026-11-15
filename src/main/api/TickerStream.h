@@ -14,11 +14,16 @@ namespace trtcore
         using Instruments = std::set<trtdata::InstIdentifier>;
 
         virtual void setInstruments(const Instruments& instruments) = 0;
+
         virtual void stop() = 0;
 
-    signals:
+        signals :
+
+
         void tickerReceived(const trtdata::TickerData& ticker);
+
         void connectionChanged(const QString& error);
+
         void subscriptionFailed(const trtdata::InstIdentifier& identifier, const QString& error);
     };
 }

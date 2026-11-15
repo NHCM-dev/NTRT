@@ -32,6 +32,10 @@ Choose the smallest complete change that addresses the request. A question about
 
 These are discovery hints, not permission to create missing components. Inspect existing account abstractions before extending them; do not invent exchange authentication or trading behavior as part of unrelated work.
 
+## Extract focused utilities
+
+When scanning or changing code, move suitable independent logic into focused `XXXUtil` files in `src/main/util`, even if it currently has only one caller. Inspect existing utilities and callers first; extend a matching Util or create a new one. Prefer compact call sites and a single implementation for parsing, conversion, formatting, calculations, file operations, drawing primitives, and generic Qt operations. Pass dependencies explicitly, keep exchange protocol helpers separate, and retain state and lifecycle policy on the owning classes. Avoid catch-all collections and wrappers that add no clarity. Update callers, build inputs and relevant behavioral checks together.
+
 ## Preserve the desktop interaction model
 
 The workspace uses `QMdiArea` with child windows, not detachable docking windows. Do not reintroduce Qt Advanced Docking System merely because older code or previous requests mention it.
@@ -39,6 +43,8 @@ The workspace uses `QMdiArea` with child windows, not detachable docking windows
 Keep panel content separate from window chrome. Tool windows may move, overlap, resize, minimize and maximize within the desktop. Titlebar close destroys a tool and removes its Window-menu entry; recreate it through the element actions. Window-menu actions toggle visibility of retained tools with synchronized checkmarks. Closing a tool releases its chart subscriptions without stopping shared backend monitoring. Settings remains a separate reusable dialog.
 
 For window interaction changes, check the affected transitions: active/inactive, background-click deselection, hide/reopen, minimize/restore, move/resize, or arrangement. Preserve the usable resize hit area independently of the thin visible outline. Keep frame rendering consistent with titlebar geometry and repaint clipping; do not fix a paint problem by continually repainting the entire application.
+
+Every enabled button must provide visible hover feedback, including text/icon buttons, toolbar actions, tab controls and custom titlebar controls. Keep checked buttons visibly responsive on hover without losing their selected indication; disabled buttons must not show interactive feedback. Define Qt widget states in resource QSS using palette roles, and check selector precedence so local styles do not override hover/pressed states. When fixing missing feedback, inspect similar controls and verify normal, hovered, pressed, checked and disabled states in both Light and Dark themes, including runtime switching.
 
 For table changes, update column indices, delegates, visibility settings, width calculations, headers and tooltips together. Reuse cells and cached pixmaps; avoid recreating every item on periodic refresh. Skip unnecessary UI refresh for hidden/minimized panels while maintaining backend updates.
 

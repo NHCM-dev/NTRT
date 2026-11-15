@@ -12,7 +12,7 @@ namespace trtdata::okx
     {
     public:
         OKXInstrument(const std::string& instId, trttrade::InstType type)
-            : Instrument(instId, type, Exchange::OKX)
+        : Instrument(instId, type, Exchange::OKX)
         {}
 
         QFuture<TickerData> requestTicker() override;

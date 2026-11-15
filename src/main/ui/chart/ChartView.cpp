@@ -1,4 +1,9 @@
 #include "ChartView.h"
+#include "main/util/CandleUtil.h"
+#include "main/util/FormatUtil.h"
+#include "main/util/PaletteUtil.h"
+#include "main/util/PaintUtil.h"
+#include "main/util/TimeUtil.h"
 #include <QDateTime>
 #include <QKeyEvent>
 #include <QMouseEvent>
@@ -52,7 +57,10 @@ namespace trtui
         rendererError = renderer.initialize();
         rendererReady = rendererError.isEmpty();
         geometryDirty = true;
-        contextCleanup = connect(context(), &QOpenGLContext::aboutToBeDestroyed, this, [this] { cleanup(); }, Qt::DirectConnection);
+        contextCleanup = connect(context(), &QOpenGLContext::aboutToBeDestroyed, this, [this]
+        {
+            cleanup();
+        }, Qt::DirectConnection);
         if (!rendererReady)
             emit renderingFailed(rendererError);
     }
@@ -97,14 +105,15 @@ namespace trtui
         std::size_t removedPrefix = 0;
         if (!candles.empty() && !data.empty())
         {
-            const std::vector<trttrade::CandleData>::const_iterator first = std::lower_bound(candles.cbegin(), candles.cend(), data.front().timestamp,
-                [](const trttrade::CandleData& candle, qint64 timestamp) { return candle.timestamp < timestamp; });
-            removedPrefix = static_cast<std::size_t>(first - candles.cbegin());
+            const std::span<const trttrade::CandleData> previous(candles);
+            removedPrefix = static_cast<std::size_t>(trtutils::candleLowerBound(previous, data.front().timestamp) -
+                previous.begin());
         }
-        if (!candles.empty() && !data.empty() && data.front().timestamp < candles.front().timestamp && !viewport.isFollowing())
+        if (!candles.empty() && !data.empty() && data.front().timestamp < candles.front().timestamp && !viewport.
+            isFollowing())
         {
-            const std::span<const trttrade::CandleData>::iterator previousFirst = std::lower_bound(data.begin(), data.end(), candles.front().timestamp,
-                [](const trttrade::CandleData& candle, qint64 timestamp) { return candle.timestamp < timestamp; });
+            const std::span<const trttrade::CandleData>::iterator previousFirst = trtutils::candleLowerBound(
+                data, candles.front().timestamp);
             viewport.setSeriesSize(data.size());
             viewport.pan(-static_cast<double>(previousFirst - data.begin()) * viewport.getBarWidth());
         }
@@ -162,14 +171,27 @@ namespace trtui
         invalidateGeometry();
     }
 
-    QColor ChartView::getRisingColor() const { return QColor(palette().color(QPalette::Base).lightness() < 128 ? 0x4ade80 : 0x15803d); }
-    QColor ChartView::getFallingColor() const { return QColor(palette().color(QPalette::Base).lightness() < 128 ? 0xfb7185 : 0xb91c1c); }
+    QColor ChartView::getRisingColor() const
+    {
+        return trtutils::risingColor(palette());
+    }
+
+    QColor ChartView::getFallingColor() const
+    {
+        return trtutils::fallingColor(palette());
+    }
 
     void ChartView::buildGeometry()
     {
         viewport.updateRange(candles);
         vertices.clear();
-        const ChartLayerContext context{viewport, candles, getRisingColor(), getFallingColor(), 1.0 / devicePixelRatioF()};
+        const ChartLayerContext context{
+            viewport,
+            candles,
+            getRisingColor(),
+            getFallingColor(),
+            1.0 / devicePixelRatioF()
+        };
         for (const std::unique_ptr<ChartLayer>& layer : layers)
             layer->build(context, vertices);
     }
@@ -194,19 +216,22 @@ namespace trtui
         drawAxes(painter);
         drawReadout(painter);
         drawCrosshair(painter);
-        if (!candles.empty() && viewport.indexFromX(viewport.getPriceRect().left()) < 0 && (historyLoading || historyExhausted))
+        if (!candles.empty() && viewport.indexFromX(viewport.getPriceRect().left()) < 0 && (historyLoading ||
+            historyExhausted))
         {
             const QRectF area = viewport.getPriceRect();
             const double blankWidth = std::max(100.0, viewport.xFromIndex(0) - area.left());
             painter.setPen(palette().color(QPalette::PlaceholderText));
-            painter.drawText(QRectF(area.left(), area.center().y() - 15, std::min(blankWidth, area.width()), 30), Qt::AlignCenter,
-                historyExhausted ? "No earlier data" : "Loading…");
+            painter.drawText(QRectF(area.left(), area.center().y() - 15, std::min(blankWidth, area.width()), 30),
+                             Qt::AlignCenter,
+                             historyExhausted ? "No earlier data" : "Loading…");
         }
         if (candles.empty() || !rendererReady)
         {
             painter.setPen(palette().color(QPalette::PlaceholderText));
             const QString text = rendererReady ? message : "OpenGL chart unavailable\n" + rendererError;
-            painter.drawText(viewport.getPriceRect().adjusted(16, 16, -16, -16), Qt::AlignCenter | Qt::TextWordWrap, text);
+            painter.drawText(viewport.getPriceRect().adjusted(16, 16, -16, -16), Qt::AlignCenter | Qt::TextWordWrap,
+                             text);
         }
     }
 
@@ -225,7 +250,10 @@ namespace trtui
         for (int column = 0; column <= columns; column++)
         {
             const double x = area.left() + area.width() * column / columns;
-            painter.drawLine(QPointF(x, area.top()), QPointF(x, viewport.isVolumeVisible() ? viewport.getVolumeRect().bottom() : area.bottom()));
+            painter.drawLine(QPointF(x, area.top()),
+                             QPointF(x, viewport.isVolumeVisible()
+                                            ? viewport.getVolumeRect().bottom()
+                                            : area.bottom()));
         }
         painter.setPen(palette().color(QPalette::Mid));
         painter.drawLine(area.topRight(), QPointF(area.right(), height() - 26));
@@ -233,56 +261,15 @@ namespace trtui
             painter.drawLine(viewport.getVolumeRect().topLeft(), viewport.getVolumeRect().topRight());
     }
 
-    QString ChartView::formatPrice(double value) const
+    QString ChartView::formatCrosshairPrice(double value) const
     {
-        if (value == 0)
-            return "0";
-        // Quote precision is independent of the distance between axis ticks.
-        const int decimals = std::abs(value) < 0.000001 ? 12 : 8;
-        QString result = QString::number(value, 'f', decimals);
-        while (result.contains('.') && result.endsWith('0'))
-            result.chop(1);
-        if (result.endsWith('.'))
-            result.chop(1);
-        return result;
-    }
-
-    QString ChartView::formatVolume(double value) const
-    {
-        const double magnitude = std::abs(value);
-        double divisor = 1;
-        QString suffix;
-        if (magnitude >= 1000000000000.0)
-        {
-            divisor = 1000000000000.0;
-            suffix = "T";
-        }
-        else if (magnitude >= 1000000000.0)
-        {
-            divisor = 1000000000.0;
-            suffix = "B";
-        }
-        else if (magnitude >= 1000000.0)
-        {
-            divisor = 1000000.0;
-            suffix = "M";
-        }
-        else if (magnitude >= 10000.0)
-        {
-            divisor = 1000.0;
-            suffix = "K";
-        }
-        QString result = QString::number(value / divisor, 'f', suffix.isEmpty() ? 4 : 2);
-        while (result.contains('.') && result.endsWith('0'))
-            result.chop(1);
-        if (result.endsWith('.'))
-            result.chop(1);
-        return result + suffix;
+        const double perPixel = (viewport.getPriceMax() - viewport.getPriceMin()) / viewport.getPriceRect().height();
+        return trtutils::formatAxisPrice(value, perPixel);
     }
 
     QString ChartView::formatTime(qint64 timestamp, const QString& format) const
     {
-        return QDateTime::fromMSecsSinceEpoch(timestamp, QTimeZone::UTC).addMSecs(trtdata::tradingDataTimeZoneOffsetMs(timeZone)).toString(format);
+        return trtutils::formatTradingTime(timestamp, timeZone, format);
     }
 
     void ChartView::drawAxes(QPainter& painter)
@@ -294,7 +281,8 @@ namespace trtui
         for (double tick : viewport.getPriceTicks())
         {
             const double y = viewport.yFromPrice(tick);
-            painter.drawText(QRectF(area.right() + 6, y - 10, 86, 20), Qt::AlignLeft | Qt::AlignVCenter, formatPrice(tick));
+            painter.drawText(QRectF(area.right() + 6, y - 10, 86, 20), Qt::AlignLeft | Qt::AlignVCenter,
+                             trtutils::formatPrice(tick));
         }
         const int columns = std::max(1, static_cast<int>(area.width() / 120));
         for (int column = 0; column <= columns; column++)
@@ -305,12 +293,13 @@ namespace trtui
                 continue;
             const trttrade::CandleData& candle = candles[static_cast<std::size_t>(index)];
             painter.drawText(QRectF(std::clamp(x - 54, 0.0, std::max(0.0, area.right() - 108)), height() - 24, 108, 20),
-                Qt::AlignCenter, formatTime(candle.timestamp, "MM-dd HH:mm"));
+                             Qt::AlignCenter, formatTime(candle.timestamp, "MM-dd HH:mm"));
         }
         if (viewport.isVolumeVisible())
         {
 
-            painter.drawText(QRectF(area.right() + 6, viewport.getVolumeRect().top(), 86, 20), Qt::AlignLeft, formatVolume(viewport.getVolumeMax()));
+            painter.drawText(QRectF(area.right() + 6, viewport.getVolumeRect().top(), 86, 20), Qt::AlignLeft,
+                             trtutils::formatVolume(viewport.getVolumeMax()));
         }
         const trttrade::CandleData& latest = candles.back();
         const double y = viewport.yFromPrice(latest.close);
@@ -321,62 +310,56 @@ namespace trtui
             lineColor.setAlphaF(0.4);
             painter.setPen(QPen(lineColor, 1, Qt::DashLine));
             painter.drawLine(QPointF(area.left(), y), QPointF(area.right(), y));
-            drawBadge(painter, QRectF(area.right() + 1, y - 10, 91, 20), formatPrice(latest.close), color);
+            trtutils::drawBadge(painter, QRectF(area.right() + 1, y - 10, 91, 20), trtutils::formatPrice(latest.close),
+                                color);
         }
     }
 
-    std::size_t ChartView::getCursorIndex() const
+    qint64 ChartView::getCursorIndex() const
     {
-        return static_cast<std::size_t>(std::clamp(std::llround(viewport.indexFromX(cursorPosition.x())), 0LL, static_cast<long long>(candles.size()) - 1));
+        return std::llround(viewport.indexFromX(cursorPosition.x()));
     }
 
     void ChartView::drawReadout(QPainter& painter)
     {
         if (candles.empty())
             return;
-        const trttrade::CandleData& candle = candles[cursorVisible ? getCursorIndex() : candles.size() - 1];
-        const QString text = QString("O %1   H %2   L %3   C %4  %5").arg(formatPrice(candle.open), formatPrice(candle.high),
-            formatPrice(candle.low), formatPrice(candle.close), candle.confirmed ? "" : "· Forming");
+        const qint64 index = getCursorIndex();
+        const bool hasCandle = cursorVisible && index >= 0 && index < static_cast<qint64>(candles.size());
+        const trttrade::CandleData& candle = hasCandle ? candles[static_cast<std::size_t>(index)] : candles.back();
+        const QString text = QString("O %1   H %2   L %3   C %4  %5").arg(
+            trtutils::formatPrice(candle.open), trtutils::formatPrice(candle.high),
+            trtutils::formatPrice(candle.low), trtutils::formatPrice(candle.close),
+            candle.confirmed ? "" : "· Forming");
         painter.setPen(candle.close >= candle.open ? getRisingColor() : getFallingColor());
         const QRectF readout = viewport.getPriceRect().adjusted(5, 3, -5, 0);
         painter.fillRect(QRectF(readout.topLeft(), QSizeF(readout.width(), 23)), palette().brush(QPalette::Base));
         painter.drawText(QRectF(readout.topLeft(), QSizeF(readout.width(), 23)), Qt::AlignVCenter,
-            painter.fontMetrics().elidedText(text, Qt::ElideRight, static_cast<int>(readout.width())));
+                         painter.fontMetrics().elidedText(text, Qt::ElideRight, static_cast<int>(readout.width())));
         if (viewport.isVolumeVisible())
         {
-            double base = candle.volumeCcy;
-            QString contracts = formatVolume(candle.volume);
+            const double base = trtutils::baseVolume(candle, instrumentType);
+            QString contracts = trtutils::formatVolume(candle.volume);
             switch (instrumentType)
             {
-            case trttrade::InstType::Spot:
-            case trttrade::InstType::Margin: base = candle.volume; contracts = "—"; break;
-            case trttrade::InstType::Swap:
-            case trttrade::InstType::Futures:
-            case trttrade::InstType::Option:
-            case trttrade::InstType::Events: break;
+                case trttrade::InstType::Spot:
+                case trttrade::InstType::Margin:
+                    contracts = "—";
+                    break;
+                case trttrade::InstType::Swap:
+                case trttrade::InstType::Futures:
+                case trttrade::InstType::Option:
+                case trttrade::InstType::Events:
+                    break;
             }
-            const QString volume = QString("Volume %1 %2  %3 %4  %5 Contracts").arg(formatVolume(base), baseCurrency, formatVolume(candle.volumeQuote), quoteCurrency, contracts);
+            const QString volume = QString("Volume %1 %2  %3 %4  %5 Contracts").arg(
+                trtutils::formatVolume(base), baseCurrency, trtutils::formatVolume(candle.volumeQuote), quoteCurrency,
+                contracts);
             const QRectF volumeArea = viewport.getVolumeRect().adjusted(5, 2, -5, 0);
-            painter.fillRect(QRectF(volumeArea.topLeft(), QSizeF(volumeArea.width(), 38)), palette().brush(QPalette::Base));
+            painter.fillRect(QRectF(volumeArea.topLeft(), QSizeF(volumeArea.width(), 38)),
+                             palette().brush(QPalette::Base));
             painter.drawText(volumeArea, Qt::AlignTop | Qt::AlignLeft, volume);
         }
-    }
-
-    void ChartView::drawBadge(QPainter& painter, const QRectF& area, const QString& text, const QColor& background)
-    {
-        painter.save();
-        painter.setClipRect(area);
-        painter.fillRect(area, background);
-        painter.setPen(background.lightness() < 140 ? Qt::white : Qt::black);
-        const double textWidth = painter.fontMetrics().horizontalAdvance(text);
-        if (textWidth > area.width() - 6)
-        {
-            QFont labelFont = painter.font();
-            labelFont.setPixelSize(std::max(8, static_cast<int>(painter.fontMetrics().height() * (area.width() - 6) / textWidth * 0.8)));
-            painter.setFont(labelFont);
-        }
-        painter.drawText(area.adjusted(3, 0, -3, 0), Qt::AlignCenter, text);
-        painter.restore();
     }
 
     void ChartView::drawCrosshair(QPainter& painter)
@@ -384,7 +367,9 @@ namespace trtui
         if (!cursorVisible || candles.empty())
             return;
         const QRectF& area = viewport.getPriceRect();
-        const double x = viewport.xFromIndex(static_cast<double>(getCursorIndex()));
+        const qint64 index = getCursorIndex();
+        const bool hasCandle = index >= 0 && index < static_cast<qint64>(candles.size());
+        const double x = hasCandle ? viewport.xFromIndex(static_cast<double>(index)) : cursorPosition.x();
         const double bottom = viewport.isVolumeVisible() ? viewport.getVolumeRect().bottom() : area.bottom();
         QColor crosshairColor = palette().color(QPalette::Text);
         crosshairColor.setAlphaF(0.35);
@@ -394,11 +379,16 @@ namespace trtui
         if (area.contains(cursorPosition))
         {
             painter.drawLine(QPointF(area.left(), cursorPosition.y()), QPointF(area.right(), cursorPosition.y()));
-            drawBadge(painter, QRectF(area.right() + 1, cursorPosition.y() - 10, 91, 20), formatPrice(viewport.priceFromY(cursorPosition.y())), badge);
+            trtutils::drawBadge(painter, QRectF(area.right() + 1, cursorPosition.y() - 10, 91, 20),
+                                formatCrosshairPrice(viewport.priceFromY(cursorPosition.y())), badge);
         }
-        const QString text = formatTime(candles[getCursorIndex()].timestamp, "yyyy-MM-dd HH:mm");
+        if (!hasCandle)
+            return;
+        const QString text = formatTime(candles[static_cast<std::size_t>(index)].timestamp, "yyyy-MM-dd HH:mm");
         const double badgeWidth = painter.fontMetrics().horizontalAdvance(text) + 12;
-        drawBadge(painter, QRectF(std::clamp(x - badgeWidth / 2, 0.0, std::max(0.0, area.right() - badgeWidth)), height() - 25, badgeWidth, 23), text, badge);
+        trtutils::drawBadge(
+            painter, QRectF(std::clamp(x - badgeWidth / 2, 0.0, std::max(0.0, area.right() - badgeWidth)),
+                            height() - 25, badgeWidth, 23), text, badge);
     }
 
     void ChartView::mousePressEvent(QMouseEvent* event)
@@ -425,8 +415,7 @@ namespace trtui
             viewport.pan(cursorPosition.x() - dragPosition.x());
             dragPosition = cursorPosition;
             invalidateGeometry();
-        }
-        else
+        } else
             update();
     }
 
@@ -466,14 +455,28 @@ namespace trtui
     {
         switch (event->key())
         {
-        case Qt::Key_Left: viewport.pan(viewport.getBarWidth() * 10); break;
-        case Qt::Key_Right: viewport.pan(-viewport.getBarWidth() * 10); break;
-        case Qt::Key_Plus:
-        case Qt::Key_Equal: viewport.zoom(1.25, viewport.getPriceRect().center().x()); break;
-        case Qt::Key_Minus: viewport.zoom(0.8, viewport.getPriceRect().center().x()); break;
-        case Qt::Key_End: viewport.followLatest(); break;
-        case Qt::Key_Home: viewport.reset(); break;
-        default: QOpenGLWidget::keyPressEvent(event); return;
+            case Qt::Key_Left:
+                viewport.pan(viewport.getBarWidth() * 10);
+                break;
+            case Qt::Key_Right:
+                viewport.pan(-viewport.getBarWidth() * 10);
+                break;
+            case Qt::Key_Plus:
+            case Qt::Key_Equal:
+                viewport.zoom(1.25, viewport.getPriceRect().center().x());
+                break;
+            case Qt::Key_Minus:
+                viewport.zoom(0.8, viewport.getPriceRect().center().x());
+                break;
+            case Qt::Key_End:
+                viewport.followLatest();
+                break;
+            case Qt::Key_Home:
+                viewport.reset();
+                break;
+            default:
+                QOpenGLWidget::keyPressEvent(event);
+                return;
         }
         invalidateGeometry();
         event->accept();

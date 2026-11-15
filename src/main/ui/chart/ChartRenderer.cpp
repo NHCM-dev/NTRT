@@ -10,8 +10,10 @@ namespace trtui
     QString ChartRenderer::initialize()
     {
         program = std::make_unique<QOpenGLShaderProgram>();
-        if (!program->addShaderFromSourceFile(QOpenGLShader::Vertex, trtutils::relativePath("res/shaders/chart.vert")) ||
-            !program->addShaderFromSourceFile(QOpenGLShader::Fragment, trtutils::relativePath("res/shaders/chart.frag")) || !program->link())
+        if (!program->addShaderFromSourceFile(QOpenGLShader::Vertex, trtutils::relativePath("res/shaders/chart.vert"))
+            ||
+            !program->addShaderFromSourceFile(QOpenGLShader::Fragment, trtutils::relativePath("res/shaders/chart.frag"))
+            || !program->link())
         {
             const QString error = program->log();
             return error.isEmpty() ? "Could not load or compile the chart shaders in res/shaders." : error;
@@ -38,7 +40,8 @@ namespace trtui
         functions->glEnable(GL_BLEND);
         functions->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         program->bind();
-        program->setUniformValue("viewportSize", QVector2D(static_cast<float>(size.width()), static_cast<float>(size.height())));
+        program->setUniformValue("viewportSize",
+                                 QVector2D(static_cast<float>(size.width()), static_cast<float>(size.height())));
         vertexArray.bind();
         buffer.bind();
         if (upload)

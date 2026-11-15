@@ -3,6 +3,8 @@
 //
 
 #include "ConfigManager.h"
+#include "main/util/TimeUtil.h"
+#include "main/util/ExchangeUtil.h"
 
 #include "main/util/JsonUtil.h"
 #include "main/util/FileUtil.h"
@@ -11,20 +13,11 @@
 
 namespace trtdata
 {
-    Exchange ConfigManager::readExchange(std::string_view name)
-    {
-        for (Exchange exchange : trtcore::availableExchanges())
-        {
-            if (getExchangeStr(exchange) == name)
-                return exchange;
-        }
-        throw std::invalid_argument("Unknown exchange: " + std::string(name));
-    }
-
     MarketConfig ConfigManager::defaultMarketConfig()
     {
         return {};
     }
+
     ExchangeConfig ConfigManager::defaultExchangeConfig()
     {
         return {DEFAULT_EXCHANGE_CONFIG.toStdString(), trtcore::availableExchanges().front()};
@@ -213,7 +206,8 @@ namespace trtdata
     int ConfigManager::addInstrument(const Instrument& instrument)
     {
         const int index = static_cast<int>(marketConfig.instruments.size());
-        marketConfig.instruments.push_back(trtcore::exchangeApi(instrument.exchange).createInstrument(instrument.instId, instrument.instType));
+        marketConfig.instruments.push_back(
+            trtcore::exchangeApi(instrument.exchange).createInstrument(instrument.instId, instrument.instType));
         emit instrumentsChanged();
         return index;
     }
@@ -224,7 +218,8 @@ namespace trtdata
         for (std::size_t index = 0; index < instruments.size(); index++)
         {
             const Instrument& candidate = *instruments[index];
-            if (candidate.instId == instrument.instId && candidate.instType == instrument.instType && candidate.exchange == instrument.exchange)
+            if (candidate.instId == instrument.instId && candidate.instType == instrument.instType && candidate.exchange
+                == instrument.exchange)
                 return removeInstrument(static_cast<int>(index));
         }
         return false;
@@ -257,8 +252,7 @@ namespace trtdata
         try
         {
             saved = saveMarketConfig();
-        }
-        catch (...)
+        } catch (...)
         {
             marketConfig.instruments.swap(instruments);
             throw;
@@ -313,11 +307,11 @@ namespace trtdata
     {
         switch (timeZone)
         {
-        case TradingDataTimeZone::UTC:
-        case TradingDataTimeZone::UTC8:
-            break;
-        default:
-            return false;
+            case TradingDataTimeZone::UTC:
+            case TradingDataTimeZone::UTC8:
+                break;
+            default:
+                return false;
         }
         const TradingDataTimeZone previous = marketConfig.tradingData.timeZone;
         if (timeZone == previous)

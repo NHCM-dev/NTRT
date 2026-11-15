@@ -11,7 +11,7 @@
 
 namespace trtdata
 {
-    template <typename Element>
+    template<typename Element>
     using jsonResult = simdjson::simdjson_result<Element>;
     using jsonElement = simdjson::dom::element;
 
@@ -21,7 +21,7 @@ namespace trtdata
     using jsonArray = simdjson::dom::array;
     using jsonBuilder = simdjson::builder::string_builder;
 
-    inline simdjson::dom::parser parser{};
+    extern thread_local simdjson::dom::parser parser;
 
     inline jsonBuilder newBuilder()
     {
@@ -32,9 +32,11 @@ namespace trtdata
     Number readNumber(const jsonElement& element, const char* key);
 
     std::string_view readString(const jsonElement& element, const char* key);
+
     std::string_view readString(const elementResult& element, const char* key);
 
     jsonArray readArray(const jsonElement& element, const char* key);
+
     jsonArray readArray(const elementResult& element, const char* key);
 
     elementResult parseElement(const QByteArray& json);
@@ -43,6 +45,7 @@ namespace trtdata
     jsonResult<Element> parseJson(const QByteArray& json);
 
     std::string prettyJson(std::string_view json);
+
     bool writeJsonFile(const QString& path, std::string_view json);
 } // trtutils
 

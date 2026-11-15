@@ -17,12 +17,16 @@ namespace trtutils
 
     // Overwrites by default. Returns false on open, write, or flush failure.
     bool writeAllBytes(const QString& path, const QByteArray& data);
+
     bool writeAllBytes(const QString& path, const QByteArray& data, QIODeviceBase::OpenMode flags);
 
     /**
      * Return relative path, @param path relative path without / as prefix
      */
+    bool writeAllBytesAtomically(const QString& path, const QByteArray& data);
+
     QString relativePath(const QString& path);
+
     QString appendPath(const QString& base, const QString& path);
 }
 

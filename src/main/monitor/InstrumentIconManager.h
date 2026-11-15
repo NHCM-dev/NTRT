@@ -28,14 +28,18 @@ namespace trtcore
         bool running = false;
 
         void fetchNext();
+
         void requestIcon(const QString& symbol, bool crypto);
-        QIcon createFallback(const QString& symbol) const;
 
     public:
         InstrumentIconManager();
+
         ~InstrumentIconManager() override;
+
         void setInstruments(std::span<const std::shared_ptr<trtdata::Instrument>> instruments);
+
         void stop();
+
         QIcon getIcon(const QString& instrumentId) const;
     };
 }

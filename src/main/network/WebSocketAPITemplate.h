@@ -15,7 +15,9 @@ namespace trtnet
 
     public:
         WebSocketAPITemplate(const QUrl& endpoint, const QString& channel, const QStringList& requiredParameters);
+
         const QUrl& getEndpoint() const;
+
         QJsonObject createArgument(QJsonObject parameters) const;
     };
 }

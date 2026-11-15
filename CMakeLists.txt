@@ -97,6 +97,8 @@ else()
     target_compile_options(NTRT PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
+file(GLOB NTRT_UTIL_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/main/util/*.cpp")
+
 option(NTRT_BUILD_TESTS "Build candle data, settings and chart tests" OFF)
 if(NTRT_BUILD_TESTS)
     enable_testing()
@@ -107,8 +109,7 @@ if(NTRT_BUILD_TESTS)
             src/main/trade/parser/OKXParser.cpp
         src/main/data/AppearanceManager.cpp
         src/main/data/ConfigManager.cpp
-        src/main/util/JsonUtil.cpp
-        src/main/util/FileUtil.cpp)
+        ${NTRT_UTIL_SOURCES})
     target_include_directories(NTRTCandlesTests PRIVATE src)
     target_link_libraries(NTRTCandlesTests PRIVATE Qt6::Widgets Qt6::Network simdjson::simdjson)
     if(TARGET ntrt_runtime)
@@ -117,6 +118,29 @@ if(NTRT_BUILD_TESTS)
     add_test(NAME candles COMMAND NTRTCandlesTests)
 
     find_package(Qt6 6.5 REQUIRED COMPONENTS Test)
+    qt_add_executable(NTRTMonitorTests
+        tests/MonitorTests.cpp
+        src/main/api/CandleStream.h
+        src/main/api/TickerStream.h
+        src/main/monitor/DataMonitor.cpp
+        src/main/monitor/MarketData.cpp
+        src/main/monitor/CandlesManager.cpp
+        src/main/monitor/InstrumentIconManager.cpp
+        src/main/network/RestAPITemplate.cpp
+        src/main/trade/parser/OKXParser.cpp
+        src/main/data/AppearanceManager.cpp
+        src/main/data/ConfigManager.cpp
+        ${NTRT_UTIL_SOURCES})
+    set_target_properties(NTRTMonitorTests PROPERTIES WIN32_EXECUTABLE FALSE)
+    target_include_directories(NTRTMonitorTests PRIVATE src)
+    target_link_libraries(NTRTMonitorTests PRIVATE Qt6::Test Qt6::Widgets Qt6::Network simdjson::simdjson)
+    if(TARGET ntrt_runtime)
+        add_dependencies(NTRTMonitorTests ntrt_runtime)
+    endif()
+    add_custom_command(TARGET NTRTMonitorTests POST_BUILD
+        COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:Qt6::Test>" "$<TARGET_FILE_DIR:NTRTMonitorTests>" VERBATIM)
+    add_test(NAME monitor COMMAND NTRTMonitorTests -o -,txt)
+
     set(NTRT_CHART_TEST_SOURCES ${NTRT_SOURCES})
     list(FILTER NTRT_CHART_TEST_SOURCES EXCLUDE REGEX "/(NTRT|AbstractApi)\\.cpp$")
     qt_add_executable(NTRTChartTests tests/ChartTests.cpp ${NTRT_CHART_TEST_SOURCES})

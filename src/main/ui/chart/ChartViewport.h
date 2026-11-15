@@ -27,29 +27,53 @@ namespace trtui
 
     public:
         void setSize(const QSize& size);
+
         void setSeriesSize(std::size_t count, std::size_t removedPrefix = 0);
+
         void setVolumeVisible(bool visible, const QSize& size);
+
         void updateRange(std::span<const trttrade::CandleData> candles);
+
         void pan(double pixels);
+
         void zoom(double factor, double anchorX);
+
         void reset();
+
         void followLatest();
+
         bool isFollowing() const;
+
         bool isVolumeVisible() const;
+
         const QRectF& getPriceRect() const;
+
         const QRectF& getVolumeRect() const;
+
         double getBarWidth() const;
+
         double getPriceMin() const;
+
         double getPriceMax() const;
+
         double getPriceStep() const;
+
         std::vector<double> getPriceTicks() const;
+
         double getVolumeMax() const;
+
         double xFromIndex(double index) const;
+
         double indexFromX(double x) const;
+
         double yFromPrice(double price) const;
+
         double priceFromY(double y) const;
+
         double yFromVolume(double volume) const;
+
         std::size_t getFirstVisible() const;
+
         std::size_t getLastVisible() const;
     };
 }

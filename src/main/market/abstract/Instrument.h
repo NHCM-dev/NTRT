@@ -50,11 +50,11 @@ namespace trtdata
         virtual ~Instrument() = default;
 
         Instrument(const std::string& instId, trttrade::InstType type, Exchange exchange)
-            : uniqueIdentifier{exchange, type, instId}, instId(instId), instType(type), exchange(exchange)
-        {
-        }
+        : uniqueIdentifier{exchange, type, instId}, instId(instId), instType(type), exchange(exchange)
+        {}
 
         virtual QFuture<TickerData> requestTicker() = 0;
+
         virtual std::string getInstTypeStr() const = 0;
 
         const InstIdentifier& getUniqueIdentifier() const

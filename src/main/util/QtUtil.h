@@ -9,7 +9,12 @@
 
 namespace trtutils
 {
-    QTableWidget* createHeaderTable(QWidget* parent = nullptr, QStringList headers = {});
+    QTableWidgetItem* updateTableItem(QTableWidget* table, int row, int column, const QString& text);
+
+    void swapTableRows(QTableWidget* table, int first, int second);
+
+    void centerOnScreen(QWidget * widget);
+    QTableWidget* createHeaderTable(QWidget * parent = nullptr, QStringList headers = {});
 } // trtutils
 
 #endif //NTRT_QTUTIL_H

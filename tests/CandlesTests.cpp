@@ -3,6 +3,13 @@
 #include "main/data/AppearanceManager.h"
 #include "main/data/ConfigManager.h"
 #include "main/util/JsonUtil.h"
+#include "main/util/CandleUtil.h"
+#include "main/util/FileUtil.h"
+#include "main/util/FormatUtil.h"
+#include "main/util/NumberUtil.h"
+#include "main/util/OKXUtil.h"
+#include "main/util/StdUtil.h"
+#include <limits>
 #include <QFile>
 #include "main/monitor/CandlesManager.h"
 #include <QCoreApplication>
@@ -62,6 +69,46 @@ class CandleTests final : public trtcore::AbstractApi
             catch (const std::exception&) { rejected = true; }
             require(rejected, "Invalid candle response was accepted");
         }
+    }
+
+    static void testUtilities()
+    {
+        require(trtutils::parseNumber<std::int64_t>("9223372036854775807", "number") == std::numeric_limits<std::int64_t>::max(), "Integer precision was lost");
+        for (std::string_view value : {"", "1x", "nan", "inf", "1e999", " 1"})
+        {
+            bool rejected = false;
+            try { trtutils::parseNumber<double>(value, "number"); }
+            catch (const std::runtime_error&) { rejected = true; }
+            require(rejected, "Invalid numeric text was accepted");
+        }
+        require(trtutils::formatPrice(0.00000012) == "0.00000012", "Small price precision was lost");
+        require(trtutils::formatPrice(120.5) == "120.5" && trtutils::formatPrice(0) == "0", "Price trailing zeros changed");
+        require(trtutils::formatVolume(9999) == "9999" && trtutils::formatVolume(10000) == "10K", "Volume abbreviation threshold changed");
+        require(trtutils::formatVolume(-1250000) == "-1.25M", "Signed volume formatting changed");
+        require(trtutils::changedDigitOffset("123.45", 0.01) == 5 && trtutils::changedDigitOffset("1.23e-5", 1e-7) == 3, "Changed digit offset lost exponent precision");
+        const trtdata::TradingDataTimeZone zone = trtdata::TradingDataTimeZone::UTC8;
+        require(trtutils::startOfTradingDay(57599999, zone) == -28800000 && trtutils::startOfTradingDay(57600000, zone) == 57600000, "UTC+8 midnight boundary changed");
+        require(trtutils::formatTradingTime(0, zone, "yyyy-MM-dd HH:mm") == "1970-01-01 08:00", "Trading time conversion changed");
+        require(trtdata::okx::candleBar(trttrade::CandleTimeframe::Day1, trtdata::TradingDataTimeZone::UTC) == "1Dutc" &&
+            trtdata::okx::candleBar(trttrade::CandleTimeframe::Day1, zone) == "1D" &&
+            trtdata::okx::candleBar(trttrade::CandleTimeframe::Hour1, zone) == "1H", "Exchange calendar mapping changed");
+
+        std::vector<trttrade::CandleData> stored{{10, 100, 120, 90, 110, 2, 3, 4, true}, {30, 110, 120, 90, 115, 5, 6, 7, false}};
+        const std::vector<trttrade::CandleData> incoming{{0}, {10, 100, 120, 90, 105}, {20}, {30, 110, 120, 90, 118, 5, 6, 7, true}, {40}};
+        trtutils::mergeCandles(stored, incoming);
+        require(stored.size() == 5 && stored[1].close == 110 && stored[3].close == 118 && stored[3].confirmed, "Merge lost confirmation precedence or interleaved history");
+        const std::span<const trttrade::CandleData> candles(stored);
+        require(trtutils::candleLowerBound(candles, 11)->timestamp == 20 && trtutils::candleLowerBound(candles, 41) == candles.end(), "Candle lookup boundaries changed");
+        require(trtutils::baseVolume(stored[1], trttrade::InstType::Spot) == 2 && trtutils::baseVolume(stored[1], trttrade::InstType::Swap) == 3, "Base currency volume units changed");
+        require(!trtutils::dailyChangePercent(&stored[1], std::numeric_limits<double>::infinity()), "Infinite quote produced daily change");
+        require(trtutils::contains(std::vector<int>{1, 2}, 2) && !trtutils::contains(std::vector<int>{1, 2}, 3), "Vector membership failed");
+
+        QTemporaryDir directory;
+        require(directory.isValid(), "Could not create utility test directory");
+        const QString path = directory.filePath("nested/data.json");
+        require(trtutils::writeAllBytesAtomically(path, "old") && trtutils::writeAllBytesAtomically(path, "new"), "Atomic file replacement failed");
+        require(trtutils::readAllBytes(path) == "new", "Atomic file replacement lost data");
+        require(!trtutils::writeAllBytesAtomically(path + "/child", "invalid") && trtutils::readAllBytes(path) == "new", "Failed atomic write damaged existing data");
     }
 
     static void testDefaults()
@@ -149,6 +196,7 @@ namespace trtcore
 void CandleTests::run()
 {
     testParser();
+    testUtilities();
     testDefaults();
     trtcore::CandlesManager manager;
     const std::vector<std::shared_ptr<trtdata::Instrument>> instruments{std::make_shared<TestInstrument>()};

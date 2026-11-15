@@ -16,6 +16,7 @@ namespace trtui
     {
     public:
         enum class Mode { Add, Manage };
+
         InstrumentDialog(Mode mode, QWidget* parent);
 
     private:
@@ -33,11 +34,17 @@ namespace trtui
         QPushButton* downButton = nullptr;
 
         void loadTypes();
+
         void fetchCatalog();
+
         void populate();
+
         void filterRows();
+
         void moveCurrent(int direction);
+
         void updateMoveButtons();
+
         void accept() override;
     };
 }

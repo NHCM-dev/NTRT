@@ -10,8 +10,7 @@
 namespace trtdata
 {
     AppearanceManager::AppearanceManager(const QString& dataPath) : dataPath(dataPath)
-    {
-    }
+    {}
 
     bool AppearanceManager::tryInitOnce()
     {
@@ -51,8 +50,7 @@ namespace trtdata
 
             appearanceConfig = {theme == "dark" ? EnumTheme::Dark : EnumTheme::Light, priceFlash, columns};
             return true;
-        }
-        catch (const simdjson::simdjson_error&)
+        } catch (const simdjson::simdjson_error&)
         {
             return false;
         }
@@ -121,58 +119,4 @@ namespace trtdata
         return false;
     }
 
-    QPalette AppearanceManager::generatePalette(EnumTheme theme)
-    {
-        QColor window(0xf0f0f0);
-        QColor base(0xffffff);
-        QColor text(0x202124);
-        QColor muted(0x686e75);
-        QPalette palette(window, window);
-        palette.setColor(QPalette::Highlight, QColor(0x3478c0));
-
-        switch (theme)
-        {
-        case EnumTheme::Light:
-            break;
-        case EnumTheme::Dark:
-            window = QColor(0x282b30);
-            base = QColor(0x202227);
-            text = QColor(0xe8eaed);
-            muted = QColor(0xa8afb9);
-            palette = QPalette(QColor(0x383c43), window);
-            palette.setColor(QPalette::Highlight, QColor(0x345d92));
-            palette.setColor(QPalette::Light, QColor(0x68717e));
-            palette.setColor(QPalette::Midlight, QColor(0x555d69));
-            palette.setColor(QPalette::Mid, QColor(0x4b535f));
-            palette.setColor(QPalette::Dark, QColor(0x3d444f));
-            palette.setColor(QPalette::Shadow, QColor(0x14161a));
-            palette.setColor(QPalette::Link, QColor(0x8ab8f3));
-            break;
-        }
-
-        palette.setColor(QPalette::WindowText, text);
-        palette.setColor(QPalette::Base, base);
-        palette.setColor(QPalette::AlternateBase, window);
-        palette.setColor(QPalette::Text, text);
-        palette.setColor(QPalette::ButtonText, text);
-        palette.setColor(QPalette::PlaceholderText, muted);
-        palette.setColor(QPalette::ToolTipBase, window);
-        palette.setColor(QPalette::ToolTipText, text);
-        palette.setColor(QPalette::HighlightedText, Qt::white);
-        palette.setColor(QPalette::Disabled, QPalette::Text, muted);
-        palette.setColor(QPalette::Disabled, QPalette::WindowText, muted);
-        palette.setColor(QPalette::Disabled, QPalette::ButtonText, muted);
-        return palette;
-    }
-
-    void AppearanceManager::applyPalette(EnumTheme theme)
-    {
-        const QPalette palette = generatePalette(theme);
-        QApplication::setPalette(palette);
-
-        QPalette inputs = palette;
-        if (theme == EnumTheme::Dark)
-            inputs.setColor(QPalette::Base, QColor(0x363c46));
-        QApplication::setPalette(inputs, "QLineEdit");
-    }
 }

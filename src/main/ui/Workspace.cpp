@@ -106,14 +106,18 @@ namespace trtui
         instrumentWindow = addWindow(instruments->widget, "Instrument List", "instrumentList");
         addWindowAction(windows.back());
         connect(instruments.get(), &InstrumentListPanel::instrumentActivated, this,
-            [this](const trtdata::InstIdentifier& identifier) { showInstrument(identifier); });
+                [this](const trtdata::InstIdentifier& identifier)
+                {
+                    showInstrument(identifier);
+                });
     }
 
     QMdiSubWindow* Workspace::addChartWindow()
     {
         const int id = nextChartId++;
         ChartPanel* panel = new ChartPanel(desktop);
-        QMdiSubWindow* window = addWindow(panel, QString("Chart %1 · Choose instrument").arg(id), QString("chart%1").arg(id));
+        QMdiSubWindow* window = addWindow(panel, QString("Chart %1 · Choose instrument").arg(id),
+                                          QString("chart%1").arg(id));
         windows.back().chart = panel;
         addWindowAction(windows.back());
         connect(panel, &ChartPanel::titleChanged, this, [this, window, id](const QString& title)
@@ -128,7 +132,8 @@ namespace trtui
         lastChartWindow = window;
         const int offset = (id - 1) % 7 * 28;
         const QRect area = desktop->viewport()->rect();
-        window->setGeometry(32 + offset, 32 + offset, std::max(500, area.width() * 2 / 3), std::max(360, area.height() * 3 / 4));
+        window->setGeometry(32 + offset, 32 + offset, std::max(500, area.width() * 2 / 3),
+                            std::max(360, area.height() * 3 / 4));
         return window;
     }
 
@@ -213,8 +218,14 @@ namespace trtui
         for (WindowEntry& entry : windows)
             addWindowAction(entry);
         connect(menu->addAction("Stack Windows"), &QAction::triggered, desktop, &QMdiArea::cascadeSubWindows);
-        connect(menu->addAction("Sort Window"), &QAction::triggered, this, [this] { sortWindows(); });
-        connect(menu->addAction("Reset Layout"), &QAction::triggered, this, [this] { resetLayout(); });
+        connect(menu->addAction("Sort Window"), &QAction::triggered, this, [this]
+        {
+            sortWindows();
+        });
+        connect(menu->addAction("Reset Layout"), &QAction::triggered, this, [this]
+        {
+            resetLayout();
+        });
     }
 
     void Workspace::sortWindows()
@@ -224,7 +235,9 @@ namespace trtui
         {
             if (!entry.window->isHidden() && !entry.window->isMinimized())
             {
-                const QRect geometry = entry.window->isMaximized() ? entry.window->normalGeometry() : entry.window->geometry();
+                const QRect geometry = entry.window->isMaximized()
+                                           ? entry.window->normalGeometry()
+                                           : entry.window->geometry();
                 placements.push_back({entry.window, geometry});
             }
         }
@@ -246,12 +259,13 @@ namespace trtui
             minimumWidth = std::max(minimumWidth, placement.window->minimumSizeHint().width());
             minimumHeight = std::max(minimumHeight, placement.window->minimumSizeHint().height());
         }
-        std::stable_sort(placements.begin(), placements.end(), [](const WindowPlacement& left, const WindowPlacement& right)
-        {
-            const QPoint first = left.geometry.center();
-            const QPoint second = right.geometry.center();
-            return first.y() == second.y() ? first.x() < second.x() : first.y() < second.y();
-        });
+        std::stable_sort(placements.begin(), placements.end(),
+                         [](const WindowPlacement& left, const WindowPlacement& right)
+                         {
+                             const QPoint first = left.geometry.center();
+                             const QPoint second = right.geometry.center();
+                             return first.y() == second.y() ? first.x() < second.x() : first.y() < second.y();
+                         });
         const int count = static_cast<int>(placements.size());
         const int columns = std::clamp((area.width() + gap) / (minimumWidth + gap), 1, count);
         const int rows = (count + columns - 1) / columns;
@@ -259,7 +273,8 @@ namespace trtui
         const int height = std::max(minimumHeight, (area.height() - (rows - 1) * gap) / rows);
         for (int index = 0; index < count; index++)
         {
-            placements[static_cast<std::size_t>(index)].window->setGeometry(area.left() + index % columns * (width + gap),
+            placements[static_cast<std::size_t>(index)].window->setGeometry(
+                area.left() + index % columns * (width + gap),
                 area.top() + index / columns * (height + gap), width, height);
         }
     }
@@ -318,7 +333,8 @@ namespace trtui
             entry.window->showNormal();
             charts.push_back({entry.window, entry.window->geometry()});
         }
-        arrangeWindows(std::move(charts), QRect(listWidth + gap * 2, gap, std::max(480, width - listWidth - gap * 3), std::max(340, height - gap * 2)));
+        arrangeWindows(std::move(charts), QRect(listWidth + gap * 2, gap, std::max(480, width - listWidth - gap * 3),
+                                                std::max(340, height - gap * 2)));
         desktop->setActiveSubWindow(nullptr);
     }
 
@@ -326,8 +342,8 @@ namespace trtui
     {
         if (!isVisible() || window()->isMinimized())
             return;
-        if (instrumentWindow && instrumentWindow->isVisible() && !instrumentWindow->isMinimized() && isVisible())
-            instruments->update();
+        if (instrumentWindow&& instrumentWindow->isVisible() && !instrumentWindow->isMinimized() && isVisible())
+        instruments->update();
         for (const WindowEntry& entry : windows)
         {
             if (entry.chart && entry.window->isVisible() && !entry.window->isMinimized())

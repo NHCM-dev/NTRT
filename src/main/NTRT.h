@@ -24,7 +24,8 @@ namespace ntrt
     inline std::shared_ptr<trtcore::DataMonitor> dataMonitor = nullptr;
 
     void quitApp();
-    void displayAbout(QWidget* parent);
+
+    void displayAbout(QWidget * parent);
 }
 
 int main(int argc, char* argv[]);
@@ -32,10 +33,13 @@ int main(int argc, char* argv[]);
 int runQtApp();
 
 void startupHook();
+
 void terminateHook();
 
 void initQtApp();
+
 void initQtStyles();
+
 void initQtIcon();
 
 #endif //NTRT_NTRT_H

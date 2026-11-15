@@ -18,7 +18,9 @@ namespace trtui
 
     public:
         QString initialize();
+
         void release();
+
         void draw(const std::vector<ChartVertex>& vertices, const QSize& size, bool upload);
     };
 }
