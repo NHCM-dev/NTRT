@@ -19,6 +19,8 @@ namespace trtutils
     const trttrade::CandleData* dailyCandle(std::span<const trttrade::CandleData> candles, qint64 now,
                                             trtdata::TradingDataTimeZone zone);
 
+    std::optional<double> dailyChangeAmount(const trttrade::CandleData* candle, double latestPrice);
+
     std::optional<double> dailyChangePercent(const trttrade::CandleData* candle, double latestPrice);
 
     double baseVolume(const trttrade::CandleData& candle, trttrade::InstType type);

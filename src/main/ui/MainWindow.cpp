@@ -1,3 +1,4 @@
+#include <QTimeZone>
 #include "MainWindow.h"
 #include "main/util/QtUtil.h"
 #include "Workspace.h"
@@ -292,7 +293,7 @@ namespace trtui
         // Time update
         const std::function<void()> updateClock = [clock]()
         {
-            clock->setText(QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss t (UTCtt)"));
+            clock->setText(QDateTime::currentDateTimeUtc().toTimeZone(QTimeZone(QByteArray::fromStdString(ntrt::configManager->getDisplayTimeZone()))).toString("yyyy-MM-dd HH:mm:ss t (UTCtt)"));
             clock->setMinimumWidth(clock->sizeHint().width());
         };
 

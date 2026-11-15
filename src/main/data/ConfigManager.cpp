@@ -2,6 +2,7 @@
 // Created by NHCM on 2026/11/7.
 //
 
+#include <QTimeZone>
 #include "ConfigManager.h"
 #include "main/util/TimeUtil.h"
 #include "main/util/TradeUtil.h"
@@ -81,6 +82,12 @@ namespace trtdata
             const elementResult tradingData = config["tradingData"];
             if (tradingData.error() != simdjson::NO_SUCH_FIELD)
             {
+                if (tradingData["displayTimeZone"].error() != simdjson::NO_SUCH_FIELD)
+                {
+                    loaded.tradingData.displayTimeZone = std::string(readString(tradingData, "displayTimeZone"));
+                    if (!QTimeZone(QByteArray::fromStdString(loaded.tradingData.displayTimeZone)).isValid())
+                        return false;
+                }
                 const std::string_view timeZone = readString(tradingData, "timeZone");
                 if (timeZone == "UTC")
                     loaded.tradingData.timeZone = TradingDataTimeZone::UTC;
@@ -162,6 +169,8 @@ namespace trtdata
         builder.escape_and_append_with_quotes("tradingData");
         builder.append_colon();
         builder.start_object();
+        builder.append_key_value("displayTimeZone", std::string_view(marketConfig.tradingData.displayTimeZone));
+        builder.append_comma();
         builder.append_key_value("timeZone", tradingDataTimeZoneName(marketConfig.tradingData.timeZone));
         builder.end_object();
         builder.end_object();
@@ -296,6 +305,27 @@ namespace trtdata
     int ConfigManager::instrumentsCount()
     {
         return marketConfig.instruments.size();
+    }
+
+    const std::string& ConfigManager::getDisplayTimeZone() const
+    {
+        return marketConfig.tradingData.displayTimeZone;
+    }
+
+    bool ConfigManager::setDisplayTimeZone(const std::string& zone)
+    {
+        if (!QTimeZone(QByteArray::fromStdString(zone)).isValid())
+            return false;
+        const std::string previous = marketConfig.tradingData.displayTimeZone;
+        if (previous == zone)
+            return true;
+        marketConfig.tradingData.displayTimeZone = zone;
+        if (!saveMarketConfig())
+        {
+            marketConfig.tradingData.displayTimeZone = previous;
+            return false;
+        }
+        return true;
     }
 
     TradingDataTimeZone ConfigManager::getTradingDataTimeZone() const

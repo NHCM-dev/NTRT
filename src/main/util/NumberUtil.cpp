@@ -16,6 +16,16 @@ namespace trtutils
         return value;
     }
 
+    QString formatPriceChange(double value)
+    {
+        if (!std::isfinite(value))
+            return "—";
+        if (value == 0)
+            return "0";
+        const QString magnitude = formatPrice(std::abs(value));
+        return magnitude == "0" ? magnitude : (value > 0 ? "+" : "-") + magnitude;
+    }
+
     QString formatPrice(double value)
     {
         if (value == 0)

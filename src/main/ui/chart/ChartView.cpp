@@ -123,7 +123,7 @@ namespace trtui
         invalidateGeometry();
     }
 
-    void ChartView::setTimeZone(trtdata::TradingDataTimeZone value)
+    void ChartView::setTimeZone(const QTimeZone& value)
     {
         if (timeZone == value)
             return;
@@ -274,7 +274,7 @@ namespace trtui
 
     QString ChartView::formatTime(qint64 timestamp, const QString& format) const
     {
-        return trtutils::formatTradingTime(timestamp, timeZone, format);
+        return QDateTime::fromMSecsSinceEpoch(timestamp, timeZone).toString(format);
     }
 
     void ChartView::drawAxes(QPainter& painter)
@@ -336,10 +336,10 @@ namespace trtui
         const QString magnitude = QString::number(std::abs(percent), 'f', 2);
         const QString change = candle.open <= 0 ? "—" :
             (percent < 0 && magnitude != "0.00" ? "-" : "+") + magnitude + "%";
-        const QString text = QString("O %1   H %2   L %3   C %4   %5").arg(
+        const QString text = QString("O %1   H %2   L %3   C %4   %5   %6").arg(
             trtutils::formatPrice(candle.open), trtutils::formatPrice(candle.high),
             trtutils::formatPrice(candle.low), trtutils::formatPrice(candle.close),
-            change);
+            candle.open > 0 ? trtutils::formatPriceChange(candle.close - candle.open) : QString("—"), change);
         painter.setPen(candle.close >= candle.open ? getRisingColor() : getFallingColor());
         const QRectF readout = viewport.getReadoutRect().adjusted(5, 0, -5, 0);
         painter.drawText(readout, Qt::AlignVCenter,

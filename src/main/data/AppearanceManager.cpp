@@ -40,6 +40,9 @@ namespace trtdata
             if (marketColumns.error() != simdjson::NO_SUCH_FIELD)
             {
                 const jsonElement saved = marketColumns.value();
+                const simdjson::error_code amountError = saved["changeAmount"].get_bool().get(columns.changeAmount);
+                if (amountError != simdjson::SUCCESS && amountError != simdjson::NO_SUCH_FIELD)
+                    return false;
                 columns.exchange = saved["exchange"].get_bool().value();
                 columns.type = saved["type"].get_bool().value();
                 columns.volume24h = saved["volume24h"].get_bool().value();
@@ -74,6 +77,8 @@ namespace trtdata
         builder.append_key_value("volume24h", appearanceConfig.marketColumns.volume24h);
         builder.append_comma();
         builder.append_key_value("icon", appearanceConfig.marketColumns.icon);
+        builder.append_comma();
+        builder.append_key_value("changeAmount", appearanceConfig.marketColumns.changeAmount);
         builder.end_object();
         builder.end_object();
         return writeJsonFile(trtutils::appendPath(dataPath, "appearance.json"), builder.view());

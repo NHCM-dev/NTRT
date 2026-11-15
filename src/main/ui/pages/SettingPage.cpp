@@ -1,3 +1,4 @@
+#include <QTimeZone>
 #include "SettingPage.h"
 #include "main/util/TradeUtil.h"
 #include "main/util/PaletteUtil.h"
@@ -130,8 +131,21 @@ namespace trtui
     void SettingPage::initTradingSection()
     {
         QVBoxLayout* rows = addSection("Trading", "Market",
-                                       "price flash color exchange type volume columns data time zone timezone UTC");
+                                       "price flash color exchange type volume columns change amount daily OHLC data time zone timezone UTC");
         trtdata::ConfigManager& config = *ntrt::configManager;
+        QStringList displayZones;
+        for (const QByteArray& id : QTimeZone::availableTimeZoneIds())
+            displayZones.append(QString::fromUtf8(id));
+        if (!displayZones.contains("UTC"))
+            displayZones.prepend("UTC");
+        const QString currentZone = QString::fromStdString(config.getDisplayTimeZone());
+        if (!displayZones.contains(currentZone))
+            displayZones.prepend(currentZone);
+        addDropdown(rows, "Display time zone", "Chart timestamps and the clock use this time zone, including daylight saving time.",
+                    displayZones, displayZones.indexOf(currentZone), [&config, displayZones](int index)
+                    {
+                        return config.setDisplayTimeZone(displayZones.at(index).toStdString());
+                    });
         int selectedTimeZone = 0;
         switch (config.getTradingDataTimeZone())
         {
@@ -142,9 +156,9 @@ namespace trtui
                 selectedTimeZone = 1;
                 break;
         }
-        addDropdown(rows, "Trading data time zone",
-                    "Daily open and volume reset at midnight in this time zone. OKX supports UTC and UTC+8.",
-                    {"UTC", "UTC+8"}, selectedTimeZone, [&config](int index)
+        addDropdown(rows, "Trading time zone",
+                    "Daily open and volume use UTC or the exchange trading day (OKX: UTC+8).",
+                    {"UTC", "Exchange time zone (OKX: UTC+8)"}, selectedTimeZone, [&config](int index)
                     {
                         switch (index)
                         {
@@ -161,6 +175,13 @@ namespace trtui
                   appearance->isPriceFlashEnabled(), [appearance](bool enabled)
                   {
                       return appearance->setPriceFlashEnabled(enabled);
+                  });
+        addToggle(rows, "Show Change", "Show the price change from the trading day's open in Instrument List.",
+                  appearance->getMarketColumns().changeAmount, [appearance](bool enabled)
+                  {
+                      trtdata::MarketColumnVisibility columns = appearance->getMarketColumns();
+                      columns.changeAmount = enabled;
+                      return appearance->setMarketColumns(columns);
                   });
         addToggle(rows, "Show Icon", "Show the icon for each instrument.", appearance->getMarketColumns().icon,
                   [appearance](bool enabled)

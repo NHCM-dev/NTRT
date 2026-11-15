@@ -295,7 +295,7 @@ namespace trtui
             return;
         const std::shared_ptr<const trtcore::CandlesSnapshot> data = backend->getCandlesManager();
         const trtcore::CandlesSnapshot& manager = *data;
-        chart->setTimeZone(manager.getTimeZone());
+        chart->setTimeZone(QTimeZone(QByteArray::fromStdString(ntrt::configManager->getDisplayTimeZone())));
         const trtcore::CandleSnapshot* snapshot = manager.getSnapshot(*instrument, timeframe);
         if (!snapshot)
             return;
@@ -305,7 +305,7 @@ namespace trtui
             chart->setCandles(snapshot->candles);
             displayedUpdate = snapshot->updatedAt;
         }
-        const QString zone = QString::fromUtf8(trtdata::tradingDataTimeZoneName(manager.getTimeZone()));
+        const QString zone = QString::fromStdString(ntrt::configManager->getDisplayTimeZone());
         QString text;
         if (!snapshot->error.isEmpty())
         {

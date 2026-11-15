@@ -1,6 +1,7 @@
 #ifndef NTRT_CHARTVIEW_H
 #define NTRT_CHARTVIEW_H
 
+#include <QTimeZone>
 #include "ChartRenderer.h"
 #include "main/market/abstract/Instrument.h"
 #include "main/data/TradingDataConfig.h"
@@ -20,7 +21,7 @@ namespace trtui
         std::vector<std::unique_ptr<ChartLayer>> layers;
         std::vector<trttrade::CandleData> candles;
         std::vector<ChartVertex> vertices;
-        trtdata::TradingDataTimeZone timeZone = trtdata::TradingDataTimeZone::UTC;
+        QTimeZone timeZone = QTimeZone::utc();
         QMetaObject::Connection contextCleanup;
         QPointF cursorPosition;
         QPointF dragPosition;
@@ -98,7 +99,7 @@ namespace trtui
 
         void setCandles(std::span<const trttrade::CandleData> data);
 
-        void setTimeZone(trtdata::TradingDataTimeZone value);
+        void setTimeZone(const QTimeZone& value);
 
         void setHistoryState(bool loading, bool exhausted);
 

@@ -32,6 +32,8 @@ namespace trtutils
 
     QString formatPrice(double value);
 
+    QString formatPriceChange(double value);
+
     // pricePerPixel must be finite and positive.
     QString formatAxisPrice(double value, double pricePerPixel);
 

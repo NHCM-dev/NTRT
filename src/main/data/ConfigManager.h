@@ -109,6 +109,10 @@ namespace trtdata
 
         bool setTradingDataTimeZone(TradingDataTimeZone timeZone);
 
+        const std::string& getDisplayTimeZone() const;
+
+        bool setDisplayTimeZone(const std::string& zone);
+
         int instrumentsCount();
 
         signals :

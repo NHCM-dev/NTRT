@@ -31,6 +31,8 @@ namespace trtui
 
         void updateColumnVisibility();
 
+        void clearInstrumentSelection();
+
         void updateHoveredRow();
 
         void setHoveredRow(int row);

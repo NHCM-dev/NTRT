@@ -22,6 +22,7 @@ namespace trtdata
         bool type = false;
         bool volume24h = false;
         bool icon = true;
+        bool changeAmount = true;
     };
 
     struct AppearanceConfig

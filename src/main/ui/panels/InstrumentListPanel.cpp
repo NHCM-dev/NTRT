@@ -86,7 +86,7 @@ namespace trtui
             if (start < price.size())
             {
                 item->setData(Qt::UserRole, start);
-                item->setData(Qt::UserRole + 1, color);
+                item->setData(Qt::UserRole + 1, color.rgba());
             }
         }
 
@@ -114,7 +114,7 @@ namespace trtui
                 QTextLayout::FormatRange suffix;
                 suffix.start = start.toInt();
                 suffix.length = static_cast<int>(price.size()) - suffix.start;
-                suffix.format.setForeground(index.data(Qt::UserRole + 1).value<QColor>());
+                suffix.format.setForeground(QColor::fromRgba(index.data(Qt::UserRole + 1).toUInt()));
                 text.setFormats({suffix});
             }
             text.beginLayout();
@@ -190,14 +190,15 @@ namespace trtui
                                                 "Instrument",
                                                 "Last Price",
                                                 "Volume",
-                                                "Change"
+                                                "Change",
+                                                "Change %"
                                             });
         table->setObjectName("instrumentTable");
         table->setProperty("hoveredRow", -1);
         table->setItemDelegate(new InstrumentDelegate(table));
         table->setItemDelegateForColumn(4, new PriceDelegate(table));
         table->setMouseTracking(true);
-        table->viewport()->installEventFilter(this);
+        qApp->installEventFilter(this);
         connect(table->verticalScrollBar(), &QScrollBar::valueChanged, this, [this]
         {
             updateHoveredRow();
@@ -208,6 +209,7 @@ namespace trtui
         header->setSectionResizeMode(4, QHeaderView::Interactive);
         header->setSectionResizeMode(5, QHeaderView::Interactive);
         header->setSectionResizeMode(6, QHeaderView::Interactive);
+        header->setSectionResizeMode(7, QHeaderView::Interactive);
         header->setSectionResizeMode(1, QHeaderView::Fixed);
 
         header->setMinimumSectionSize(32);
@@ -219,7 +221,8 @@ namespace trtui
         table->setColumnWidth(1, 100);
         table->setColumnWidth(4, 70);
         table->setColumnWidth(5, 130);
-        table->setColumnWidth(6, 65);
+        table->setColumnWidth(6, 60);
+        table->setColumnWidth(7, 70);
         table->setColumnWidth(2, 48);
         table->verticalHeader()->hide();
         updateColumnVisibility();
@@ -270,6 +273,13 @@ namespace trtui
 
     bool InstrumentListPanel::eventFilter(QObject* watched, QEvent* event)
     {
+        if (event->type() == QEvent::MouseButtonPress && table->isVisible() && table->currentRow() >= 0)
+        {
+            const QMouseEvent* mouse = static_cast<QMouseEvent*>(event);
+            const bool clickedRow = watched == table->viewport() && table->indexAt(mouse->position().toPoint()).isValid();
+            if (!clickedRow)
+                clearInstrumentSelection();
+        }
         if (watched == table->viewport())
         {
             if (event->type() == QEvent::MouseMove)
@@ -280,6 +290,12 @@ namespace trtui
                 updateHoveredRow();
         }
         return QObject::eventFilter(watched, event);
+    }
+
+    void InstrumentListPanel::clearInstrumentSelection()
+    {
+        table->clearSelection();
+        table->setCurrentItem(nullptr);
     }
 
     void InstrumentListPanel::updateHoveredRow()
@@ -311,6 +327,7 @@ namespace trtui
         table->setColumnHidden(1, !columns.type);
         table->setColumnHidden(2, !columns.icon);
         table->setColumnHidden(5, !columns.volume24h);
+        table->setColumnHidden(6, !columns.changeAmount);
 
         const QHeaderView* header = table->horizontalHeader();
         int minimumWidth = 120 + table->verticalScrollBar()->sizeHint().width();
@@ -335,9 +352,10 @@ namespace trtui
         const trtcore::MarketDataSnapshot& marketData = data->marketData;
         const trtcore::CandlesSnapshot& candles = data->candles;
         const QString timeZone = QString::fromUtf8(trtdata::tradingDataTimeZoneName(candles.getTimeZone()));
+        table->horizontalHeaderItem(6)->setToolTip("Latest price minus daily open; day starts at 00:00 " + timeZone + ".");
         table->horizontalHeaderItem(5)->
                setToolTip("Today's daily-candle volume; day starts at 00:00 " + timeZone + ".");
-        table->horizontalHeaderItem(6)->setToolTip(
+        table->horizontalHeaderItem(7)->setToolTip(
             "(Latest price - daily open) / daily open; day starts at 00:00 " + timeZone + ".");
         const QString query = search->text().trimmed();
         const int filter = typeFilter->currentData().toInt();
@@ -400,10 +418,23 @@ namespace trtui
             const trtcore::CandleSnapshot* candleSnapshot = candles.getSnapshot(identifier);
             QTableWidgetItem* volume = trtutils::updateTableItem(table, row, 5, "-");
             volume->setToolTip(QString());
-            QTableWidgetItem* change = trtutils::updateTableItem(table, row, 6, "-");
+            QTableWidgetItem* change = trtutils::updateTableItem(table, row, 7, "-");
             change->setData(Qt::ForegroundRole, QVariant());
             change->setToolTip(QString());
             change->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+            QTableWidgetItem* amount = trtutils::updateTableItem(table, row, 6, "-");
+            amount->setData(Qt::ForegroundRole, QVariant());
+            amount->setToolTip("Latest ticker price minus the trading day's open (" + timeZone + ").");
+            amount->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+            const std::optional<double> dailyAmount = snapshot && snapshot->ticker
+                ? trtutils::dailyChangeAmount(daily, snapshot->ticker->last) : std::nullopt;
+            if (dailyAmount)
+            {
+                amount->setText(trtutils::formatPriceChange(*dailyAmount));
+                if (*dailyAmount != 0)
+                    amount->setForeground(*dailyAmount > 0 ? trtutils::risingColor(table->palette())
+                                                          : trtutils::fallingColor(table->palette()));
+            }
             if (daily)
             {
                 const double baseVolume = trtutils::baseVolume(*daily, instrument->instType);
@@ -433,6 +464,7 @@ namespace trtui
                 const QString error = "Daily candles: " + candleSnapshot->error;
                 volume->setToolTip(volume->toolTip() + "\n" + error);
                 change->setToolTip(error);
+                amount->setToolTip(amount->toolTip() + "\n" + error);
             }
             row++;
         }
@@ -441,8 +473,7 @@ namespace trtui
             table->setCurrentCell(selectedRow, 3);
         else if (selectedRow < 0)
         {
-            table->clearSelection();
-            table->setCurrentItem(nullptr);
+            clearInstrumentSelection();
         }
         updateHoveredRow();
     }

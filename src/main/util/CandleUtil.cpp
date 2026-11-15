@@ -62,6 +62,13 @@ namespace trtutils
         return &candles.back();
     }
 
+    std::optional<double> dailyChangeAmount(const trttrade::CandleData* candle, double latestPrice)
+    {
+        if (!candle || !std::isfinite(candle->open) || candle->open <= 0 || !std::isfinite(latestPrice) || latestPrice <= 0)
+            return std::nullopt;
+        return latestPrice - candle->open;
+    }
+
     std::optional<double> dailyChangePercent(const trttrade::CandleData* candle, double latestPrice)
     {
         if (!candle || candle->open <= 0 || !std::isfinite(latestPrice) || latestPrice <= 0)
