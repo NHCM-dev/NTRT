@@ -13,6 +13,35 @@
 
 namespace trtutils
 {
+    QRect boundedWidgetGeometry(const QRect& geometry, const QRect& bounds)
+    {
+        if (bounds.isEmpty())
+            return geometry;
+        const QSize size = geometry.size().boundedTo(bounds.size());
+        const int x = std::clamp(geometry.x(), bounds.left(), bounds.right() - size.width() + 1);
+        const int y = std::clamp(geometry.y(), bounds.top(), bounds.bottom() - size.height() + 1);
+        return QRect(QPoint(x, y), size);
+    }
+
+    QRect resizedWidgetGeometry(const QRect& geometry, const QPoint& delta, Qt::Edges edges,
+                                const QRect& bounds, const QSize& minimum)
+    {
+        QRect resized = geometry;
+        if (edges.testFlag(Qt::LeftEdge))
+            resized.setLeft(std::clamp(geometry.left() + delta.x(), bounds.left(),
+                std::max(bounds.left(), geometry.right() - minimum.width() + 1)));
+        if (edges.testFlag(Qt::RightEdge))
+            resized.setRight(std::clamp(geometry.right() + delta.x(),
+                std::min(bounds.right(), geometry.left() + minimum.width() - 1), bounds.right()));
+        if (edges.testFlag(Qt::TopEdge))
+            resized.setTop(std::clamp(geometry.top() + delta.y(), bounds.top(),
+                std::max(bounds.top(), geometry.bottom() - minimum.height() + 1)));
+        if (edges.testFlag(Qt::BottomEdge))
+            resized.setBottom(std::clamp(geometry.bottom() + delta.y(),
+                std::min(bounds.bottom(), geometry.top() + minimum.height() - 1), bounds.bottom()));
+        return resized;
+    }
+
     void updateWidgetTreeRegion(QWidget* widget, const QRegion& region)
     {
         if (!widget->isVisible() || !widget->updatesEnabled())

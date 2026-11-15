@@ -14,6 +14,7 @@ class QMdiArea;
 
 namespace trtui
 {
+    class WorkspaceWindow;
     class InstrumentListPanel;
     class ChartPanel;
     class BookDepthPanel;
@@ -22,15 +23,13 @@ namespace trtui
     {
         struct WindowEntry
         {
-            QMdiSubWindow* window = nullptr;
-            QAction* action = nullptr;
+            WorkspaceWindow* window = nullptr;
             ChartPanel* chart = nullptr;
             BookDepthPanel* bookDepth = nullptr;
-            QRect normalGeometry;
         };
 
         QMdiArea* desktop = nullptr;
-        QMdiSubWindow* instrumentWindow = nullptr;
+        WorkspaceWindow* instrumentWindow = nullptr;
         QMdiSubWindow* lastChartWindow = nullptr;
         QPointer<QMdiSubWindow> selectedWindow;
         bool restoring = false;
@@ -59,17 +58,13 @@ namespace trtui
 
         void initInstrumentPanel();
 
-        QMdiSubWindow* addChartWindow();
+        WorkspaceWindow* addChartWindow();
 
-        QMdiSubWindow* addBookDepthWindow();
+        WorkspaceWindow* addBookDepthWindow();
 
         void showInstrument(const trtdata::InstIdentifier& identifier);
 
-        void showWindow(QMdiSubWindow* window);
-
-        void addWindowAction(WindowEntry& entry);
-
-        QMdiSubWindow* addWindow(QWidget* content, const QString& title, const QString& id);
+        WorkspaceWindow* addWindow(QWidget* content, const QString& title, const QString& id);
 
         bool eventFilter(QObject* watched, QEvent* event) override;
 

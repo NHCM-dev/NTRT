@@ -53,7 +53,7 @@
 
 - Use a top menu bar and movable Workspace tabs for navigation. Each `Workspace` remains a QFrame with a `QMdiArea` desktop background and independent `QMdiSubWindow` child windows.
 - Tools live inside the desktop: allow moving, overlapping, resizing, minimizing and maximizing, but never detach them into native top-level OS windows. Do not use floating docking containers for workspace tools.
-- `Workspace` owns child-window construction and layout coordination; `MainWindow` owns navigation, menus and application actions. Keep panel content in `ui/panels` separate and reusable.
+- `Workspace` owns child-window construction, registration, instrument dispatch and layout coordination; `WorkspaceWindow` owns common frame interaction, bounded geometry, normal-state geometry and its visibility/title menu action. Resize the selected edges against the viewport before applying geometry, preserving opposite edges and panel minimum sizes. Preserve requested rectangles across transient viewport changes during layout restoration. `MainWindow` owns navigation, menus and application actions. Keep panel content in `ui/panels` separate and reusable.
 - Give each child window a stable unique objectName. Titlebar close destroys the child window and its content, removes its Window-menu entry, and releases its market-data subscriptions. Shared backend monitoring continues independently. Window menu checkmarks follow visibility for retained windows.
 - Provide Reset Layout, Stack Windows and Sort Window actions in the Window menu.
 - Settings remains a standalone reusable `SettingsDialog` containing `SettingPage`; keep settings sections and row helpers in `SettingPage`.

@@ -9,6 +9,11 @@
 
 namespace trtutils
 {
+    QRect boundedWidgetGeometry(const QRect& geometry, const QRect& bounds);
+
+    QRect resizedWidgetGeometry(const QRect& geometry, const QPoint& delta, Qt::Edges edges,
+                                const QRect& bounds, const QSize& minimum);
+
     void updateWidgetTreeRegion(QWidget* widget, const QRegion& region);
 
     QTableWidgetItem* updateTableItem(QTableWidget* table, int row, int column, const QString& text);

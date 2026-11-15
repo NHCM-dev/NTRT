@@ -9,7 +9,6 @@
 #include <QMdiSubWindow>
 #include <QMenu>
 #include <QMouseEvent>
-#include <QSignalBlocker>
 #include <QTimer>
 #include <QVBoxLayout>
 #include <algorithm>
@@ -65,7 +64,7 @@ namespace trtui
                     saved.type = trtdata::WorkspaceWindowType::Chart;
                 else if (entry.bookDepth)
                     saved.type = trtdata::WorkspaceWindowType::BookDepth;
-                saved.geometry = window->isMaximized() || window->isMinimized() ? entry.normalGeometry : window->geometry();
+                saved.geometry = entry.window->getNormalGeometry();
                 saved.visible = !window->isHidden();
                 if (window->isMaximized())
                     saved.mode = trtdata::WorkspaceWindowMode::Maximized;
@@ -132,6 +131,7 @@ namespace trtui
             QMdiSubWindow* window = windows[index].window;
             window->showNormal();
             window->setGeometry(saved.geometry);
+            const QRect normalGeometry = window->geometry();
             switch (saved.mode)
             {
                 case trtdata::WorkspaceWindowMode::Normal:
@@ -145,7 +145,7 @@ namespace trtui
             }
             window->setVisible(saved.visible);
             window->raise();
-            windows[index].normalGeometry = saved.geometry;
+            windows[index].window->setNormalGeometry(normalGeometry);
             if (saved.id == state.activeWindow && saved.visible)
                 active = window;
         }
@@ -185,8 +185,8 @@ namespace trtui
         desktop->viewport()->installEventFilter(this);
         desktop->setViewMode(QMdiArea::SubWindowView);
         desktop->setOption(QMdiArea::DontMaximizeSubWindowOnActivation);
-        desktop->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-        desktop->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+        desktop->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        desktop->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         desktop->setBackground(palette().brush(QPalette::Shadow));
         layout->addWidget(desktop);
         connect(desktop, &QMdiArea::subWindowActivated, this, [this](QMdiSubWindow* active)
@@ -203,25 +203,19 @@ namespace trtui
         });
     }
 
-    QMdiSubWindow* Workspace::addWindow(QWidget* content, const QString& title, const QString& id)
+    WorkspaceWindow* Workspace::addWindow(QWidget* content, const QString& title, const QString& id)
     {
-        WorkspaceWindow* window = new WorkspaceWindow;
-        window->setWidget(content);
+        WorkspaceWindow* window = new WorkspaceWindow(content, title, id);
         desktop->addSubWindow(window);
-        window->setObjectName(id);
-        window->setWindowTitle(title);
-        window->setAttribute(Qt::WA_DeleteOnClose, true);
         window->installEventFilter(this);
-        windows.push_back({window, nullptr, nullptr, nullptr, window->geometry()});
+        windows.push_back({window, nullptr, nullptr});
+        if (windowMenu)
+            window->addWindowAction(windowMenu, windowActionsEnd);
         connect(window, &QObject::destroyed, this, [this, window]
         {
             std::erase_if(windows, [window](const WindowEntry& entry)
             {
-                if (entry.window != window)
-                    return false;
-                if (entry.action)
-                    delete entry.action;
-                return true;
+                return entry.window == window;
             });
             if (lastChartWindow == window)
                 lastChartWindow = nullptr;
@@ -239,7 +233,6 @@ namespace trtui
     {
         instruments = std::make_unique<InstrumentListPanel>(desktop);
         instrumentWindow = addWindow(instruments->widget, "Instrument List", "instrumentList");
-        addWindowAction(windows.back());
         connect(instruments.get(), &InstrumentListPanel::instrumentActivated, this,
                 [this](const trtdata::InstIdentifier& identifier)
                 {
@@ -247,23 +240,17 @@ namespace trtui
                 });
     }
 
-    QMdiSubWindow* Workspace::addChartWindow()
+    WorkspaceWindow* Workspace::addChartWindow()
     {
         const int id = nextChartId++;
         ChartPanel* panel = new ChartPanel(desktop);
-        QMdiSubWindow* window = addWindow(panel, QString("Chart %1 · Choose instrument").arg(id),
+        WorkspaceWindow* window = addWindow(panel, QString("Chart %1 · Choose instrument").arg(id),
                                           QString("chart%1").arg(id));
         windows.back().chart = panel;
         rememberInstrumentWindow(window);
-        addWindowAction(windows.back());
-        connect(panel, &ChartPanel::titleChanged, this, [this, window, id](const QString& title)
+        connect(panel, &ChartPanel::titleChanged, this, [window, id](const QString& title)
         {
             window->setWindowTitle(QString("Chart %1 · %2").arg(id).arg(title));
-            for (const WindowEntry& entry : windows)
-            {
-                if (entry.window == window && entry.action)
-                    entry.action->setText(window->windowTitle());
-            }
         });
         lastChartWindow = window;
         const int offset = (id - 1) % 7 * 28;
@@ -273,23 +260,17 @@ namespace trtui
         return window;
     }
 
-    QMdiSubWindow* Workspace::addBookDepthWindow()
+    WorkspaceWindow* Workspace::addBookDepthWindow()
     {
         const int id = nextBookDepthId++;
         BookDepthPanel* panel = new BookDepthPanel(desktop);
-        QMdiSubWindow* window = addWindow(panel, QString("BookDepth %1 · Choose instrument").arg(id),
+        WorkspaceWindow* window = addWindow(panel, QString("BookDepth %1 · Choose instrument").arg(id),
                                          QString("bookDepth%1").arg(id));
         windows.back().bookDepth = panel;
         rememberInstrumentWindow(window);
-        addWindowAction(windows.back());
-        connect(panel, &BookDepthPanel::titleChanged, this, [this, window, id](const QString& title)
+        connect(panel, &BookDepthPanel::titleChanged, this, [window, id](const QString& title)
         {
             window->setWindowTitle(QString("BookDepth %1 · %2").arg(id).arg(title));
-            for (const WindowEntry& entry : windows)
-            {
-                if (entry.window == window && entry.action)
-                    entry.action->setText(window->windowTitle());
-            }
         });
         window->setGeometry(48 + (id - 1) % 7 * 24, 48 + (id - 1) % 7 * 24, 440, 660);
         return window;
@@ -297,22 +278,12 @@ namespace trtui
 
     void Workspace::createBookDepthWindow()
     {
-        showWindow(addBookDepthWindow());
-    }
-
-    void Workspace::showWindow(QMdiSubWindow* window)
-    {
-        if (window->isMinimized())
-            window->showNormal();
-        else
-            window->show();
-        desktop->setActiveSubWindow(window);
-        window->raise();
+        addBookDepthWindow()->showWindow();
     }
 
     void Workspace::createChartWindow()
     {
-        showWindow(addChartWindow());
+        addChartWindow()->showWindow();
     }
 
     void Workspace::rememberInstrumentWindow(QMdiSubWindow* window)
@@ -358,24 +329,6 @@ namespace trtui
             book->bookDepth->setInstrument(identifier);
     }
 
-    void Workspace::addWindowAction(WindowEntry& entry)
-    {
-        if (!windowMenu || entry.action)
-            return;
-        QMdiSubWindow* window = entry.window;
-        entry.action = new QAction(window->windowTitle(), windowMenu);
-        windowMenu->insertAction(windowActionsEnd, entry.action);
-        entry.action->setCheckable(true);
-        entry.action->setChecked(!window->isHidden());
-        connect(entry.action, &QAction::toggled, this, [this, window](bool visible)
-        {
-            if (visible)
-                showWindow(window);
-            else
-                window->hide();
-        });
-    }
-
     QMenu* Workspace::getWindowMenu()
     {
         if (!windowMenu)
@@ -387,7 +340,7 @@ namespace trtui
     {
         if (!instrumentWindow)
             initInstrumentPanel();
-        showWindow(instrumentWindow);
+        instrumentWindow->showWindow();
     }
 
     void Workspace::addWindowActions(QMenu* menu)
@@ -395,7 +348,7 @@ namespace trtui
         windowMenu = menu;
         windowActionsEnd = menu->addSeparator();
         for (WindowEntry& entry : windows)
-            addWindowAction(entry);
+            entry.window->addWindowAction(menu, windowActionsEnd);
         connect(menu->addAction("Stack Windows"), &QAction::triggered, desktop, &QMdiArea::cascadeSubWindows);
         connect(menu->addAction("Sort Window"), &QAction::triggered, this, [this]
         {
@@ -414,9 +367,7 @@ namespace trtui
         {
             if (!entry.window->isHidden() && !entry.window->isMinimized())
             {
-                const QRect geometry = entry.window->isMaximized()
-                                           ? entry.normalGeometry
-                                           : entry.window->geometry();
+                const QRect geometry = entry.window->getNormalGeometry();
                 placements.push_back({entry.window, geometry});
             }
         }
@@ -473,31 +424,8 @@ namespace trtui
                 return true;
             }
         }
-        if (!restoring && (event->type() == QEvent::Move || event->type() == QEvent::Resize))
-        {
-            for (WindowEntry& entry : windows)
-            {
-                if (entry.window == watched && !entry.window->isMinimized() && !entry.window->isMaximized())
-                {
-                    entry.normalGeometry = entry.window->geometry();
-                    break;
-                }
-            }
-        }
-        if (event->type() == QEvent::Show || event->type() == QEvent::Hide)
-        {
-            for (const WindowEntry& entry : windows)
-            {
-                if (entry.window == watched && entry.action)
-                {
-                    const QSignalBlocker blocker(entry.action);
-                    entry.action->setChecked(!entry.window->isHidden());
-                    if (entry.window->isHidden() && selectedWindow == entry.window)
-                        selectedWindow = nullptr;
-                    break;
-                }
-            }
-        }
+        if (event->type() == QEvent::Hide && selectedWindow == watched && selectedWindow->isHidden())
+            selectedWindow = nullptr;
         return QFrame::eventFilter(watched, event);
     }
 
@@ -552,8 +480,8 @@ namespace trtui
     {
         if (!isVisible() || window()->isMinimized())
             return;
-        if (instrumentWindow&& instrumentWindow->isVisible() && !instrumentWindow->isMinimized() && isVisible())
-        instruments->update();
+        if (instrumentWindow && instrumentWindow->isVisible() && !instrumentWindow->isMinimized())
+            instruments->update();
         for (const WindowEntry& entry : windows)
         {
             if (entry.chart && entry.window->isVisible() && !entry.window->isMinimized())

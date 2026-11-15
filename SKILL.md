@@ -20,7 +20,7 @@ Choose the smallest complete change that addresses the request. A question about
 | Application lifecycle and shared services | `NTRT.h`, `NTRT.cpp` |
 | Navigation, menus, application actions | `ui/MainWindow` |
 | Desktop layout, child-window visibility and arrangement | `ui/Workspace` |
-| Child-window titlebar, frame, resizing and hover behavior | `ui/WorkspaceWindow` |
+| Child-window creation setup, frame interaction, geometry constraints and per-window menu action | `ui/WorkspaceWindow` |
 | Instrument list, chart and book depth content | `ui/panels/InstrumentListPanel`, `ui/panels/ChartPanel`, `ui/panels/BookDepthPanel` |
 | Settings dialog and setting rows | `ui/dialog/SettingsDialog`, `ui/pages/SettingPage` |
 | Typed settings and persistence | `data/ConfigManager`, `data/AppearanceManager` |
@@ -46,7 +46,7 @@ When scanning or changing code, move suitable independent logic into focused `XX
 
 The workspace uses `QMdiArea` with child windows, not detachable docking windows. Do not reintroduce Qt Advanced Docking System merely because older code or previous requests mention it.
 
-Keep panel content separate from window chrome. Tool windows may move, overlap, resize, minimize and maximize within the desktop. Titlebar close destroys a tool and removes its Window-menu entry; recreate it through the element actions. Window-menu actions toggle visibility of retained tools with synchronized checkmarks. Closing a tool releases its market-data subscriptions without stopping shared backend monitoring. Settings remains a separate reusable dialog.
+Keep panel content separate from window chrome. Workspace constructs and registers every tool through its common window creation path; WorkspaceWindow owns frame interaction, bounded geometry, normal-state geometry and its visibility/title menu action. Constrain the selected resize edges before applying geometry, preserving opposite edges and panel minimum sizes. Preserve requested rectangles across transient viewport changes during layout restoration. Tool windows may move, overlap, resize, minimize and maximize within the desktop. Titlebar close destroys a tool and removes its Window-menu entry; recreate it through the element actions. Window-menu actions toggle visibility of retained tools with synchronized checkmarks. Closing a tool releases its market-data subscriptions without stopping shared backend monitoring. Settings remains a separate reusable dialog.
 
 For window interaction changes, check the affected transitions: active/inactive, background-click deselection, hide/reopen, minimize/restore, move/resize, or arrangement. Preserve the usable resize hit area independently of the thin visible outline. Keep frame rendering consistent with titlebar geometry and repaint clipping; do not fix a paint problem by continually repainting the entire application.
 

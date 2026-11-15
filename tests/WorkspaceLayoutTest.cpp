@@ -186,6 +186,98 @@ void verifyThemes(trtui::MainWindow& mainWindow, trtui::Workspace& workspace)
     settings.close();
 }
 
+void sendWindowMouse(QMdiSubWindow* window, QEvent::Type type, const QPoint& global)
+{
+    const QPointF local = window->mapFromGlobal(global);
+    const Qt::MouseButton button = type == QEvent::MouseMove ? Qt::NoButton : Qt::LeftButton;
+    const Qt::MouseButtons buttons = type == QEvent::MouseButtonRelease ? Qt::NoButton : Qt::LeftButton;
+    QMouseEvent event(type, local, QPointF(global), button, buttons, Qt::NoModifier);
+    QApplication::sendEvent(window, &event);
+}
+
+void verifyWindowBounds(trtui::Workspace& workspace)
+{
+    settleLayout();
+    QMdiArea* desktop = workspace.findChild<QMdiArea*>("workspaceDesktop");
+    const QRect bounds = desktop->viewport()->rect();
+    const QString ids[] = {"instrumentList", "chart1", "bookDepth1"};
+    const Qt::Edges edges[] = {Qt::LeftEdge, Qt::RightEdge, Qt::TopEdge, Qt::BottomEdge,
+        Qt::LeftEdge | Qt::TopEdge, Qt::RightEdge | Qt::TopEdge,
+        Qt::LeftEdge | Qt::BottomEdge, Qt::RightEdge | Qt::BottomEdge};
+    for (const QString& id : ids)
+    {
+        QMdiSubWindow* window = workspace.findChild<QMdiSubWindow*>(id);
+        require(window, "boundary test window");
+        for (Qt::Edges edge : edges)
+        {
+            window->showNormal();
+            const QSize size = window->minimumSizeHint().expandedTo(QSize(520, 400));
+            window->setGeometry(QRect(QPoint(70, 60), size));
+            settleLayout();
+            const QRect initial = window->geometry();
+            QPoint press = window->rect().center();
+            QPoint delta;
+            if (edge.testFlag(Qt::LeftEdge))
+            {
+                press.setX(2);
+                delta.setX(-bounds.width() * 2);
+            }
+            if (edge.testFlag(Qt::RightEdge))
+            {
+                press.setX(window->width() - 3);
+                delta.setX(bounds.width() * 2);
+            }
+            if (edge.testFlag(Qt::TopEdge))
+            {
+                press.setY(2);
+                delta.setY(-bounds.height() * 2);
+            }
+            if (edge.testFlag(Qt::BottomEdge))
+            {
+                press.setY(window->height() - 3);
+                delta.setY(bounds.height() * 2);
+            }
+            const QPoint origin = window->mapToGlobal(press);
+            sendWindowMouse(window, QEvent::MouseButtonPress, origin);
+            sendWindowMouse(window, QEvent::MouseMove, origin + delta);
+            settleLayout();
+            const QRect boundary = window->geometry();
+            require(bounds.contains(boundary), "all resize edges remain inside workspace");
+            require(edge.testFlag(Qt::LeftEdge) ? boundary.right() == initial.right() : boundary.left() == initial.left(),
+                "resize preserves opposite horizontal edge");
+            require(edge.testFlag(Qt::TopEdge) ? boundary.bottom() == initial.bottom() : boundary.top() == initial.top(),
+                "resize preserves opposite vertical edge");
+            const QRect content = window->widget()->geometry();
+            require(window->rect().contains(content), "content remains inside resized frame");
+            sendWindowMouse(window, QEvent::MouseMove, origin + delta * 2);
+            settleLayout();
+            require(window->geometry() == boundary && window->widget()->geometry() == content,
+                "continued drag outside boundary cannot grow frame or content");
+            sendWindowMouse(window, QEvent::MouseMove, origin);
+            sendWindowMouse(window, QEvent::MouseButtonRelease, origin);
+            settleLayout();
+            require(window->geometry() == initial, "resize reverses immediately from boundary");
+            sendWindowMouse(window, QEvent::MouseButtonPress, origin);
+            sendWindowMouse(window, QEvent::MouseMove, origin - delta);
+            sendWindowMouse(window, QEvent::MouseButtonRelease, origin - delta);
+            settleLayout();
+            require(window->size().width() >= window->minimumSizeHint().width() &&
+                window->size().height() >= window->minimumSizeHint().height(), "inward resize preserves panel minimum");
+            require(bounds.contains(window->geometry()), "inward resize remains bounded");
+        }
+        window->setGeometry(-80, -90, bounds.width() + 300, bounds.height() + 300);
+        settleLayout();
+        require(bounds.contains(window->geometry()), "programmatic oversized geometry is bounded");
+    }
+    workspace.resize(1000, 750);
+    settleLayout();
+    for (const QString& id : ids)
+        require(desktop->viewport()->rect().contains(workspace.findChild<QMdiSubWindow*>(id)->geometry()),
+            "workspace shrink constrains all normal windows");
+    workspace.findChild<QMdiSubWindow*>("bookDepth1")->close();
+    settleLayout();
+}
+
 int main(int argc, char** argv)
 {
     ntrt::app = std::make_shared<QApplication>(argc, argv);
@@ -334,7 +426,7 @@ int main(int argc, char** argv)
             require(!bookPanel->findChild<QTableWidget*>("bookAsks")->isHidden(), "sell-only retains asks");
             require(bookPanel->findChild<QTableWidget*>("bookBids")->isHidden(), "sell-only hides bids");
             bookPanel->findChild<QComboBox*>("bookLayout")->setCurrentIndex(0);
-            bookWindow->setGeometry(140, 60, 440, 660);
+            bookWindow->setGeometry(140, 60, 440, 500);
             bookWindow->hide();
             settleLayout();
             const trtdata::WorkspaceWindowState bookState = findWindow(workspace->getState(), "bookDepth1");
@@ -382,7 +474,7 @@ int main(int argc, char** argv)
             settleLayout();
             const trtdata::WorkspaceWindowState book = findWindow(workspace->getState(), "bookDepth1");
             require(book.bookDepth.rows == 12 && book.bookDepth.depth == 100 && book.bookDepth.priceStep == 0.5, "restart restores book settings");
-            require(!book.visible && book.geometry == QRect(140, 60, 440, 660), "restart restores hidden book geometry");
+            require(!book.visible && book.geometry == QRect(140, 60, 440, 500), "restart restores hidden book geometry");
             if (qEnvironmentVariableIsSet("NTRT_TEST_LIVE_BOOK"))
             {
                 trtui::BookDepthPanel live;
@@ -439,6 +531,7 @@ int main(int argc, char** argv)
             state = dispatch.getState();
             require(findWindow(state, "chart1").chart.instrument && findWindow(state, "bookDepth1").bookDepth.instrument,
                     "dispatch skips minimized targets and fills eligible empty windows");
+            verifyWindowBounds(dispatch);
             dispatch.close();
         }
         // Restart a maximized main window with children close to all desktop edges.
