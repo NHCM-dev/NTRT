@@ -4,17 +4,12 @@
 #include "main/ui/AbstractPage.h"
 #include <QStringList>
 #include <functional>
-
-class QHBoxLayout;
-class QLineEdit;
-class QListWidget;
-class QStackedWidget;
-class QVBoxLayout;
-
-namespace trtdata
-{
-    enum class EnumTheme;
-}
+#include <QHBoxLayout>
+#include <QLineEdit>
+#include <QListWidget>
+#include <QStackedWidget>
+#include <QVBoxLayout>
+#include "main/data/AppearanceDef.h"
 
 namespace trtui
 {

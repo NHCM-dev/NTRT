@@ -5,21 +5,19 @@
 #include "main/trade/TradeDataDef.h"
 #include <QFrame>
 #include <memory>
-
-class QComboBox;
-class QDoubleSpinBox;
-class QSpinBox;
-class QCheckBox;
-class QLabel;
-class QTableWidget;
-class QVBoxLayout;
-class QToolButton;
-namespace trtcore { class DataMonitor; }
+#include <QComboBox>
+#include <QDoubleSpinBox>
+#include <QSpinBox>
+#include <QCheckBox>
+#include <QLabel>
+#include <QTableWidget>
+#include <QVBoxLayout>
+#include <QToolButton>
+#include "main/monitor/DataMonitor.h"
+#include "main/ui/widgets/NumericWidgets.h"
 
 namespace trtui
 {
-    class PriceLabel;
-    class RatioBar;
     class BookDepthPanel final : public QFrame
     {
         Q_OBJECT

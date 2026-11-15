@@ -52,6 +52,7 @@ namespace trtcore
         const Identifier2SnapshotMap* getSnapshots(trttrade::InstType instType) const;
 
     private:
+        // Required friendship declaration: including the owning manager would create an include cycle.
         friend class MarketData;
         std::map<trttrade::InstType, Identifier2SnapshotMap> tickersData;
         std::map<trtdata::Exchange, MarketSnapshot> failures;
@@ -60,6 +61,7 @@ namespace trtcore
 
     class CandlesSnapshot final
     {
+        // Required friendship declaration: including the owning manager would create an include cycle.
         friend class CandlesManager;
         std::map<CandleSeriesKey, std::shared_ptr<const CandleSnapshot>> series;
         trtdata::TradingDataTimeZone timeZone = trtdata::TradingDataTimeZone::UTC;

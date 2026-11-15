@@ -2,11 +2,7 @@
 #define NTRT_PALETTEUTIL_H
 
 #include <QPalette>
-
-namespace trtdata
-{
-    enum class EnumTheme;
-}
+#include "main/data/AppearanceDef.h"
 
 namespace trtutils
 {

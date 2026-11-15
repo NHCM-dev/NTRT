@@ -4,11 +4,10 @@
 #include "main/trade/TradeDataDef.h"
 #include <QColor>
 #include <span>
+#include "main/ui/chart/ChartViewport.h"
 
 namespace trtui
 {
-    class ChartViewport;
-
     struct ChartVertex
     {
         float x;

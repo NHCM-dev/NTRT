@@ -6,11 +6,10 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "main/market/abstract/Instrument.h"
 
 namespace trtdata
 {
-    class Instrument;
-
     struct MarketConfig
     {
         std::string fileName;

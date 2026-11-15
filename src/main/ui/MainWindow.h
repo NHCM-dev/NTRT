@@ -3,17 +3,15 @@
 
 #include <QMainWindow>
 #include "main/data/WorkspaceDef.h"
-
-class QTabWidget;
-class QAction;
-class QMenu;
-class QTimer;
+#include <QTabWidget>
+#include <QAction>
+#include <QMenu>
+#include <QTimer>
+#include "main/ui/Workspace.h"
+#include "main/ui/dialog/SettingsDialog.h"
 
 namespace trtui
 {
-    class Workspace;
-    class SettingsDialog;
-
     class MainWindow final : public QMainWindow
     {
         QTabWidget* workspaces = nullptr;

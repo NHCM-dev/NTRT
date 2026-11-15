@@ -2,11 +2,10 @@
 #define NTRT_SETTINGSDIALOG_H
 #include <QDialog>
 #include <memory>
+#include "main/ui/pages/SettingPage.h"
 
 namespace trtui
 {
-    class SettingPage;
-
     class SettingsDialog final : public QDialog
     {
         std::unique_ptr<SettingPage> page;

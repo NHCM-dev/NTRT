@@ -8,8 +8,7 @@
 #include <vector>
 #include <QPainter>
 #include <QRegion>
-
-class QWidget;
+#include <QWidget>
 
 namespace trtutils
 {

@@ -9,10 +9,9 @@
 #include <QObject>
 
 #include "main/ui/AbstractPage.h"
-
-class QComboBox;
-class QLineEdit;
-class QVBoxLayout;
+#include <QComboBox>
+#include <QLineEdit>
+#include <QVBoxLayout>
 
 namespace trtui
 {
@@ -54,9 +53,6 @@ namespace trtui
         void restoreState(const trtdata::InstrumentListState& state);
 
         signals  :
-
-
-
 
         void instrumentActivated(const trtdata::InstIdentifier& identifier);
     };

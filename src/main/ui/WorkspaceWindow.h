@@ -1,9 +1,8 @@
 #ifndef NTRT_WORKSPACEWINDOW_H
 #define NTRT_WORKSPACEWINDOW_H
 #include <QMdiSubWindow>
-
-class QAction;
-class QMenu;
+#include <QAction>
+#include <QMenu>
 
 namespace trtui
 {

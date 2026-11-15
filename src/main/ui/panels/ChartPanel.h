@@ -5,22 +5,16 @@
 #include "main/trade/TradeDef.h"
 #include <memory>
 #include <vector>
-
-class QComboBox;
-class QLabel;
-class QStackedWidget;
-class QToolButton;
-class QVBoxLayout;
-
-namespace trtcore
-{
-    class DataMonitor;
-}
+#include <QComboBox>
+#include <QLabel>
+#include <QStackedWidget>
+#include <QToolButton>
+#include <QVBoxLayout>
+#include "main/monitor/DataMonitor.h"
+#include "main/ui/chart/ChartView.h"
 
 namespace trtui
 {
-    class ChartView;
-
     class ChartPanel final : public QFrame
     {
         Q_OBJECT
@@ -71,9 +65,6 @@ namespace trtui
         void updateData();
 
         signals  :
-
-
-
 
         void titleChanged(const QString& title);
     };

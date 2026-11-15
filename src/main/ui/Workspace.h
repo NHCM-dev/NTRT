@@ -7,18 +7,16 @@
 #include "main/data/WorkspaceDef.h"
 #include <memory>
 #include <vector>
-
-class QAction;
-class QMenu;
-class QMdiArea;
+#include <QAction>
+#include <QMenu>
+#include <QMdiArea>
+#include "main/ui/WorkspaceWindow.h"
+#include "main/ui/panels/InstrumentListPanel.h"
+#include "main/ui/panels/ChartPanel.h"
+#include "main/ui/panels/BookDepthPanel.h"
 
 namespace trtui
 {
-    class WorkspaceWindow;
-    class InstrumentListPanel;
-    class ChartPanel;
-    class BookDepthPanel;
-
     class Workspace final : public QFrame
     {
         struct WindowEntry

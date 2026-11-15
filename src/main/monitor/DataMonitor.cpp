@@ -3,76 +3,67 @@
 
 namespace trtcore
 {
-    class DataMonitor::Worker final
+    DataMonitor::Worker::Worker(std::atomic<std::shared_ptr<const DataSnapshot>>& destination) : destination(destination)
     {
-        std::atomic<std::shared_ptr<const DataSnapshot>>& destination;
-        QTimer publicationTimer;
-        MarketData marketData;
-        CandlesManager candlesManager;
-
-    public:
-        explicit Worker(std::atomic<std::shared_ptr<const DataSnapshot>>& destination) : destination(destination)
+        publicationTimer.setInterval(100);
+        QObject::connect(&publicationTimer, &QTimer::timeout, &publicationTimer, [this]
         {
-            publicationTimer.setInterval(100);
-            QObject::connect(&publicationTimer, &QTimer::timeout, &publicationTimer, [this]
-            {
-                publish();
-            });
-            publicationTimer.start();
-        }
-
-        ~Worker()
-        {
-            publicationTimer.stop();
-            marketData.stop();
-            candlesManager.stop();
-        }
-
-        void setInstruments(const std::vector<std::shared_ptr<trtdata::Instrument>>& instruments)
-        {
-            marketData.setInstruments(instruments);
-            candlesManager.setInstruments(instruments);
             publish();
-        }
+        });
+        publicationTimer.start();
+    }
 
-        void setBookInstruments(const BookStream::Instruments& instruments)
-        {
-            marketData.setBookInstruments(instruments);
-            publish();
-        }
+    DataMonitor::Worker::~Worker()
+    {
+        publicationTimer.stop();
+        marketData.stop();
+        candlesManager.stop();
+    }
 
-        void setTimeZone(trtdata::TradingDataTimeZone zone)
-        {
-            candlesManager.setTimeZone(zone);
-            publish();
-        }
+    void DataMonitor::Worker::setInstruments(const std::vector<std::shared_ptr<trtdata::Instrument>>& instruments)
+    {
+        marketData.setInstruments(instruments);
+        candlesManager.setInstruments(instruments);
+        publish();
+    }
 
-        void acquireSeries(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe)
-        {
-            candlesManager.subscribe(instrument, timeframe);
-            publish();
-        }
+    void DataMonitor::Worker::setBookInstruments(const BookStream::Instruments& instruments)
+    {
+        marketData.setBookInstruments(instruments);
+        publish();
+    }
 
-        void releaseSeries(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe)
-        {
-            candlesManager.unsubscribe(instrument, timeframe);
-            publish();
-        }
+    void DataMonitor::Worker::setTimeZone(trtdata::TradingDataTimeZone zone)
+    {
+        candlesManager.setTimeZone(zone);
+        publish();
+    }
 
-        void requestHistory(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe)
-        {
-            candlesManager.requestHistory(instrument, timeframe);
-            publish();
-        }
+    void DataMonitor::Worker::acquireSeries(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe)
+    {
+        candlesManager.subscribe(instrument, timeframe);
+        publish();
+    }
 
-        void publish()
-        {
-            destination.store(std::make_shared<const DataSnapshot>(DataSnapshot{
-                marketData.getSnapshot(),
-                candlesManager.getReadSnapshot()
-            }));
-        }
-    };
+    void DataMonitor::Worker::releaseSeries(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe)
+    {
+        candlesManager.unsubscribe(instrument, timeframe);
+        publish();
+    }
+
+    void DataMonitor::Worker::requestHistory(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe)
+    {
+        candlesManager.requestHistory(instrument, timeframe);
+        publish();
+    }
+
+    void DataMonitor::Worker::publish()
+    {
+        destination.store(std::make_shared<const DataSnapshot>(DataSnapshot{
+            marketData.getSnapshot(),
+            candlesManager.getReadSnapshot()
+        }));
+    }
 
     DataMonitor::DataMonitor(const trtdata::ConfigManager& configManager)
     : configManager(configManager), snapshot(std::make_shared<const DataSnapshot>())

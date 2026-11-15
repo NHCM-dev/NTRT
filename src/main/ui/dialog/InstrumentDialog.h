@@ -3,12 +3,11 @@
 
 #include "main/data/ConfigManager.h"
 #include <QDialog>
-
-class QComboBox;
-class QLabel;
-class QLineEdit;
-class QPushButton;
-class QTableWidget;
+#include <QComboBox>
+#include <QLabel>
+#include <QLineEdit>
+#include <QPushButton>
+#include <QTableWidget>
 
 namespace trtui
 {

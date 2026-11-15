@@ -7,8 +7,7 @@
 #include "main/data/TradingDataDef.h"
 #include <QOpenGLWidget>
 #include <QOpenGLFunctions>
-
-class QPainter;
+#include <QPainter>
 
 namespace trtui
 {

@@ -8,17 +8,39 @@
 #include <QThread>
 #include <QTimer>
 #include <atomic>
-
-namespace trtdata
-{
-    class ConfigManager;
-}
+#include "main/data/ConfigManager.h"
 
 namespace trtcore
 {
     class DataMonitor final : public QObject
     {
-        class Worker;
+        class Worker final
+        {
+            std::atomic<std::shared_ptr<const DataSnapshot>>& destination;
+            QTimer publicationTimer;
+            MarketData marketData;
+            CandlesManager candlesManager;
+
+        public:
+            explicit Worker(std::atomic<std::shared_ptr<const DataSnapshot>>& destination);
+
+            ~Worker();
+
+            void setInstruments(const std::vector<std::shared_ptr<trtdata::Instrument>>& instruments);
+
+            void setBookInstruments(const BookStream::Instruments& instruments);
+
+            void setTimeZone(trtdata::TradingDataTimeZone zone);
+
+            void acquireSeries(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe);
+
+            void releaseSeries(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe);
+
+            void requestHistory(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe);
+
+            void publish();
+        };
+
         const trtdata::ConfigManager& configManager;
         InstrumentIconManager instrumentIconManager;
         QTimer subscriptionTimer;

@@ -8,6 +8,7 @@
 # C++ Code Style
 
 - Do not use `auto`. Write explicit types for variables, return values, and lambda parameters.
+- Do not use forward declarations for classes, structs, or enums; include their defining headers directly, including Qt types and pointer/reference dependencies. Allow a declaration only when technically required, such as a friendship declaration whose defining include would create an unavoidable cycle; explain the reason at the declaration. Do not use forward declarations merely to reduce includes or compile time.
 - Keep formatting compact. Keep short declarations, calls, and argument lists on one line. Wrap long lines only when it improves readability, and use blank lines to separate logical steps.
 - Match the surrounding code. Use four spaces for indentation and put opening braces on their own line.
 - Keep error handling at the boundary that can act on it. Validate external input and check I/O results where they matter. Let errors propagate through intermediate code and avoid repeated checks or blanket catches.
@@ -23,7 +24,7 @@
 
 - Put shared domain enums, identifiers, data records, snapshots, and configuration structs in cohesive domain `XXXDef.h` headers. Use `TradeDef.h` for trading enums and identities, `TradeDataDef.h` for raw trading records, and `TradeSnapshotDef.h` for published trading snapshots and their read interfaces. Apply the same separation to configuration, workspace, network, and chart domains.
 - Do not scatter shared type definitions across manager, service, UI, or utility headers, create one header per trivial type, or collect unrelated domains in one global definitions file. Keep class-private implementation types with their owning class.
-- Keep definition headers self-contained and independent of manager, network-client, and UI implementation headers; use forward declarations for referenced classes when possible. Consumers should include the defining header directly. Keep snapshot query implementations with the snapshots and update callers and build/test inputs when moving types.
+- Keep definition headers self-contained and include the defining headers of referenced types. Keep dependencies within their owning domains and avoid unnecessary manager, network-client, or UI implementation dependencies. Consumers should include the defining header directly; do not substitute forward declarations. Keep snapshot query implementations with the snapshots and update callers and build/test inputs when moving types.
 
 ## Utility Extraction
 
