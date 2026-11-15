@@ -1,8 +1,28 @@
 #include "PaintUtil.h"
 #include <algorithm>
+#include <QWidget>
+#include <cmath>
 
 namespace trtutils
 {
+    void clipToParentRect(QPainter& painter, const QWidget* widget)
+    {
+        if (!widget || !widget->parentWidget())
+            return;
+        const QRectF parentRect = QRectF(widget->parentWidget()->rect()).translated(-widget->pos());
+        const QTransform transform = painter.deviceTransform();
+        const QRectF pixels = transform.mapRect(parentRect);
+        const QRectF inside(QPointF(std::ceil(pixels.left()), std::ceil(pixels.top())),
+                            QPointF(std::floor(pixels.right()), std::floor(pixels.bottom())));
+        // Round inward so a fractional viewport edge cannot paint the adjacent widget.
+        painter.setClipRect(transform.inverted().mapRect(inside), Qt::IntersectClip);
+    }
+
+    QRegion frameRegion(const QRect& rect, int thickness)
+    {
+        return QRegion(rect).subtracted(QRegion(rect.adjusted(thickness, thickness, -thickness, -thickness)));
+    }
+
     void drawBadge(QPainter& painter, const QRectF& area, const QString& text, const QColor& background)
     {
         painter.save();

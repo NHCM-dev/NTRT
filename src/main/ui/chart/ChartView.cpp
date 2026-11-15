@@ -332,10 +332,14 @@ namespace trtui
         const qint64 index = getCursorIndex();
         const bool hasCandle = cursorVisible && index >= 0 && index < static_cast<qint64>(candles.size());
         const trttrade::CandleData& candle = hasCandle ? candles[static_cast<std::size_t>(index)] : candles.back();
-        const QString text = QString("O %1   H %2   L %3   C %4  %5").arg(
+        const double percent = candle.open > 0 ? (candle.close - candle.open) / candle.open * 100.0 : 0;
+        const QString magnitude = QString::number(std::abs(percent), 'f', 2);
+        const QString change = candle.open <= 0 ? "—" :
+            (percent < 0 && magnitude != "0.00" ? "-" : "+") + magnitude + "%";
+        const QString text = QString("O %1   H %2   L %3   C %4   %5").arg(
             trtutils::formatPrice(candle.open), trtutils::formatPrice(candle.high),
             trtutils::formatPrice(candle.low), trtutils::formatPrice(candle.close),
-            candle.confirmed ? "" : "· Forming");
+            change);
         painter.setPen(candle.close >= candle.open ? getRisingColor() : getFallingColor());
         const QRectF readout = viewport.getReadoutRect().adjusted(5, 0, -5, 0);
         painter.drawText(readout, Qt::AlignVCenter,

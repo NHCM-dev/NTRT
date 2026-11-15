@@ -13,6 +13,24 @@
 
 namespace trtutils
 {
+    void updateWidgetTreeRegion(QWidget* widget, const QRegion& region)
+    {
+        if (!widget->isVisible() || !widget->updatesEnabled())
+            return;
+        const QRegion damage = region.intersected(widget->rect());
+        if (damage.isEmpty())
+            return;
+        widget->update(damage);
+        // An ancestor update alone skips opaque descendants in Qt's backing store.
+        const QObjectList& children = widget->children();
+        for (QObject* object : children)
+        {
+            QWidget* child = qobject_cast<QWidget*>(object);
+            if (child && !child->isWindow())
+                updateWidgetTreeRegion(child, damage.translated(-child->pos()));
+        }
+    }
+
     class TableStyle final : public QProxyStyle
     {
     public:

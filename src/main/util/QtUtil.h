@@ -9,6 +9,8 @@
 
 namespace trtutils
 {
+    void updateWidgetTreeRegion(QWidget* widget, const QRegion& region);
+
     QTableWidgetItem* updateTableItem(QTableWidget* table, int row, int column, const QString& text);
 
     void swapTableRows(QTableWidget* table, int first, int second);

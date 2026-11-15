@@ -3,9 +3,16 @@
 
 #include <QIcon>
 #include <QPainter>
+#include <QRegion>
+
+class QWidget;
 
 namespace trtutils
 {
+    void clipToParentRect(QPainter& painter, const QWidget* widget);
+
+    QRegion frameRegion(const QRect& rect, int thickness);
+
     void drawBadge(QPainter& painter, const QRectF& area, const QString& text, const QColor& background);
 
     QIcon createLetterIcon(const QString& symbol);

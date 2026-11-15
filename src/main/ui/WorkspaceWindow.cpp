@@ -1,4 +1,6 @@
 #include "WorkspaceWindow.h"
+#include "main/util/PaintUtil.h"
+#include "main/util/QtUtil.h"
 #include <QPainter>
 #include <QProxyStyle>
 #include <QStyleOptionTitleBar>
@@ -10,6 +12,8 @@
 #include <QCursor>
 #include <QMoveEvent>
 #include <QResizeEvent>
+#include <QPaintEvent>
+#include <QTimer>
 #include <algorithm>
 
 namespace trtui
@@ -31,14 +35,8 @@ namespace trtui
                 return;
             }
             painter->save();
+            trtutils::clipToParentRect(*painter, widget);
             painter->fillRect(option->rect, option->palette.brush(QPalette::Window));
-            const QMdiSubWindow* window = qobject_cast<const QMdiSubWindow*>(widget);
-            const bool active = window && window->mdiArea() && window->mdiArea()->activeSubWindow() == window;
-            const int thickness = active ? 2 : 1;
-            const QRect frame = option->rect;
-            const QRegion border = QRegion(frame).subtracted(QRegion(frame.adjusted(thickness, thickness, -thickness, -thickness)));
-            painter->setClipRegion(border, Qt::IntersectClip);
-            painter->fillRect(frame, option->palette.brush(active ? QPalette::Highlight : QPalette::Mid));
             painter->restore();
         }
 
@@ -65,7 +63,8 @@ namespace trtui
                 return;
 
             painter->save();
-            painter->setClipRect(title->rect);
+            trtutils::clipToParentRect(*painter, widget);
+            painter->setClipRect(title->rect, Qt::IntersectClip);
             painter->fillRect(title->rect, title->palette.brush(QPalette::Window));
             painter->setPen(title->palette.color(QPalette::Mid));
             painter->drawLine(title->rect.bottomLeft(), title->rect.bottomRight());
@@ -150,30 +149,69 @@ namespace trtui
         setMouseTracking(true);
     }
 
+    void WorkspaceWindow::schedulePositionConstraint()
+    {
+        if (positionConstraintPending)
+            return;
+        positionConstraintPending = true;
+        // Finish Qt's backing-store move/resize before changing geometry again.
+        QTimer::singleShot(0, this, [this]
+        {
+            positionConstraintPending = false;
+            constrainPosition();
+        });
+    }
+
+    void WorkspaceWindow::paintEvent(QPaintEvent* event)
+    {
+        QMdiSubWindow::paintEvent(event);
+        const bool active = mdiArea() && mdiArea()->activeSubWindow() == this;
+        const QRegion border = trtutils::frameRegion(rect(), active ? 2 : 1);
+        QPainter painter(this);
+        painter.setClipRegion(event->region().intersected(border));
+        trtutils::clipToParentRect(painter, this);
+        painter.fillRect(rect(), palette().brush(active ? QPalette::Highlight : QPalette::Mid));
+    }
+
     void WorkspaceWindow::constrainPosition()
     {
-        if (constrainingPosition || !parentWidget() || isMaximized() || isMinimized())
+        if (!parentWidget() || isMaximized() || isMinimized())
             return;
         const QRect area = parentWidget()->rect();
         const QPoint bounded(std::clamp(x(), 0, std::max(0, area.width() - width())),
             std::clamp(y(), 0, std::max(0, area.height() - height())));
         if (bounded == pos())
             return;
-        constrainingPosition = true;
         move(bounded);
-        constrainingPosition = false;
     }
 
     void WorkspaceWindow::moveEvent(QMoveEvent* event)
     {
-        constrainPosition();
         QMdiSubWindow::moveEvent(event);
+        updateExposedFrame();
+        schedulePositionConstraint();
     }
 
     void WorkspaceWindow::resizeEvent(QResizeEvent* event)
     {
         QMdiSubWindow::resizeEvent(event);
-        constrainPosition();
+        updateExposedFrame();
+        schedulePositionConstraint();
+    }
+
+    void WorkspaceWindow::updateExposedFrame()
+    {
+        const QRect oldGeometry = previousGeometry;
+        previousGeometry = geometry();
+        QWidget* desktop = parentWidget();
+        if (!desktop || !isVisible() || !oldGeometry.isValid() || oldGeometry == previousGeometry)
+            return;
+        // Include the fractional-DPI fringe around the old two-pixel outline.
+        const QRegion outline = trtutils::frameRegion(oldGeometry.adjusted(-1, -1, 1, 1), 3);
+        const QRegion exposed = outline.subtracted(QRegion(previousGeometry));
+        // The one-pixel fringe can cross the viewport and touch adjacent chrome.
+        QWidget* surface = desktop->window();
+        trtutils::updateWidgetTreeRegion(surface, exposed.translated(desktop->mapTo(surface, QPoint())));
     }
 
     void WorkspaceWindow::closeEvent(QCloseEvent* event)
@@ -194,6 +232,7 @@ namespace trtui
         }
         update(QRect(0, 0, width(), titleHeight + frame * 2));
         QMdiSubWindow::mouseMoveEvent(event);
+        constrainPosition();
     }
 
     void WorkspaceWindow::leaveEvent(QEvent* event)
