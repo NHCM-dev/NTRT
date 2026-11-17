@@ -5,6 +5,9 @@
       "name": "release",
       "displayName": "Release (auto compiler / Ninja)",
       "binaryDir": "${sourceDir}/build/release",
+      "environment": {
+        "PATH": "${sourceDir}/build/release/_deps/msys2-qt/ucrt64/bin;${sourceDir}/build/release/_deps/msys2-qt/mingw64/bin;${sourceDir}/build/release/_deps/msys2-qt/clang64/bin;$penv{PATH}"
+      },
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/Auto.cmake",
