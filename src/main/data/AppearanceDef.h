@@ -5,6 +5,9 @@
 
 namespace trtdata
 {
+    inline constexpr int MIN_DISPLAY_SCALE_PERCENT = 25;
+    inline constexpr int MAX_DISPLAY_SCALE_PERCENT = 400;
+
     enum class EnumTheme
     {
         Light,
@@ -25,6 +28,7 @@ namespace trtdata
         EnumTheme currentTheme = EnumTheme::Dark;
         bool priceFlash = true;
         MarketColumnVisibility marketColumns{};
+        int displayScalePercent = 100;
     };
 }
 

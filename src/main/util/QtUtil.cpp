@@ -134,9 +134,18 @@ namespace trtutils
 
     void centerOnScreen(QWidget* widget)
     {
+        fitWindowToScreen(widget);
         QRect geometry = widget->frameGeometry();
         geometry.moveCenter(widget->screen()->availableGeometry().center());
         widget->move(geometry.topLeft());
+    }
+
+    void fitWindowToScreen(QWidget* widget)
+    {
+        const QRect available = widget->screen()->availableGeometry();
+        const QSize frame = widget->frameGeometry().size() - widget->size();
+        widget->resize(widget->size().boundedTo((available.size() - frame).expandedTo(QSize(1, 1))));
+        widget->move(boundedWidgetGeometry(widget->frameGeometry(), available).topLeft());
     }
 
     QTableWidget* createHeaderTable(QWidget* parent, QStringList headers)

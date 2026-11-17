@@ -21,6 +21,8 @@ namespace trtutils
     void swapTableRows(QTableWidget* table, int first, int second);
 
     void centerOnScreen(QWidget * widget);
+
+    void fitWindowToScreen(QWidget* widget);
     QTableWidget* createHeaderTable(QWidget * parent = nullptr, QStringList headers = {});
 } // trtutils
 

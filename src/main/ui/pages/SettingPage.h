@@ -34,6 +34,8 @@ namespace trtui
 
         void initAppearanceSection();
 
+        void initDisplayScaleRows(QVBoxLayout* rows);
+
         void initTradingSection();
 
         void initAboutSection();

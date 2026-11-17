@@ -15,6 +15,7 @@ namespace trtdata
     {
         QString dataPath;
         AppearanceConfig appearanceConfig;
+        int appliedDisplayScalePercent = 100;
 
     public:
         explicit AppearanceManager(const QString& dataPath);
@@ -36,6 +37,15 @@ namespace trtdata
         const MarketColumnVisibility& getMarketColumns() const;
 
         bool setMarketColumns(const MarketColumnVisibility& columns);
+
+        int getDisplayScalePercent() const;
+
+        bool setDisplayScalePercent(int percent);
+
+        bool isDisplayScaleRestartRequired() const;
+
+        // Call after loading appearance settings, before constructing QApplication.
+        void initializeDisplayScale();
     };
 }
 

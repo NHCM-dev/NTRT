@@ -3,13 +3,13 @@
 #include <QMdiSubWindow>
 #include <QAction>
 #include <QMenu>
+#include <QKeyEvent>
 
 namespace trtui
 {
     class WorkspaceWindow final : public QMdiSubWindow
     {
         QRect previousGeometry;
-        QRect normalGeometry;
         QRect requestedGeometry;
         QRect resizeGeometry;
         QPoint resizeOrigin;
@@ -21,6 +21,7 @@ namespace trtui
         void initContent(QWidget* content, const QString& title, const QString& id);
         void constrainGeometry();
         void scheduleGeometryConstraint();
+        void captureInteractionGeometry();
         Qt::Edges getResizeEdges(const QPoint& position) const;
         void updateWindowAction();
         bool eventFilter(QObject* watched, QEvent* event) override;
@@ -39,6 +40,8 @@ namespace trtui
 
         void mouseMoveEvent(QMouseEvent* event) override;
 
+        void keyPressEvent(QKeyEvent* event) override;
+
         void leaveEvent(QEvent* event) override;
 
     public:
@@ -46,7 +49,7 @@ namespace trtui
         void addWindowAction(QMenu* menu, QAction* before);
         void showWindow();
         QRect getNormalGeometry() const;
-        void setNormalGeometry(const QRect& geometry);
+        void setWindowGeometry(const QRect& geometry);
     };
 }
 #endif //NTRT_WORKSPACEWINDOW_H

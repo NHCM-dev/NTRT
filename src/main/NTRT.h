@@ -15,6 +15,7 @@
 namespace ntrt
 {
     inline bool configLoaded = false;
+    inline bool restarting = false;
 
     inline std::shared_ptr<QApplication> app = nullptr;
     inline std::shared_ptr<trtui::MainWindow> mainWindow = nullptr;
@@ -24,6 +25,8 @@ namespace ntrt
     inline std::shared_ptr<trtcore::DataMonitor> dataMonitor = nullptr;
 
     void quitApp();
+
+    bool restartApp();
 
     void displayAbout(QWidget * parent);
 }

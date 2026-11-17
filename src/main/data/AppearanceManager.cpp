@@ -35,6 +35,12 @@ namespace trtdata
             if (error != simdjson::SUCCESS && error != simdjson::NO_SUCH_FIELD)
                 return false;
 
+            int64_t displayScalePercent = 100;
+            const simdjson::error_code scaleError = json["displayScalePercent"].get_int64().get(displayScalePercent);
+            if ((scaleError != simdjson::SUCCESS && scaleError != simdjson::NO_SUCH_FIELD) ||
+                displayScalePercent < MIN_DISPLAY_SCALE_PERCENT || displayScalePercent > MAX_DISPLAY_SCALE_PERCENT)
+                return false;
+
             MarketColumnVisibility columns;
             elementResult marketColumns = json["marketColumns"];
             if (marketColumns.error() != simdjson::NO_SUCH_FIELD)
@@ -51,7 +57,8 @@ namespace trtdata
                     return false;
             }
 
-            appearanceConfig = {theme == "dark" ? EnumTheme::Dark : EnumTheme::Light, priceFlash, columns};
+            appearanceConfig = {theme == "dark" ? EnumTheme::Dark : EnumTheme::Light, priceFlash, columns,
+                static_cast<int>(displayScalePercent)};
             return true;
         } catch (const simdjson::simdjson_error&)
         {
@@ -66,6 +73,8 @@ namespace trtdata
         builder.append_key_value("theme", appearanceConfig.currentTheme == EnumTheme::Dark ? "dark" : "light");
         builder.append_comma();
         builder.append_key_value("priceFlash", appearanceConfig.priceFlash);
+        builder.append_comma();
+        builder.append_key_value("displayScalePercent", appearanceConfig.displayScalePercent);
         builder.append_comma();
         builder.escape_and_append_with_quotes("marketColumns");
         builder.append_colon();
@@ -122,6 +131,36 @@ namespace trtdata
             return true;
         appearanceConfig.marketColumns = previous;
         return false;
+    }
+
+    int AppearanceManager::getDisplayScalePercent() const
+    {
+        return appearanceConfig.displayScalePercent;
+    }
+
+    bool AppearanceManager::setDisplayScalePercent(int percent)
+    {
+        if (percent < MIN_DISPLAY_SCALE_PERCENT || percent > MAX_DISPLAY_SCALE_PERCENT)
+            return false;
+        const int previous = appearanceConfig.displayScalePercent;
+        appearanceConfig.displayScalePercent = percent;
+        if (saveConfig())
+            return true;
+        appearanceConfig.displayScalePercent = previous;
+        return false;
+    }
+
+    bool AppearanceManager::isDisplayScaleRestartRequired() const
+    {
+        return appliedDisplayScalePercent != appearanceConfig.displayScalePercent;
+    }
+
+    void AppearanceManager::initializeDisplayScale()
+    {
+        appliedDisplayScalePercent = appearanceConfig.displayScalePercent;
+        // Application zoom multiplies the OS per-monitor scale; never rescale persisted logical geometry.
+        qputenv("QT_SCALE_FACTOR", QByteArray::number(appliedDisplayScalePercent / 100.0, 'f', 2));
+        QGuiApplication::setHighDpiScaleFactorRoundingPolicy(Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
     }
 
 }

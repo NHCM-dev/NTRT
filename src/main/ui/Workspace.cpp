@@ -128,10 +128,9 @@ namespace trtui
         for (std::size_t index = 0; index < state.windows.size(); index++)
         {
             const trtdata::WorkspaceWindowState& saved = state.windows[index];
-            QMdiSubWindow* window = windows[index].window;
+            WorkspaceWindow* window = windows[index].window;
             window->showNormal();
-            window->setGeometry(saved.geometry);
-            const QRect normalGeometry = window->geometry();
+            window->setWindowGeometry(saved.geometry);
             switch (saved.mode)
             {
                 case trtdata::WorkspaceWindowMode::Normal:
@@ -145,7 +144,6 @@ namespace trtui
             }
             window->setVisible(saved.visible);
             window->raise();
-            windows[index].window->setNormalGeometry(normalGeometry);
             if (saved.id == state.activeWindow && saved.visible)
                 active = window;
         }
@@ -255,8 +253,8 @@ namespace trtui
         lastChartWindow = window;
         const int offset = (id - 1) % 7 * 28;
         const QRect area = desktop->viewport()->rect();
-        window->setGeometry(32 + offset, 32 + offset, std::max(500, area.width() * 2 / 3),
-                            std::max(360, area.height() * 3 / 4));
+        window->setWindowGeometry(QRect(32 + offset, 32 + offset, std::max(500, area.width() * 2 / 3),
+                            std::max(360, area.height() * 3 / 4)));
         return window;
     }
 
@@ -272,7 +270,7 @@ namespace trtui
         {
             window->setWindowTitle(QString("BookDepth %1 · %2").arg(id).arg(title));
         });
-        window->setGeometry(48 + (id - 1) % 7 * 24, 48 + (id - 1) % 7 * 24, 440, 660);
+        window->setWindowGeometry(QRect(48 + (id - 1) % 7 * 24, 48 + (id - 1) % 7 * 24, 440, 660));
         return window;
     }
 
@@ -349,7 +347,15 @@ namespace trtui
         windowActionsEnd = menu->addSeparator();
         for (WindowEntry& entry : windows)
             entry.window->addWindowAction(menu, windowActionsEnd);
-        connect(menu->addAction("Stack Windows"), &QAction::triggered, desktop, &QMdiArea::cascadeSubWindows);
+        connect(menu->addAction("Stack Windows"), &QAction::triggered, this, [this]
+        {
+            desktop->cascadeSubWindows();
+            for (const WindowEntry& entry : windows)
+            {
+                if (!entry.window->isHidden() && !entry.window->isMinimized() && !entry.window->isMaximized())
+                    entry.window->setWindowGeometry(entry.window->geometry());
+            }
+        });
         connect(menu->addAction("Sort Window"), &QAction::triggered, this, [this]
         {
             sortWindows();
@@ -403,9 +409,9 @@ namespace trtui
         const int height = std::max(minimumHeight, (area.height() - (rows - 1) * gap) / rows);
         for (int index = 0; index < count; index++)
         {
-            placements[static_cast<std::size_t>(index)].window->setGeometry(
+            placements[static_cast<std::size_t>(index)].window->setWindowGeometry(QRect(
                 area.left() + index % columns * (width + gap),
-                area.top() + index / columns * (height + gap), width, height);
+                area.top() + index / columns * (height + gap), width, height));
         }
     }
 
@@ -461,7 +467,7 @@ namespace trtui
         const int width = desktop->viewport()->width();
         const int height = desktop->viewport()->height();
         const int listWidth = std::max(340, instrumentWindow->minimumSizeHint().width());
-        instrumentWindow->setGeometry(gap, gap, listWidth, std::max(300, height - gap * 2));
+        instrumentWindow->setWindowGeometry(QRect(gap, gap, listWidth, std::max(300, height - gap * 2)));
         std::vector<WindowPlacement> charts;
         for (const WindowEntry& entry : windows)
         {

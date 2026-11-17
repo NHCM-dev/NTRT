@@ -17,6 +17,10 @@
 #include <QScrollArea>
 #include <QStackedWidget>
 #include <QVBoxLayout>
+#include <QSpinBox>
+#include <QScreen>
+#include <QBoxLayout>
+#include <algorithm>
 
 namespace trtui
 {
@@ -48,7 +52,7 @@ namespace trtui
     void SettingPage::initSidebar(QFrame* page, QHBoxLayout* layout)
     {
         QFrame* sidebar = new QFrame(page);
-        sidebar->setFixedWidth(172);
+        sidebar->setFixedWidth(std::clamp(page->screen()->availableGeometry().width() / 5, 100, 172));
         sidebar->setBackgroundRole(QPalette::Base);
         sidebar->setAutoFillBackground(true);
         QVBoxLayout* navigation = new QVBoxLayout(sidebar);
@@ -64,6 +68,7 @@ namespace trtui
         categories = new QListWidget(sidebar);
         categories->setObjectName("settingsCategories");
         categories->setFrameShape(QFrame::NoFrame);
+        categories->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Ignored);
         categories->setSpacing(2);
 
         navigation->addWidget(categories, 1);
@@ -103,12 +108,82 @@ namespace trtui
 
     void SettingPage::initAppearanceSection()
     {
-        QVBoxLayout* rows = addSection("Appearance", "Theme", "light dark");
+        QVBoxLayout* rows = addSection("Appearance", "Display", "light dark display scale scaling zoom size custom restart");
         const trtdata::AppearanceManager* appearance = ntrt::configManager->getAppearanceManager();
         const int selected = appearance->getCurrentTheme() == trtdata::EnumTheme::Dark ? 1 : 0;
         addDropdown(rows, "Theme", "Choose a light or dark interface.", {"Light", "Dark"}, selected, [this](int index)
         {
             return saveAppearance(index == 0 ? trtdata::EnumTheme::Light : trtdata::EnumTheme::Dark);
+        });
+        initDisplayScaleRows(rows);
+    }
+
+    void SettingPage::initDisplayScaleRows(QVBoxLayout* rows)
+    {
+        trtdata::AppearanceManager* appearance = ntrt::configManager->getAppearanceManager();
+        QWidget* controls = new QWidget(rows->parentWidget());
+        const bool compact = controls->screen()->availableGeometry().width() < 700;
+        QBoxLayout* layout = new QBoxLayout(compact ? QBoxLayout::TopToBottom : QBoxLayout::LeftToRight, controls);
+        layout->setContentsMargins(0, 0, 0, 0);
+        QComboBox* presets = new QComboBox(controls);
+        presets->setObjectName("displayScalePresets");
+        presets->setAccessibleName("Display scale");
+        for (int percent = trtdata::MIN_DISPLAY_SCALE_PERCENT; percent <= trtdata::MAX_DISPLAY_SCALE_PERCENT; percent += 25)
+            presets->addItem(QString::number(percent) + "%", percent);
+        presets->addItem("Custom…", 0);
+        const int savedIndex = presets->findData(appearance->getDisplayScalePercent());
+        presets->setCurrentIndex(savedIndex >= 0 ? savedIndex : presets->count() - 1);
+        QSpinBox* custom = new QSpinBox(controls);
+        custom->setObjectName("displayScaleCustom");
+        custom->setAccessibleName("Custom display scale");
+        custom->setRange(trtdata::MIN_DISPLAY_SCALE_PERCENT, trtdata::MAX_DISPLAY_SCALE_PERCENT);
+        custom->setSuffix("%");
+        custom->setKeyboardTracking(false);
+        custom->setValue(appearance->getDisplayScalePercent());
+        custom->setVisible(savedIndex < 0);
+        QPushButton* apply = new QPushButton("Apply", controls);
+        apply->setObjectName("displayScaleApply");
+        layout->addWidget(presets);
+        layout->addWidget(custom);
+        layout->addWidget(apply);
+        addRow(rows, "Display scale", "Scale the entire interface relative to your system display setting. "
+               "Choose 25–400%, or a custom whole percentage. Restart to apply.", controls);
+
+        QLabel* status = new QLabel(rows->parentWidget());
+        status->setObjectName("displayScaleStatus");
+        status->setWordWrap(true);
+        rows->addWidget(status);
+        QPushButton* restart = new QPushButton("Restart now", rows->parentWidget());
+        restart->setObjectName("displayScaleRestart");
+        restart->setEnabled(appearance->isDisplayScaleRestartRequired());
+        addRow(rows, "Apply after restart", "Restart saves your workspace layout and settings before reopening NTRT.", restart);
+        if (appearance->isDisplayScaleRestartRequired())
+            status->setText(QString("Saved: %1%. Restart to apply.").arg(appearance->getDisplayScalePercent()));
+        QObject::connect(presets, &QComboBox::currentIndexChanged, controls, [presets, custom](int)
+        {
+            const int percent = presets->currentData().toInt();
+            custom->setVisible(percent == 0);
+            if (percent != 0)
+                custom->setValue(percent);
+        });
+        QObject::connect(apply, &QPushButton::clicked, controls, [appearance, presets, custom, status, restart]
+        {
+            custom->interpretText();
+            const int preset = presets->currentData().toInt();
+            const int percent = preset == 0 ? custom->value() : preset;
+            if (!appearance->setDisplayScalePercent(percent))
+            {
+                status->setText("Could not save display scale. The saved setting has not changed.");
+                return;
+            }
+            const bool pending = appearance->isDisplayScaleRestartRequired();
+            restart->setEnabled(pending);
+            status->setText(pending ? QString("Saved: %1%. Restart to apply.").arg(percent) : "This display scale is already active.");
+        });
+        QObject::connect(restart, &QPushButton::clicked, restart, [status]
+        {
+            if (!ntrt::restartApp())
+                status->setText("Could not save settings or workspace layout, or restart NTRT. The application is still open.");
         });
     }
 
@@ -316,7 +391,8 @@ namespace trtui
         QFrame* panel = new QFrame(rows->parentWidget());
         panel->setBackgroundRole(QPalette::Window);
         panel->setAutoFillBackground(true);
-        QHBoxLayout* row = new QHBoxLayout(panel);
+        const bool compact = panel->screen()->availableGeometry().width() < 700;
+        QBoxLayout* row = new QBoxLayout(compact ? QBoxLayout::TopToBottom : QBoxLayout::LeftToRight, panel);
         row->setContentsMargins(14, 10, 14, 10);
         QVBoxLayout* text = new QVBoxLayout;
         text->setSpacing(4);

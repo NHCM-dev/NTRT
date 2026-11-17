@@ -213,12 +213,17 @@ namespace trtui
 
     QRect WorkspaceWindow::getNormalGeometry() const
     {
-        return isMinimized() || isMaximized() ? normalGeometry : geometry();
+        return requestedGeometry.isValid() ? requestedGeometry : geometry();
     }
 
-    void WorkspaceWindow::setNormalGeometry(const QRect& geometry)
+    void WorkspaceWindow::setWindowGeometry(const QRect& geometry)
     {
-        normalGeometry = geometry;
+        requestedGeometry = geometry;
+        const bool wasConstraining = constraining;
+        constraining = true;
+        setGeometry(geometry);
+        constraining = wasConstraining;
+        scheduleGeometryConstraint();
     }
 
     void WorkspaceWindow::showEvent(QShowEvent* event)
@@ -320,22 +325,14 @@ namespace trtui
     void WorkspaceWindow::moveEvent(QMoveEvent* event)
     {
         QMdiSubWindow::moveEvent(event);
-        if (!constraining && !isMaximized() && !isMinimized())
-            requestedGeometry = geometry();
         scheduleGeometryConstraint();
-        if (!isMaximized() && !isMinimized())
-            normalGeometry = geometry();
         updateExposedFrame();
     }
 
     void WorkspaceWindow::resizeEvent(QResizeEvent* event)
     {
         QMdiSubWindow::resizeEvent(event);
-        if (!constraining && !isMaximized() && !isMinimized())
-            requestedGeometry = geometry();
         scheduleGeometryConstraint();
-        if (!isMaximized() && !isMinimized())
-            normalGeometry = geometry();
         updateExposedFrame();
     }
 
@@ -356,9 +353,12 @@ namespace trtui
 
     void WorkspaceWindow::changeEvent(QEvent* event)
     {
+        const bool appearanceChange = event->type() == QEvent::PaletteChange || event->type() == QEvent::StyleChange ||
+            event->type() == QEvent::FontChange;
         QMdiSubWindow::changeEvent(event);
-        if (event->type() == QEvent::PaletteChange || event->type() == QEvent::StyleChange)
+        if (appearanceChange || event->type() == QEvent::WindowStateChange)
         {
+            scheduleGeometryConstraint();
             QTimer::singleShot(0, this, [this]
             {
                 update();
@@ -387,12 +387,28 @@ namespace trtui
         {
             const QPoint delta = event->globalPosition().toPoint() - resizeOrigin;
             const QSize minimum = minimumSizeHint().expandedTo(minimumSize());
-            setGeometry(trtutils::resizedWidgetGeometry(resizeGeometry, delta, resizeEdges,
+            setWindowGeometry(trtutils::resizedWidgetGeometry(resizeGeometry, delta, resizeEdges,
                 parentWidget()->rect(), minimum));
             event->accept();
             return;
         }
+        const QRect previous = geometry();
         QMdiSubWindow::mouseMoveEvent(event);
+        if (!isMinimized() && !isMaximized() && event->buttons().testFlag(Qt::LeftButton) && geometry() != previous)
+            captureInteractionGeometry();
+    }
+
+    void WorkspaceWindow::keyPressEvent(QKeyEvent* event)
+    {
+        const QRect previous = geometry();
+        QMdiSubWindow::keyPressEvent(event);
+        if (!isMinimized() && !isMaximized() && geometry() != previous)
+            captureInteractionGeometry();
+    }
+
+    void WorkspaceWindow::captureInteractionGeometry()
+    {
+        requestedGeometry = geometry();
         constrainGeometry();
         requestedGeometry = geometry();
     }

@@ -44,7 +44,7 @@ namespace trtui
 
         struct WindowPlacement
         {
-            QMdiSubWindow* window = nullptr;
+            WorkspaceWindow* window = nullptr;
             QRect geometry;
         };
 

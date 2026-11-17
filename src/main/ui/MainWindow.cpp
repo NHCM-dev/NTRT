@@ -55,18 +55,18 @@ namespace trtui
         QTimer* saveTimer = new QTimer(this);
         connect(saveTimer, &QTimer::timeout, this, [this]
         {
-            if (!closing)
+            if (!closing && !ntrt::restarting)
                 saveWorkspaceState();
         });
         saveTimer->start(2000);
         connect(qApp, &QCoreApplication::aboutToQuit, this, [this]
         {
-            if (!closing)
+            if (!closing && !ntrt::restarting)
                 saveWorkspaceState();
         });
     }
 
-    void MainWindow::saveWorkspaceState(bool notify)
+    bool MainWindow::saveWorkspaceState(bool notify)
     {
         trtdata::WorkspaceConfig config;
         config.mainGeometry = saveGeometry();
@@ -82,11 +82,13 @@ namespace trtui
         const bool saved = ntrt::configManager->getWorkspaceManager()->saveConfig(config);
         if (!saved || notify)
             statusBar()->showMessage(saved ? "Workspace layout saved" : "Unable to save workspace layout; check workspaces.json and file permissions", 5000);
+        return saved;
     }
 
     void MainWindow::closeEvent(QCloseEvent* event)
     {
-        saveWorkspaceState();
+        if (!ntrt::restarting)
+            saveWorkspaceState();
         closing = true;
         QMainWindow::closeEvent(event);
         if (!event->isAccepted())
@@ -95,7 +97,7 @@ namespace trtui
 
     void MainWindow::initWindowGeometry()
     {
-        resize(1400, 700);
+        resize(QSize(1400, 700).boundedTo(screen()->availableGeometry().size()));
         QTimer::singleShot(0, this, [this]
         {
             trtutils::centerOnScreen(this);

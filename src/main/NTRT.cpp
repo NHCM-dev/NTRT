@@ -8,6 +8,7 @@
 #include <QApplication>
 #include <QMessageBox>
 #include <QString>
+#include <QProcess>
 #include <QtNetwork/QNetworkAccessManager>
 
 #include "Ver.h"
@@ -25,6 +26,14 @@ int main(int argc, char** argv)
     char* appName = argv[0];
     char* qtArgv[] = {appName, nullptr};
 
+    {
+        // QCoreApplication supplies the executable-relative data path without initializing GUI/DPI state.
+        QCoreApplication bootstrap(qtArgc, qtArgv);
+        ntrt::configManager = std::make_shared<trtdata::ConfigManager>();
+        trtdata::AppearanceManager* appearance = ntrt::configManager->getAppearanceManager();
+        appearance->loadConfig();
+        appearance->initializeDisplayScale();
+    }
     ntrt::app = std::make_shared<QApplication>(qtArgc, qtArgv);
 
     return runQtApp();
@@ -35,6 +44,21 @@ namespace ntrt
     void quitApp()
     {
         QApplication::quit();
+    }
+
+    bool restartApp()
+    {
+        if (!configLoaded || !mainWindow->saveWorkspaceState() || !configManager->saveAll())
+            return false;
+        QStringList arguments;
+        for (std::size_t index = 1; index < args.size(); index++)
+            arguments.append(QString::fromStdString(args[index]));
+        if (!QProcess::startDetached(QCoreApplication::applicationFilePath(), arguments))
+            return false;
+        // Settings and layout are flushed before launching; the exiting process must not overwrite the new session.
+        restarting = true;
+        quitApp();
+        return true;
     }
 
     void displayAbout(QWidget* parent)
@@ -69,7 +93,6 @@ int runQtApp()
 
 void startupHook()
 {
-    ntrt::configManager = std::make_shared<trtdata::ConfigManager>();
     ntrt::configManager->tryInitOnce();
     ntrt::configLoaded = ntrt::configManager->loadAll();
     ntrt::dataMonitor = std::make_shared<trtcore::DataMonitor>(*ntrt::configManager);
@@ -78,7 +101,7 @@ void startupHook()
 
 void terminateHook()
 {
-    if (ntrt::configLoaded)
+    if (ntrt::configLoaded && !ntrt::restarting)
     {
         ntrt::configManager->saveAll();
     }

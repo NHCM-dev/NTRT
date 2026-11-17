@@ -1,18 +1,30 @@
 #include "SettingsDialog.h"
 #include "../pages/SettingPage.h"
+#include "main/util/QtUtil.h"
 #include <QDialogButtonBox>
 #include <QVBoxLayout>
+#include <QScreen>
+#include <QTimer>
 
 namespace trtui
 {
     SettingsDialog::SettingsDialog(QWidget* parent) : QDialog(parent)
     {
         setWindowTitle("Settings");
-        resize(850, 620);
         initContent();
+        resize(QSize(850, 620).boundedTo(screen()->availableGeometry().size()));
     }
 
     SettingsDialog::~SettingsDialog() = default;
+
+    void SettingsDialog::showEvent(QShowEvent* event)
+    {
+        QDialog::showEvent(event);
+        QTimer::singleShot(0, this, [this]
+        {
+            trtutils::fitWindowToScreen(this);
+        });
+    }
 
     void SettingsDialog::initContent()
     {

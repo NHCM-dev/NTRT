@@ -25,8 +25,6 @@ namespace trtui
 
         void initWorkspacePersistence();
 
-        void saveWorkspaceState(bool notify = false);
-
         void closeEvent(QCloseEvent* event) override;
 
         bool closing = false;
@@ -56,6 +54,8 @@ namespace trtui
 
     public:
         explicit MainWindow(QWidget* parent = nullptr);
+
+        bool saveWorkspaceState(bool notify = false);
     };
 }
 #endif //NTRT_MAINWINDOW_H
