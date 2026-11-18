@@ -10,6 +10,7 @@
 #include <QStackedWidget>
 #include <QVBoxLayout>
 #include "main/data/config/AppearanceConfig.h"
+#include "main/data/config/AccountConfig.h"
 
 namespace trtui
 {
@@ -37,6 +38,13 @@ namespace trtui
         void initDisplayScaleRows(QVBoxLayout* rows);
 
         void initTradingSection();
+
+        void initApiSection();
+
+        void initOKXApiRows(QVBoxLayout* rows);
+
+        void addOKXCredentialRow(QVBoxLayout* rows, const QString& name, const QString& description,
+                                 trtdata::OKXCredentialField field, bool configured);
 
         void initAboutSection();
 

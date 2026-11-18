@@ -4,6 +4,7 @@
 
 #ifndef NTRT_CONFIGMANAGER_H
 #define NTRT_CONFIGMANAGER_H
+#include "AccountManager.h"
 #include <memory>
 #include <span>
 #include <vector>
@@ -34,6 +35,7 @@ namespace trtdata
         ExchangeConfig exchangeConfig;
         AppearanceManager appearanceManager;
         WorkspaceManager workspaceManager;
+        AccountManager accountManager;
 
 
         MarketConfig defaultMarketConfig();
@@ -42,7 +44,7 @@ namespace trtdata
 
     public:
         ConfigManager(QString dataPath = trtutils::relativePath(DEFAULT_DATA_PATH))
-        : dataPath(dataPath), appearanceManager(dataPath), workspaceManager(dataPath)
+        : dataPath(dataPath), appearanceManager(dataPath), workspaceManager(dataPath), accountManager(dataPath)
         {}
 
         /**
@@ -98,6 +100,8 @@ namespace trtdata
         AppearanceManager* getAppearanceManager();
 
         WorkspaceManager* getWorkspaceManager();
+
+        AccountManager* getAccountManager() { return &accountManager; }
 
         TradingTimeZone getTradingDataTimeZone() const;
 

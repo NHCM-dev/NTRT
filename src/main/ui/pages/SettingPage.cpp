@@ -5,6 +5,7 @@
 #include "main/NTRT.h"
 #include "main/Ver.h"
 #include "main/api/AbstractApi.h"
+#include <QInputDialog>
 #include <QCheckBox>
 #include <QComboBox>
 #include <QPushButton>
@@ -44,6 +45,7 @@ namespace trtui
         initGeneralSection();
         initAppearanceSection();
         initTradingSection();
+        initApiSection();
         initAboutSection();
         initSearch();
         return page;
@@ -288,6 +290,54 @@ namespace trtui
                       columns.volume24h = enabled;
                       return appearance->setMarketColumns(columns);
                   });
+    }
+
+    void SettingPage::initApiSection()
+    {
+        QVBoxLayout* rows = addSection("API", "OKX", "okx api key secret passphrase import account credentials");
+        initOKXApiRows(rows);
+    }
+
+    void SettingPage::initOKXApiRows(QVBoxLayout* rows)
+    {
+        trtdata::OKXCredentials saved;
+        bool found = false;
+        const bool loaded = ntrt::configManager->getAccountManager()->loadOKXCredentials(saved, found);
+        if (!loaded)
+        {
+            QLabel* status = new QLabel("Could not read saved credentials.", rows->parentWidget());
+            status->setWordWrap(true);
+            rows->addWidget(status);
+        }
+        addOKXCredentialRow(rows, "API Key", "Your OKX API key.", trtdata::OKXCredentialField::ApiKey, !saved.apiKey.isEmpty());
+        addOKXCredentialRow(rows, "Secret Key", "The secret issued with your API key.", trtdata::OKXCredentialField::SecretKey, !saved.secretKey.isEmpty());
+        addOKXCredentialRow(rows, "Passphrase", "The passphrase chosen when creating the API key.", trtdata::OKXCredentialField::Passphrase, !saved.passphrase.isEmpty());
+    }
+
+    void SettingPage::addOKXCredentialRow(QVBoxLayout* rows, const QString& name, const QString& description,
+                                            trtdata::OKXCredentialField field, bool configured)
+    {
+        QPushButton* control = new QPushButton(configured ? "Change…" : "Set…", rows->parentWidget());
+        addRow(rows, name, description, control);
+        QObject::connect(control, &QPushButton::clicked, control, [control, name, field]
+        {
+            bool accepted = false;
+            const QString value = QInputDialog::getText(control, "OKX · " + name, "Enter " + name + ":",
+                QLineEdit::Password, {}, &accepted);
+            if (!accepted)
+                return;
+            if (value.trimmed().isEmpty())
+            {
+                QMessageBox::warning(control, "OKX", name + " cannot be empty.");
+                return;
+            }
+            if (!ntrt::configManager->getAccountManager()->setOKXCredential(field, value))
+            {
+                QMessageBox::warning(control, "OKX", "Could not save " + name + ". Existing credentials were retained.");
+                return;
+            }
+            control->setText("Change…");
+        });
     }
 
     void SettingPage::initAboutSection()

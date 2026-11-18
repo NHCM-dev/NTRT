@@ -63,6 +63,10 @@
 - Every UI change must support both Light and Dark themes, including runtime switching. Use palette roles for theme-dependent colors; keep foregrounds, backgrounds, borders, hover/selection states, and chart colors consistent. Invalidate resolved QSS palettes and custom render caches when the theme changes; do not leave widgets using colors from the previous theme.
 - Verify Light → Dark → Light switching on existing, hidden, and newly created UI. Cover menus, Workspace tabs, child-window chrome, tables, inputs, settings, and OpenGL charts; check contrast and actual rendered output, not only the application palette.
 
+## Account credentials
+
+`ConfigManager` owns `AccountManager`. OKX credentials are stored atomically in `data/okx-credentials.dat` using portable application-key encryption with a random nonce and integrity check. This is reversible local protection, not an OS vault or user-password security boundary. Keep the versioned format portable and reject corrupted files without altering loaded credentials. Never put plaintext secrets in settings, layouts, logs or Git. Individual credential fields may be saved incrementally; preserve the other fields on each update. Complete imports validate all fields. Saving credentials does not authenticate or initiate trading. Consumers must distinguish saved credentials from exchange-verified access.
+
 ## Git Commits
 
 - When asked to stage and commit, inspect the working tree, staged changes, and recent commit messages first. Stage all files belonging to the requested work, including new files and deletions, while keeping unrelated changes out of the commit.
