@@ -17,7 +17,7 @@ namespace trtutils
     void mergeCandles(std::vector<trttrade::CandleData>& stored, std::span<const trttrade::CandleData> candles);
 
     const trttrade::CandleData* dailyCandle(std::span<const trttrade::CandleData> candles, qint64 now,
-                                            trtdata::TradingDataTimeZone zone);
+                                            trtdata::TradingTimeZone zone);
 
     std::optional<double> dailyChangeAmount(const trttrade::CandleData* candle, double latestPrice);
 

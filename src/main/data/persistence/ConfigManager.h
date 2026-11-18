@@ -2,20 +2,21 @@
 // Created by NHCM on 2026/11/7.
 //
 
-#ifndef NTRT_DATAMANAGER_H
-#define NTRT_DATAMANAGER_H
+#ifndef NTRT_CONFIGMANAGER_H
+#define NTRT_CONFIGMANAGER_H
 #include <memory>
 #include <span>
 #include <vector>
 #include <QObject>
 
-#include "AppearanceManager.h"
-#include "WorkspaceManager.h"
-#include "TradingDataDef.h"
+#include "main/data/persistence/AppearanceManager.h"
+#include "main/data/persistence/WorkspaceManager.h"
+#include "../../core/TradingTimeDef.h"
 #include "main/util/FileUtil.h"
 #include "main/market/abstract/Instrument.h"
 
-#include "ConfigDef.h"
+#include "main/data/config/MarketConfig.h"
+#include "main/data/config/ExchangeConfig.h"
 
 namespace trtdata
 {
@@ -45,7 +46,7 @@ namespace trtdata
         {}
 
         /**
-         * Need to be manually called after DataManager initialized
+         * Need to be manually called after ConfigManager initialized
          */
         bool loadAll();
 
@@ -98,9 +99,9 @@ namespace trtdata
 
         WorkspaceManager* getWorkspaceManager();
 
-        TradingDataTimeZone getTradingDataTimeZone() const;
+        TradingTimeZone getTradingDataTimeZone() const;
 
-        bool setTradingDataTimeZone(TradingDataTimeZone timeZone);
+        bool setTradingDataTimeZone(TradingTimeZone timeZone);
 
         const std::string& getDisplayTimeZone() const;
 
@@ -117,4 +118,4 @@ namespace trtdata
     };
 } // trtdata
 
-#endif //NTRT_DATAMANAGER_H
+#endif //NTRT_CONFIGMANAGER_H

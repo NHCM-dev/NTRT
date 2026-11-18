@@ -1,7 +1,7 @@
 #ifndef NTRT_WORKSPACEMANAGER_H
 #define NTRT_WORKSPACEMANAGER_H
 
-#include "WorkspaceDef.h"
+#include "main/data/config/WorkspaceConfig.h"
 
 namespace trtdata
 {

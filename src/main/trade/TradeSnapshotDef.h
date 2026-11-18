@@ -2,7 +2,7 @@
 #define NTRT_TRADESNAPSHOTDEF_H
 
 #include "TradeDataDef.h"
-#include "main/data/TradingDataDef.h"
+#include "../core/TradingTimeDef.h"
 #include <QElapsedTimer>
 #include <QString>
 #include <map>
@@ -64,10 +64,10 @@ namespace trtcore
         // Required friendship declaration: including the owning manager would create an include cycle.
         friend class CandlesManager;
         std::map<CandleSeriesKey, std::shared_ptr<const CandleSnapshot>> series;
-        trtdata::TradingDataTimeZone timeZone = trtdata::TradingDataTimeZone::UTC;
+        trtdata::TradingTimeZone timeZone = trtdata::TradingTimeZone::UTC;
 
     public:
-        trtdata::TradingDataTimeZone getTimeZone() const;
+        trtdata::TradingTimeZone getTimeZone() const;
 
         const CandleSnapshot* getSnapshot(const trtdata::InstIdentifier& identifier,
                                           trttrade::CandleTimeframe timeframe = trttrade::CandleTimeframe::Day1) const;

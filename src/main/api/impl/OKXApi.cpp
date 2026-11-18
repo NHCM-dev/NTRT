@@ -7,7 +7,7 @@
 #include "main/trade/parser/OKXParser.h"
 #include "OKXTickerStream.h"
 #include "OKXCandleStream.h"
-#include "main/market/abstract/instimpl/OKXInstrument.h"
+#include "main/market/instimpl/OKXInstrument.h"
 #include "main/util/NetworkUtil.h"
 
 namespace trtdata::okx
@@ -68,7 +68,7 @@ namespace trtdata::okx
     }
 
     QFuture<std::vector<trttrade::CandleData>> OKXApi::fetchCandleHistory(
-        const InstIdentifier& instrument, trttrade::CandleTimeframe timeframe, TradingDataTimeZone zone,
+        const InstIdentifier& instrument, trttrade::CandleTimeframe timeframe, TradingTimeZone zone,
         qint64 after) const
     {
         QUrlQuery query;
@@ -84,7 +84,7 @@ namespace trtdata::okx
 
     QFuture<std::vector<trttrade::CandleData>> OKXApi::fetchCandles(const InstIdentifier& identifier,
                                                                     trttrade::CandleTimeframe timeframe,
-                                                                    TradingDataTimeZone timeZone, int limit) const
+                                                                    TradingTimeZone timeZone, int limit) const
     {
         QUrlQuery query;
         query.addQueryItem("instId", QString::fromStdString(identifier.id));

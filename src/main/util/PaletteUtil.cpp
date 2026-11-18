@@ -1,10 +1,10 @@
 #include "PaletteUtil.h"
-#include "main/data/AppearanceDef.h"
+#include "main/data/core/Appearance.h"
 #include <QApplication>
 
 namespace trtutils
 {
-    QPalette generatePalette(trtdata::EnumTheme theme)
+    QPalette generatePalette(trtdata::Theme theme)
     {
         QColor window(0xf0f0f0);
         QColor base(0xffffff);
@@ -15,7 +15,7 @@ namespace trtutils
 
         switch (theme)
         {
-            case trtdata::EnumTheme::Light:
+            case trtdata::Theme::Light:
                 palette.setColor(QPalette::Light, Qt::white);
                 palette.setColor(QPalette::Midlight, QColor(0xe0e3e8));
                 palette.setColor(QPalette::Mid, QColor(0xbcc2ca));
@@ -23,7 +23,7 @@ namespace trtutils
                 palette.setColor(QPalette::Shadow, QColor(0xd9dde3));
                 palette.setColor(QPalette::Link, QColor(0x1460aa));
                 break;
-            case trtdata::EnumTheme::Dark:
+            case trtdata::Theme::Dark:
                 window = QColor(0x282b30);
                 base = QColor(0x202227);
                 text = QColor(0xe8eaed);
@@ -54,7 +54,7 @@ namespace trtutils
         return palette;
     }
 
-    void applyPalette(trtdata::EnumTheme theme)
+    void applyPalette(trtdata::Theme theme)
     {
         // Remove resolved QSS palettes before changing the application palette. Otherwise
         // palette(...) rules retain colors from the previous theme on existing widgets.
@@ -67,9 +67,9 @@ namespace trtutils
         QPalette inputs = palette;
         switch (theme)
         {
-            case trtdata::EnumTheme::Light:
+            case trtdata::Theme::Light:
                 break;
-            case trtdata::EnumTheme::Dark:
+            case trtdata::Theme::Dark:
                 inputs.setColor(QPalette::Base, QColor(0x363c46));
                 break;
         }

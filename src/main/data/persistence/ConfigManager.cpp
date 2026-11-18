@@ -3,7 +3,7 @@
 //
 
 #include <QTimeZone>
-#include "ConfigManager.h"
+#include "main/data/persistence/ConfigManager.h"
 #include "main/util/TimeUtil.h"
 #include "main/util/TradeUtil.h"
 
@@ -91,9 +91,9 @@ namespace trtdata
                 }
                 const std::string_view timeZone = readString(tradingData, "timeZone");
                 if (timeZone == "UTC")
-                    loaded.tradingData.timeZone = TradingDataTimeZone::UTC;
+                    loaded.tradingData.timeZone = TradingTimeZone::UTC;
                 else if (timeZone == "UTC+8")
-                    loaded.tradingData.timeZone = TradingDataTimeZone::UTC8;
+                    loaded.tradingData.timeZone = TradingTimeZone::UTC8;
                 else
                     return false;
             }
@@ -334,22 +334,22 @@ namespace trtdata
         return true;
     }
 
-    TradingDataTimeZone ConfigManager::getTradingDataTimeZone() const
+    TradingTimeZone ConfigManager::getTradingDataTimeZone() const
     {
         return marketConfig.tradingData.timeZone;
     }
 
-    bool ConfigManager::setTradingDataTimeZone(TradingDataTimeZone timeZone)
+    bool ConfigManager::setTradingDataTimeZone(TradingTimeZone timeZone)
     {
         switch (timeZone)
         {
-            case TradingDataTimeZone::UTC:
-            case TradingDataTimeZone::UTC8:
+            case TradingTimeZone::UTC:
+            case TradingTimeZone::UTC8:
                 break;
             default:
                 return false;
         }
-        const TradingDataTimeZone previous = marketConfig.tradingData.timeZone;
+        const TradingTimeZone previous = marketConfig.tradingData.timeZone;
         if (timeZone == previous)
             return true;
         marketConfig.tradingData.timeZone = timeZone;

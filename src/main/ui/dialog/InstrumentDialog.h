@@ -1,7 +1,7 @@
 #ifndef NTRT_INSTRUMENTDIALOG_H
 #define NTRT_INSTRUMENTDIALOG_H
 
-#include "main/data/ConfigManager.h"
+#include "main/data/persistence/ConfigManager.h"
 #include <QDialog>
 #include <QComboBox>
 #include <QLabel>

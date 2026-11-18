@@ -110,10 +110,10 @@ namespace trtui
     {
         QVBoxLayout* rows = addSection("Appearance", "Display", "light dark display scale scaling zoom size custom restart");
         const trtdata::AppearanceManager* appearance = ntrt::configManager->getAppearanceManager();
-        const int selected = appearance->getCurrentTheme() == trtdata::EnumTheme::Dark ? 1 : 0;
+        const int selected = appearance->getCurrentTheme() == trtdata::Theme::Dark ? 1 : 0;
         addDropdown(rows, "Theme", "Choose a light or dark interface.", {"Light", "Dark"}, selected, [this](int index)
         {
-            return saveAppearance(index == 0 ? trtdata::EnumTheme::Light : trtdata::EnumTheme::Dark);
+            return saveAppearance(index == 0 ? trtdata::Theme::Light : trtdata::Theme::Dark);
         });
         initDisplayScaleRows(rows);
     }
@@ -187,10 +187,10 @@ namespace trtui
         });
     }
 
-    bool SettingPage::saveAppearance(trtdata::EnumTheme theme)
+    bool SettingPage::saveAppearance(trtdata::Theme theme)
     {
         trtdata::AppearanceManager* appearance = ntrt::configManager->getAppearanceManager();
-        const trtdata::EnumTheme previous = appearance->getCurrentTheme();
+        const trtdata::Theme previous = appearance->getCurrentTheme();
         appearance->setTheme(theme);
         if (!appearance->saveConfig())
         {
@@ -224,10 +224,10 @@ namespace trtui
         int selectedTimeZone = 0;
         switch (config.getTradingDataTimeZone())
         {
-            case trtdata::TradingDataTimeZone::UTC:
+            case trtdata::TradingTimeZone::UTC:
                 selectedTimeZone = 0;
                 break;
-            case trtdata::TradingDataTimeZone::UTC8:
+            case trtdata::TradingTimeZone::UTC8:
                 selectedTimeZone = 1;
                 break;
         }
@@ -238,9 +238,9 @@ namespace trtui
                         switch (index)
                         {
                             case 0:
-                                return config.setTradingDataTimeZone(trtdata::TradingDataTimeZone::UTC);
+                                return config.setTradingDataTimeZone(trtdata::TradingTimeZone::UTC);
                             case 1:
-                                return config.setTradingDataTimeZone(trtdata::TradingDataTimeZone::UTC8);
+                                return config.setTradingDataTimeZone(trtdata::TradingTimeZone::UTC8);
                             default:
                                 return false;
                         }

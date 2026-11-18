@@ -8,7 +8,7 @@
 #include <QThread>
 #include <QTimer>
 #include <atomic>
-#include "main/data/ConfigManager.h"
+#include "main/data/persistence/ConfigManager.h"
 
 namespace trtcore
 {
@@ -30,7 +30,7 @@ namespace trtcore
 
             void setBookInstruments(const BookStream::Instruments& instruments);
 
-            void setTimeZone(trtdata::TradingDataTimeZone zone);
+            void setTimeZone(trtdata::TradingTimeZone zone);
 
             void acquireSeries(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe);
 

@@ -7,7 +7,7 @@
 
 #include <QString>
 
-#include "AppearanceDef.h"
+#include "main/data/config/AppearanceConfig.h"
 
 namespace trtdata
 {
@@ -26,9 +26,9 @@ namespace trtdata
 
         bool saveConfig() const;
 
-        EnumTheme getCurrentTheme() const;
+        Theme getCurrentTheme() const;
 
-        void setTheme(EnumTheme theme);
+        void setTheme(Theme theme);
 
         bool isPriceFlashEnabled() const;
 

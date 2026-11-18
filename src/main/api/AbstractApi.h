@@ -10,7 +10,7 @@
 #include "BookStream.h"
 #include "CandleStream.h"
 #include "main/trade/TradeDataDef.h"
-#include "main/data/TradingDataDef.h"
+#include "../core/TradingTimeDef.h"
 #include <memory>
 #include <vector>
 #include "main/trade/TradeDef.h"
@@ -37,7 +37,7 @@ namespace trtcore
 
         virtual QFuture<std::vector<trttrade::CandleData>> fetchCandleHistory(
             const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe,
-            trtdata::TradingDataTimeZone zone, qint64 after) const
+            trtdata::TradingTimeZone zone, qint64 after) const
         {
             Q_UNUSED(after);
             return fetchCandles(instrument, timeframe, zone, 300);
@@ -46,11 +46,11 @@ namespace trtcore
         // Results must have ascending, unique opening timestamps in Unix milliseconds.
         virtual QFuture<std::vector<trttrade::CandleData>> fetchCandles(const trtdata::InstIdentifier& identifier,
                                                                         trttrade::CandleTimeframe timeframe,
-                                                                        trtdata::TradingDataTimeZone timeZone,
+                                                                        trtdata::TradingTimeZone timeZone,
                                                                         int limit) const = 0;
 
         QFuture<std::vector<trttrade::CandleData>> fetchDailyCandles(const trtdata::InstIdentifier& identifier,
-                                                                     trtdata::TradingDataTimeZone timeZone,
+                                                                     trtdata::TradingTimeZone timeZone,
                                                                      int limit) const
         {
             return fetchCandles(identifier, trttrade::CandleTimeframe::Day1, timeZone, limit);

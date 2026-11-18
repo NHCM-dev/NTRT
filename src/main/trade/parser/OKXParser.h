@@ -9,13 +9,13 @@
 #include "main/trade/TradeDataDef.h"
 #include <QByteArray>
 #include "main/trade/TradeDef.h"
-#include "main/data/TradingDataDef.h"
+#include "../../core/TradingTimeDef.h"
 
 #include "main/util/JsonUtil.h"
 
 namespace trtdata::OKXParser
 {
-    QString candleBar(trttrade::CandleTimeframe timeframe, TradingDataTimeZone timeZone);
+    QString candleBar(trttrade::CandleTimeframe timeframe, TradingTimeZone timeZone);
 
     std::string_view getInstType(trttrade::InstType type);
 

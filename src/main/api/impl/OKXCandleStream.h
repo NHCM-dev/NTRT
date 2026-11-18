@@ -17,7 +17,7 @@ namespace trtdata::okx
         OKXCandleStream();
 
         void start(const InstIdentifier& instrument, trttrade::CandleTimeframe timeframe,
-                   TradingDataTimeZone zone) override;
+                   TradingTimeZone zone) override;
 
         void stop() override;
     };

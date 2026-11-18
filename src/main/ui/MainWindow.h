@@ -2,7 +2,7 @@
 #define NTRT_MAINWINDOW_H
 
 #include <QMainWindow>
-#include "main/data/WorkspaceDef.h"
+#include "main/data/config/WorkspaceConfig.h"
 #include <QTabWidget>
 #include <QAction>
 #include <QMenu>

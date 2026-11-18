@@ -9,7 +9,7 @@
 #include <QListWidget>
 #include <QStackedWidget>
 #include <QVBoxLayout>
-#include "main/data/AppearanceDef.h"
+#include "main/data/config/AppearanceConfig.h"
 
 namespace trtui
 {
@@ -42,7 +42,7 @@ namespace trtui
 
         void initSearch();
 
-        bool saveAppearance(trtdata::EnumTheme theme);
+        bool saveAppearance(trtdata::Theme theme);
 
         QVBoxLayout* addSection(const QString& title, const QString& group, const QString& keywords = {});
 

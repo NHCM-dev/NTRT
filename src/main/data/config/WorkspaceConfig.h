@@ -1,6 +1,7 @@
-#ifndef NTRT_WORKSPACEDEF_H
-#define NTRT_WORKSPACEDEF_H
+#ifndef NTRT_WORKSPACECONFIGDEF_H
+#define NTRT_WORKSPACECONFIGDEF_H
 
+#include "main/data/core/Workspace.h"
 #include "main/trade/TradeDef.h"
 #include <QByteArray>
 #include <QRect>
@@ -26,10 +27,6 @@ namespace trtdata
         bool volume = true;
     };
 
-    enum class PriceAlignment { Left, Center, Right };
-
-    enum class BookLayout { Both, BuyOnly, SellOnly };
-
     struct BookDepthPanelState
     {
         std::optional<InstIdentifier> instrument;
@@ -41,9 +38,6 @@ namespace trtdata
         bool settingsExpanded = true;
         PriceAlignment priceAlignment = PriceAlignment::Left;
     };
-
-    enum class WorkspaceWindowType { Instruments, Chart, BookDepth };
-    enum class WorkspaceWindowMode { Normal, Minimized, Maximized };
 
     struct WorkspaceWindowState
     {
@@ -77,4 +71,4 @@ namespace trtdata
     };
 }
 
-#endif //NTRT_WORKSPACEDEF_H
+#endif //NTRT_WORKSPACECONFIGDEF_H

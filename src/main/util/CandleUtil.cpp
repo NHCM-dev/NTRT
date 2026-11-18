@@ -55,7 +55,7 @@ namespace trtutils
     }
 
     const trttrade::CandleData* dailyCandle(std::span<const trttrade::CandleData> candles, qint64 now,
-                                            trtdata::TradingDataTimeZone zone)
+                                            trtdata::TradingTimeZone zone)
     {
         if (candles.empty() || candles.back().timestamp != startOfTradingDay(now, zone))
             return nullptr;

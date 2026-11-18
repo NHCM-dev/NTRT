@@ -53,7 +53,7 @@ namespace trtdata::okx
 
         QFuture<std::vector<trttrade::CandleData>> fetchCandleHistory(const InstIdentifier& instrument,
                                                                       trttrade::CandleTimeframe timeframe,
-                                                                      TradingDataTimeZone zone,
+                                                                      TradingTimeZone zone,
                                                                       qint64 after) const override;
 
         static QFuture<TickerData> requestTicker(const std::string& instId);
@@ -70,7 +70,7 @@ namespace trtdata::okx
 
         QFuture<std::vector<trttrade::CandleData>> fetchCandles(const InstIdentifier& identifier,
                                                                 trttrade::CandleTimeframe timeframe,
-                                                                TradingDataTimeZone timeZone, int limit) const override;
+                                                                TradingTimeZone timeZone, int limit) const override;
 
         QFuture<std::shared_ptr<std::vector<TickerData>>> fetchTickers(trttrade::InstType type) const override;
 

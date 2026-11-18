@@ -4,7 +4,7 @@
 #include <QFrame>
 #include <QPointer>
 #include <QMdiSubWindow>
-#include "main/data/WorkspaceDef.h"
+#include "main/data/config/WorkspaceConfig.h"
 #include <memory>
 #include <vector>
 #include <QAction>

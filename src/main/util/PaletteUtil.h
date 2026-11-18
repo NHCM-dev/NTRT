@@ -2,13 +2,13 @@
 #define NTRT_PALETTEUTIL_H
 
 #include <QPalette>
-#include "main/data/AppearanceDef.h"
+#include "main/data/core/Appearance.h"
 
 namespace trtutils
 {
-    QPalette generatePalette(trtdata::EnumTheme theme);
+    QPalette generatePalette(trtdata::Theme theme);
 
-    void applyPalette(trtdata::EnumTheme theme);
+    void applyPalette(trtdata::Theme theme);
 
     QColor risingColor(const QPalette& palette);
 

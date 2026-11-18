@@ -1,5 +1,5 @@
 #include "DataMonitor.h"
-#include "main/data/ConfigManager.h"
+#include "main/data/persistence/ConfigManager.h"
 
 namespace trtcore
 {
@@ -33,7 +33,7 @@ namespace trtcore
         publish();
     }
 
-    void DataMonitor::Worker::setTimeZone(trtdata::TradingDataTimeZone zone)
+    void DataMonitor::Worker::setTimeZone(trtdata::TradingTimeZone zone)
     {
         candlesManager.setTimeZone(zone);
         publish();
@@ -149,7 +149,7 @@ namespace trtcore
     {
         if (!running)
             return;
-        const trtdata::TradingDataTimeZone zone = configManager.getTradingDataTimeZone();
+        const trtdata::TradingTimeZone zone = configManager.getTradingDataTimeZone();
         QMetaObject::invokeMethod(workerContext, [this, zone]
         {
             worker->setTimeZone(zone);

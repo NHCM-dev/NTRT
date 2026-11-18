@@ -31,7 +31,7 @@ namespace trtcore
         return entry == tickersData.end() ? nullptr : &entry->second;
     }
 
-    trtdata::TradingDataTimeZone CandlesSnapshot::getTimeZone() const
+    trtdata::TradingTimeZone CandlesSnapshot::getTimeZone() const
     {
         return timeZone;
     }

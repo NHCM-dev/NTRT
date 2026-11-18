@@ -8,7 +8,7 @@
 #include <vector>
 #include <QApplication>
 
-#include "data/ConfigManager.h"
+#include "main/data/persistence/ConfigManager.h"
 #include "monitor/DataMonitor.h"
 #include "ui/MainWindow.h"
 

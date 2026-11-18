@@ -1,18 +1,12 @@
-#ifndef NTRT_APPEARANCEDEF_H
-#define NTRT_APPEARANCEDEF_H
+#ifndef NTRT_APPEARANCECONFIGDEF_H
+#define NTRT_APPEARANCECONFIGDEF_H
 
-
+#include "main/data/core/Appearance.h"
 
 namespace trtdata
 {
     inline constexpr int MIN_DISPLAY_SCALE_PERCENT = 25;
     inline constexpr int MAX_DISPLAY_SCALE_PERCENT = 400;
-
-    enum class EnumTheme
-    {
-        Light,
-        Dark
-    };
 
     struct MarketColumnVisibility
     {
@@ -25,11 +19,11 @@ namespace trtdata
 
     struct AppearanceConfig
     {
-        EnumTheme currentTheme = EnumTheme::Dark;
+        Theme currentTheme = Theme::Dark;
         bool priceFlash = true;
         MarketColumnVisibility marketColumns{};
-        int displayScalePercent = 100;
+        int displayScalePercent = 85;
     };
 }
 
-#endif //NTRT_APPEARANCEDEF_H
+#endif //NTRT_APPEARANCECONFIGDEF_H

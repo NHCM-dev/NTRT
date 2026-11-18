@@ -27,8 +27,12 @@ qt_add_executable(NTRT ${NTRT_SOURCES})
 target_include_directories(NTRT PRIVATE src)
 target_link_libraries(NTRT PRIVATE Qt6::Widgets Qt6::Network Qt6::WebSockets Qt6::OpenGL Qt6::OpenGLWidgets simdjson::simdjson)
 if(WIN32)
+    enable_language(RC)
+    set(NTRT_ICON_PATH "${CMAKE_CURRENT_SOURCE_DIR}/src/resources/icon.ico")
+    configure_file(cmake/resources/WindowsIcon.rc.in "${CMAKE_CURRENT_BINARY_DIR}/WindowsIcon.rc" @ONLY)
+    target_sources(NTRT PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/WindowsIcon.rc")
+    set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/WindowsIcon.rc" PROPERTIES OBJECT_DEPENDS "${NTRT_ICON_PATH}")
     set_target_properties(NTRT PROPERTIES WIN32_EXECUTABLE TRUE)
-
 endif()
 add_custom_target(ntrt_resources
     COMMAND "${CMAKE_COMMAND}"

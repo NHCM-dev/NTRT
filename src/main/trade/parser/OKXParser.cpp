@@ -190,7 +190,7 @@ namespace trtdata::OKXParser
 
 namespace trtdata::OKXParser
 {
-    QString candleBar(trttrade::CandleTimeframe timeframe, TradingDataTimeZone timeZone)
+    QString candleBar(trttrade::CandleTimeframe timeframe, TradingTimeZone timeZone)
     {
         QString bar;
         bool calendar = false;
@@ -237,10 +237,10 @@ namespace trtdata::OKXParser
         {
             switch (timeZone)
             {
-                case TradingDataTimeZone::UTC:
+                case TradingTimeZone::UTC:
                     bar += "utc";
                     break;
-                case TradingDataTimeZone::UTC8:
+                case TradingTimeZone::UTC8:
                     break;
             }
         }

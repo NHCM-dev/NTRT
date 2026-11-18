@@ -22,7 +22,7 @@ namespace trtdata::okx
     }
 
     void OKXCandleStream::start(const InstIdentifier& instrument, trttrade::CandleTimeframe timeframe,
-                                TradingDataTimeZone zone)
+                                TradingTimeZone zone)
     {
         const trtnet::WebSocketAPITemplate channel{CANDLE_ENDPOINT, "candle" + OKXParser::candleBar(timeframe, zone), {"instId"}};
         argument = channel.createArgument({{"instId", QString::fromStdString(instrument.id)}});

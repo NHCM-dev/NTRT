@@ -2,7 +2,7 @@
 #define NTRT_CANDLESTREAM_H
 #include "main/trade/TradeDef.h"
 #include "main/trade/TradeDataDef.h"
-#include "main/data/TradingDataDef.h"
+#include "../core/TradingTimeDef.h"
 #include <QObject>
 #include <QString>
 #include <vector>
@@ -15,7 +15,7 @@ namespace trtcore
 
     public:
         virtual void start(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe,
-                           trtdata::TradingDataTimeZone zone) = 0;
+                           trtdata::TradingTimeZone zone) = 0;
 
         virtual void stop() = 0;
 

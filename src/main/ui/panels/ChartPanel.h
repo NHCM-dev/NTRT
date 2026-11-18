@@ -1,7 +1,7 @@
 #ifndef NTRT_CHARTPANEL_H
 #define NTRT_CHARTPANEL_H
 #include <QFrame>
-#include "main/data/WorkspaceDef.h"
+#include "main/data/config/WorkspaceConfig.h"
 #include "main/trade/TradeDef.h"
 #include <memory>
 #include <vector>

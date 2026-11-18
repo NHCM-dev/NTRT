@@ -1,30 +1,30 @@
 #ifndef NTRT_TIMEUTIL_H
 #define NTRT_TIMEUTIL_H
 
-#include "main/data/TradingDataDef.h"
+#include "../core/TradingTimeDef.h"
 #include <QString>
 
 namespace trtdata
 {
-    constexpr std::string_view tradingDataTimeZoneName(TradingDataTimeZone timeZone)
+    constexpr std::string_view tradingDataTimeZoneName(TradingTimeZone timeZone)
     {
         switch (timeZone)
         {
-            case TradingDataTimeZone::UTC:
+            case TradingTimeZone::UTC:
                 return "UTC";
-            case TradingDataTimeZone::UTC8:
+            case TradingTimeZone::UTC8:
                 return "UTC+8";
         }
         return {};
     }
 
-    constexpr std::int64_t tradingDataTimeZoneOffsetMs(TradingDataTimeZone timeZone)
+    constexpr std::int64_t tradingDataTimeZoneOffsetMs(TradingTimeZone timeZone)
     {
         switch (timeZone)
         {
-            case TradingDataTimeZone::UTC:
+            case TradingTimeZone::UTC:
                 return 0;
-            case TradingDataTimeZone::UTC8:
+            case TradingTimeZone::UTC8:
                 return 8 * 3600000;
         }
         return 0;
@@ -33,9 +33,9 @@ namespace trtdata
 
 namespace trtutils
 {
-    qint64 startOfTradingDay(qint64 timestamp, trtdata::TradingDataTimeZone zone);
+    qint64 startOfTradingDay(qint64 timestamp, trtdata::TradingTimeZone zone);
 
-    QString formatTradingTime(qint64 timestamp, trtdata::TradingDataTimeZone zone, const QString& format);
+    QString formatTradingTime(qint64 timestamp, trtdata::TradingTimeZone zone, const QString& format);
 }
 
 #endif //NTRT_TIMEUTIL_H

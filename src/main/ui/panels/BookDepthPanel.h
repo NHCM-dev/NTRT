@@ -1,7 +1,7 @@
 #ifndef NTRT_BOOKDEPTHPANEL_H
 #define NTRT_BOOKDEPTHPANEL_H
 
-#include "main/data/WorkspaceDef.h"
+#include "main/data/config/WorkspaceConfig.h"
 #include "main/trade/TradeDataDef.h"
 #include <QFrame>
 #include <memory>

@@ -282,7 +282,7 @@ namespace trtcore
         return trtutils::dailyCandle(snapshot->candles, QDateTime::currentMSecsSinceEpoch(), timeZone);
     }
 
-    void CandlesManager::setTimeZone(trtdata::TradingDataTimeZone value)
+    void CandlesManager::setTimeZone(trtdata::TradingTimeZone value)
     {
         if (timeZone == value)
             return;
@@ -301,7 +301,7 @@ namespace trtcore
         }
     }
 
-    trtdata::TradingDataTimeZone CandlesManager::getTimeZone() const
+    trtdata::TradingTimeZone CandlesManager::getTimeZone() const
     {
         return timeZone;
     }

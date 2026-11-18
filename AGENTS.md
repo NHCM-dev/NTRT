@@ -24,6 +24,7 @@
 
 - Put shared domain enums, identifiers, data records, snapshots, and configuration structs in cohesive domain `XXXDef.h` headers. Use `TradeDef.h` for trading enums and identities, `TradeDataDef.h` for raw trading records, and `TradeSnapshotDef.h` for published trading snapshots and their read interfaces. Apply the same separation to configuration, workspace, network, and chart domains.
 - Do not scatter shared type definitions across manager, service, UI, or utility headers, create one header per trivial type, or collect unrelated domains in one global definitions file. Keep class-private implementation types with their owning class.
+- Keep persisted settings and workspace state in `src/main/data/config/*ConfigDef.h`, shared non-persistence enums in `src/main/data/core/*Def.h`, and configuration managers in `src/main/data/persistence`. Core definitions must not depend on configuration records or persistence managers.
 - Keep definition headers self-contained and include the defining headers of referenced types. Keep dependencies within their owning domains and avoid unnecessary manager, network-client, or UI implementation dependencies. Consumers should include the defining header directly; do not substitute forward declarations. Keep snapshot query implementations with the snapshots and update callers and build/test inputs when moving types.
 
 ## Utility Extraction

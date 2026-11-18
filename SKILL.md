@@ -23,7 +23,7 @@ Choose the smallest complete change that addresses the request. A question about
 | Child-window creation setup, frame interaction, geometry constraints and per-window menu action | `ui/WorkspaceWindow` |
 | Instrument list, chart and book depth content | `ui/panels/InstrumentListPanel`, `ui/panels/ChartPanel`, `ui/panels/BookDepthPanel` |
 | Settings dialog and setting rows | `ui/dialog/SettingsDialog`, `ui/pages/SettingPage` |
-| Typed settings and persistence | `data/ConfigManager`, `data/AppearanceManager` |
+| Typed settings and persistence | `data/persistence/ConfigManager`, `data/persistence/AppearanceManager`, `data/persistence/WorkspaceManager` |
 | Background subscriptions and lifecycle | `monitor/DataMonitor` |
 | Quotes, order books, candles and icon caches | `monitor/MarketData`, `monitor/CandlesManager`, `monitor/InstrumentIconManager` |
 | Common exchange interface and OKX behavior | `api/AbstractApi`, `api/impl/OKXApi`, `api/impl/OKXTickerStream`, `api/impl/OKXBookStream` |
@@ -34,7 +34,7 @@ These are discovery hints, not permission to create missing components. Inspect 
 
 ## Organize shared types by domain
 
-Before adding a struct or enum, inspect the existing domain definitions and its consumers. Keep trading enums and identities in `trade/TradeDef.h`, raw ticker/candle/book records in `trade/TradeDataDef.h`, and published snapshots plus read interfaces in `trade/TradeSnapshotDef.h`. Use the corresponding `data/*Def.h`, `network/NetworkDef.h`, `ui/chart/ChartDef.h`, or `monitor/DataSnapshotDef.h` for other domains. Keep configuration persistence and live-data lifecycle in their managers, and class-private subscription/cache/layout details in their owner classes.
+Before adding a struct or enum, inspect the existing domain definitions and its consumers. Keep trading enums and identities in `trade/TradeDef.h`, raw ticker/candle/book records in `trade/TradeDataDef.h`, and published snapshots plus read interfaces in `trade/TradeSnapshotDef.h`. Use `data/config/*ConfigDef.h` for persisted settings and workspace state, `data/core/*Def.h` for shared exchange, appearance, time-zone and workspace enums, and the corresponding `network/NetworkDef.h`, `ui/chart/ChartDef.h`, or `monitor/DataSnapshotDef.h` for other domains. Keep configuration persistence and live-data lifecycle in their managers, and class-private subscription/cache/layout details in their owner classes.
 
 Definition headers must compile independently and directly include the defining headers of referenced types. Keep domain dependencies focused and avoid unnecessary manager, client, or concrete-widget dependencies. Do not use class, struct, or enum forward declarations, including for Qt types, pointers, references, or private worker types. Use includes instead; compile-time savings are not an exception. Retain declarations only when technically required, such as friendship where including the owner would create an unavoidable cycle, and explain each exception at the declaration. Keep cohesive types together rather than creating a header for every small type or an application-wide catch-all. Move snapshot query implementations with their read interfaces, migrate all callers, remove superseded headers, and update explicit build/test source lists.
 

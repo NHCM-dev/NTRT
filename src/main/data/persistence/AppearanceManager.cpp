@@ -2,7 +2,7 @@
 // Created by NHCM on 2026/11/9.
 //
 
-#include "AppearanceManager.h"
+#include "main/data/persistence/AppearanceManager.h"
 #include <QApplication>
 #include "main/util/FileUtil.h"
 #include "main/util/JsonUtil.h"
@@ -57,7 +57,7 @@ namespace trtdata
                     return false;
             }
 
-            appearanceConfig = {theme == "dark" ? EnumTheme::Dark : EnumTheme::Light, priceFlash, columns,
+            appearanceConfig = {theme == "dark" ? Theme::Dark : Theme::Light, priceFlash, columns,
                 static_cast<int>(displayScalePercent)};
             return true;
         } catch (const simdjson::simdjson_error&)
@@ -70,7 +70,7 @@ namespace trtdata
     {
         jsonBuilder builder = newBuilder();
         builder.start_object();
-        builder.append_key_value("theme", appearanceConfig.currentTheme == EnumTheme::Dark ? "dark" : "light");
+        builder.append_key_value("theme", appearanceConfig.currentTheme == Theme::Dark ? "dark" : "light");
         builder.append_comma();
         builder.append_key_value("priceFlash", appearanceConfig.priceFlash);
         builder.append_comma();
@@ -93,12 +93,12 @@ namespace trtdata
         return writeJsonFile(trtutils::appendPath(dataPath, "appearance.json"), builder.view());
     }
 
-    EnumTheme AppearanceManager::getCurrentTheme() const
+    Theme AppearanceManager::getCurrentTheme() const
     {
         return appearanceConfig.currentTheme;
     }
 
-    void AppearanceManager::setTheme(EnumTheme theme)
+    void AppearanceManager::setTheme(Theme theme)
     {
         appearanceConfig.currentTheme = theme;
     }

@@ -1,4 +1,4 @@
-#include "WorkspaceManager.h"
+#include "main/data/persistence/WorkspaceManager.h"
 #include "main/util/FileUtil.h"
 #include "main/util/JsonUtil.h"
 #include "main/util/WorkspaceStateUtil.h"

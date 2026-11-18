@@ -4,7 +4,7 @@
 #include <QTimeZone>
 #include "ChartRenderer.h"
 #include "main/trade/TradeDataDef.h"
-#include "main/data/TradingDataDef.h"
+#include "../../core/TradingTimeDef.h"
 #include <QOpenGLWidget>
 #include <QOpenGLFunctions>
 #include <QPainter>

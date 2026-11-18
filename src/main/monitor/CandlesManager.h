@@ -3,7 +3,7 @@
 
 #include "main/trade/TradeSnapshotDef.h"
 #include "main/market/abstract/Instrument.h"
-#include "main/data/TradingDataDef.h"
+#include "../core/TradingTimeDef.h"
 #include <QFutureWatcher>
 #include <QTimer>
 #include "main/api/CandleStream.h"
@@ -47,7 +47,7 @@ namespace trtcore
         std::map<CandleSeriesKey, Subscription> subscriptions;
         QTimer requestTimer;
         qint64 nextStreamStart = 0;
-        trtdata::TradingDataTimeZone timeZone = trtdata::TradingDataTimeZone::UTC;
+        trtdata::TradingTimeZone timeZone = trtdata::TradingTimeZone::UTC;
 
         void ensureStream(const CandleSeriesKey& key, Subscription& subscription);
 
@@ -95,9 +95,9 @@ namespace trtcore
 
         CandleMap getCandleMap(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe) const;
 
-        void setTimeZone(trtdata::TradingDataTimeZone value);
+        void setTimeZone(trtdata::TradingTimeZone value);
 
-        trtdata::TradingDataTimeZone getTimeZone() const;
+        trtdata::TradingTimeZone getTimeZone() const;
 
         const CandleSnapshot* getSnapshot(const trtdata::InstIdentifier& identifier,
                                           trttrade::CandleTimeframe timeframe = trttrade::CandleTimeframe::Day1) const;
