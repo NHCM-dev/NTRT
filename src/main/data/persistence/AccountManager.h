@@ -1,7 +1,7 @@
 #ifndef NTRT_ACCOUNTMANAGER_H
 #define NTRT_ACCOUNTMANAGER_H
 
-#include "main/data/config/AccountConfig.h"
+#include "main/trade/AccountCredentials.h"
 #include "main/trade/TradingAccount.h"
 #include <memory>
 

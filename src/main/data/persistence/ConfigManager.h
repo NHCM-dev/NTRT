@@ -12,7 +12,7 @@
 
 #include "main/data/persistence/AppearanceManager.h"
 #include "main/data/persistence/WorkspaceManager.h"
-#include "../../core/TradingTimeDef.h"
+#include "main/data/core/TradingTimeDef.h"
 #include "main/util/FileUtil.h"
 #include "main/market/abstract/Instrument.h"
 

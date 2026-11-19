@@ -12,7 +12,7 @@
 #include <QPushButton>
 #include <QVBoxLayout>
 #include "main/trade/AccountDef.h"
-#include "main/data/core/Workspace.h"
+#include "main/data/core/WorkspaceDef.h"
 namespace trtui
 {
     class AccountPanel final : public QFrame

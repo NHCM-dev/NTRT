@@ -1,3 +1,4 @@
+#include "main/ui/widgets/HeaderTable.h"
 //
 // Created by NHCM on 2026/11/7.
 //
@@ -155,7 +156,7 @@ namespace trtui
 
     void InstrumentListPanel::initTable(QFrame* page, QVBoxLayout* layout)
     {
-        table = trtutils::createHeaderTable(page, {
+        table = new HeaderTable(page, {
                                                 "Exchange",
                                                 "Type",
                                                 "Icon",

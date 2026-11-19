@@ -1,7 +1,7 @@
 #ifndef NTRT_TIMEUTIL_H
 #define NTRT_TIMEUTIL_H
 
-#include "../core/TradingTimeDef.h"
+#include "main/data/core/TradingTimeDef.h"
 #include <QString>
 
 namespace trtdata

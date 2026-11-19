@@ -10,7 +10,7 @@
 #include <QStackedWidget>
 #include <QVBoxLayout>
 #include "main/data/config/AppearanceConfig.h"
-#include "main/data/config/AccountConfig.h"
+#include "main/trade/AccountCredentials.h"
 
 namespace trtui
 {

@@ -9,7 +9,7 @@
 #include <cstdint>
 #include <string>
 
-#include "../core/ExchangeDef.h"
+#include "main/data/core/ExchangeDef.h"
 
 namespace trttrade
 {

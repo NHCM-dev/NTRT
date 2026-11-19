@@ -23,6 +23,7 @@ namespace trtcore
         using Identifier2SnapshotMap = MarketDataSnapshot::Identifier2SnapshotMap;
 
         MarketData();
+        void requestCatalog(trtdata::Exchange exchange, trttrade::InstType type);
 
         void setInstruments(std::span<const std::shared_ptr<trtdata::Instrument>> instruments);
 

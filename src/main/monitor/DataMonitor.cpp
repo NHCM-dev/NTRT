@@ -1,3 +1,4 @@
+#include "main/api/AbstractApi.h"
 #include "DataMonitor.h"
 #include "main/data/persistence/ConfigManager.h"
 
@@ -287,3 +288,11 @@ namespace trtcore
         return instrumentIconManager;
     }
 }
+
+void trtcore::DataMonitor::Worker::requestCatalog(trtdata::Exchange exchange, trttrade::InstType type) { marketData.requestCatalog(exchange, type); publish(); }
+void trtcore::DataMonitor::requestCatalog(trtdata::Exchange exchange, trttrade::InstType type)
+{
+    if (running) QMetaObject::invokeMethod(workerContext, [this, exchange, type] { worker->requestCatalog(exchange, type); }, Qt::QueuedConnection);
+}
+std::vector<trttrade::InstType> trtcore::DataMonitor::getInstrumentTypes(trtdata::Exchange exchange) const { return exchangeApi(exchange).instrumentTypes(); }
+std::vector<trtdata::Exchange> trtcore::DataMonitor::getExchanges() const { return availableExchanges(); }

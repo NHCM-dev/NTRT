@@ -59,3 +59,9 @@ namespace trtcore
         return trtutils::dailyChangePercent(candle, latestPrice);
     }
 }
+
+const trtcore::InstrumentCatalogSnapshot* trtcore::MarketDataSnapshot::getCatalog(trtdata::Exchange exchange, trttrade::InstType type) const
+{
+    const std::map<std::pair<trtdata::Exchange, trttrade::InstType>, InstrumentCatalogSnapshot>::const_iterator found = catalogs.find({exchange, type});
+    return found == catalogs.end() ? nullptr : &found->second;
+}

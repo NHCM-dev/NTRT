@@ -10,7 +10,7 @@
 #include "BookStream.h"
 #include "CandleStream.h"
 #include "main/trade/TradeDataDef.h"
-#include "../core/TradingTimeDef.h"
+#include "main/data/core/TradingTimeDef.h"
 #include <memory>
 #include <vector>
 #include "main/trade/TradeDef.h"

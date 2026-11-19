@@ -1,7 +1,7 @@
 #ifndef NTRT_OKXTRADINGACCOUNT_H
 #define NTRT_OKXTRADINGACCOUNT_H
 #include "main/trade/TradingAccount.h"
-#include "main/data/config/AccountConfig.h"
+#include "main/trade/AccountCredentials.h"
 namespace trttrade
 {
     class OKXTradingAccount final : public TradingAccount

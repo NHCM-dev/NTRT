@@ -1,7 +1,7 @@
 #ifndef NTRT_TRADINGCONFIGDEF_H
 #define NTRT_TRADINGCONFIGDEF_H
 
-#include "../../core/TradingTimeDef.h"
+#include "main/data/core/TradingTimeDef.h"
 #include <string>
 
 namespace trtdata

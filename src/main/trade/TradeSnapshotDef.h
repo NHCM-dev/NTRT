@@ -2,7 +2,8 @@
 #define NTRT_TRADESNAPSHOTDEF_H
 
 #include "TradeDataDef.h"
-#include "../core/TradingTimeDef.h"
+#include "main/market/abstract/Instrument.h"
+#include "main/data/core/TradingTimeDef.h"
 #include <QElapsedTimer>
 #include <QString>
 #include <map>
@@ -40,9 +41,19 @@ namespace trtcore
         QElapsedTimer priceChangeAge{};
     };
 
+    struct InstrumentCatalogSnapshot
+    {
+        std::vector<std::shared_ptr<trtdata::Instrument>> instruments;
+        QString error;
+        bool loading = false;
+        qint64 revision = 0;
+    };
+
     class MarketDataSnapshot
     {
     public:
+        const InstrumentCatalogSnapshot* getCatalog(trtdata::Exchange exchange, trttrade::InstType type) const;
+
         using Identifier2SnapshotMap = std::map<trtdata::InstIdentifier, MarketSnapshot>;
 
         const trttrade::BookSnapshot* getBook(const trtdata::InstIdentifier& identifier) const;
@@ -54,6 +65,7 @@ namespace trtcore
     private:
         // Required friendship declaration: including the owning manager would create an include cycle.
         friend class MarketData;
+        std::map<std::pair<trtdata::Exchange, trttrade::InstType>, InstrumentCatalogSnapshot> catalogs;
         std::map<trttrade::InstType, Identifier2SnapshotMap> tickersData;
         std::map<trtdata::Exchange, MarketSnapshot> failures;
         std::map<trtdata::InstIdentifier, trttrade::BookSnapshot> books;

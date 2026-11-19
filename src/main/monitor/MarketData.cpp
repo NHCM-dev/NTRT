@@ -1,3 +1,5 @@
+#include <QFutureWatcher>
+#include <exception>
 //
 // Created by NHCM on 2026/11/8.
 //
@@ -157,4 +159,31 @@ namespace trtcore
         return snapshot;
     }
 
+}
+
+void trtcore::MarketData::requestCatalog(trtdata::Exchange exchange, trttrade::InstType type)
+{
+    InstrumentCatalogSnapshot& catalog = snapshot.catalogs[{exchange, type}];
+    if (catalog.loading) return;
+    catalog.loading = true;
+    catalog.error.clear();
+    using Catalog = std::vector<std::shared_ptr<trtdata::Instrument>>;
+    QFutureWatcher<Catalog>* watcher = new QFutureWatcher<Catalog>(this);
+    connect(watcher, &QFutureWatcher<Catalog>::finished, this, [this, exchange, type, watcher]
+    {
+        InstrumentCatalogSnapshot& result = snapshot.catalogs[{exchange, type}];
+        try { result.instruments = watcher->result(); }
+        catch (const std::exception& error) { result.error = QString::fromUtf8(error.what()); }
+        result.loading = false;
+        result.revision++;
+        watcher->deleteLater();
+    });
+    try { watcher->setFuture(exchangeApi(exchange).fetchInstruments(type)); }
+    catch (const std::exception& error)
+    {
+        catalog.error = QString::fromUtf8(error.what());
+        catalog.loading = false;
+        catalog.revision++;
+        watcher->deleteLater();
+    }
 }

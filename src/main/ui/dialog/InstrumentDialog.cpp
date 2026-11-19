@@ -1,10 +1,9 @@
 #include "InstrumentDialog.h"
 #include "main/util/TradeUtil.h"
-#include "main/api/AbstractApi.h"
 #include "main/util/QtUtil.h"
 #include <QComboBox>
 #include <QDialogButtonBox>
-#include <QFutureWatcher>
+#include <QTimer>
 #include <QHeaderView>
 #include <QLabel>
 #include <QLineEdit>
@@ -21,6 +20,26 @@ namespace trtui
     InstrumentDialog::InstrumentDialog(Mode mode, QWidget* parent)
     : QDialog(parent), mode(mode)
     {
+        initUi();
+        if (mode == Mode::Add)
+        {
+            connect(exchange, &QComboBox::currentIndexChanged, this, &InstrumentDialog::loadTypes);
+            connect(type, &QComboBox::currentIndexChanged, this, &InstrumentDialog::fetchCatalog);
+            QTimer* timer = new QTimer(this);
+            connect(timer, &QTimer::timeout, this, &InstrumentDialog::updateCatalog);
+            timer->start(100);
+            loadTypes();
+        } else
+        {
+            const std::span<const InstrumentPtr> saved = ntrt::configManager->getInstruments();
+            entries.assign(saved.begin(), saved.end());
+            populate();
+            status->setText("0 selected");
+        }
+    }
+
+    void InstrumentDialog::initUi()
+    {
         const bool adding = mode == Mode::Add;
         setWindowTitle(adding ? "Add Trading Pairs" : "Manage Trading Pairs");
         setObjectName("listManagerDialog");
@@ -28,12 +47,21 @@ namespace trtui
         QVBoxLayout* layout = new QVBoxLayout(this);
         layout->setContentsMargins(16, 16, 16, 16);
         layout->setSpacing(12);
+        initSelectors(layout);
+        initTable(layout);
+        initActions(layout);
+        initFooter(layout);
+    }
+
+    void InstrumentDialog::initSelectors(QVBoxLayout* layout)
+    {
+        const bool adding = mode == Mode::Add;
         if (adding)
         {
             QHBoxLayout* selectors = new QHBoxLayout;
             exchange = new QComboBox(this);
             type = new QComboBox(this);
-            for (trtdata::Exchange item : trtcore::availableExchanges())
+            for (trtdata::Exchange item : ntrt::dataMonitor->getExchanges())
                 exchange->addItem(QString::fromUtf8(trtdata::getExchangeStr(item)), static_cast<int>(item));
             exchange->setCurrentIndex(exchange->findData(static_cast<int>(ntrt::configManager->getExchange())));
             if (exchange->currentIndex() < 0)
@@ -46,6 +74,10 @@ namespace trtui
             layout->addLayout(selectors);
         }
 
+    }
+
+    void InstrumentDialog::initTable(QVBoxLayout* layout)
+    {
         search = new QLineEdit(this);
         search->setPlaceholderText("Search instruments");
         search->setClearButtonEnabled(true);
@@ -66,6 +98,11 @@ namespace trtui
         connect(selectAll, &QPushButton::clicked, this, [this] { table->selectVisible(true); });
         connect(clear, &QPushButton::clicked, this, [this] { table->selectVisible(false); });
 
+    }
+
+    void InstrumentDialog::initActions(QVBoxLayout* layout)
+    {
+        const bool adding = mode == Mode::Add;
         if (!adding)
         {
             QHBoxLayout* actions = new QHBoxLayout;
@@ -86,6 +123,11 @@ namespace trtui
             connect(table, &QTableWidget::currentCellChanged, this, &InstrumentDialog::updateMoveButtons);
         }
 
+    }
+
+    void InstrumentDialog::initFooter(QVBoxLayout* layout)
+    {
+        const bool adding = mode == Mode::Add;
         status = new QLabel(this);
         status->setWordWrap(true);
         status->setObjectName("selectionCount");
@@ -128,27 +170,13 @@ namespace trtui
         connect(buttons, &QDialogButtonBox::accepted, this, &InstrumentDialog::accept);
         connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
 
-        if (adding)
-        {
-            connect(exchange, &QComboBox::currentIndexChanged, this, &InstrumentDialog::loadTypes);
-            connect(type, &QComboBox::currentIndexChanged, this, &InstrumentDialog::fetchCatalog);
-            loadTypes();
-        } else
-        {
-            const std::span<const InstrumentPtr> saved = ntrt::configManager->getInstruments();
-            entries.assign(saved.begin(), saved.end());
-            populate();
-            status->setText("0 selected");
-        }
     }
 
     void InstrumentDialog::loadTypes()
     {
         const QSignalBlocker blocker(type);
         type->clear();
-        const trtcore::AbstractApi& api = trtcore::exchangeApi(
-            static_cast<trtdata::Exchange>(exchange->currentData().toInt()));
-        for (trttrade::InstType item : api.instrumentTypes())
+        for (trttrade::InstType item : ntrt::dataMonitor->getInstrumentTypes(static_cast<trtdata::Exchange>(exchange->currentData().toInt())))
             type->addItem(QString::fromUtf8(trttrade::instDisplayStr(item)), static_cast<int>(item));
         fetchCatalog();
     }
@@ -158,10 +186,8 @@ namespace trtui
         if (type->currentIndex() < 0)
             return;
 
-        using Catalog = std::vector<InstrumentPtr>;
         const trtdata::Exchange selectedExchange = static_cast<trtdata::Exchange>(exchange->currentData().toInt());
         const trttrade::InstType selectedType = static_cast<trttrade::InstType>(type->currentData().toInt());
-        const trtcore::AbstractApi& api = trtcore::exchangeApi(selectedExchange);
         entries.clear();
         populate();
         status->setText("Loading instruments...");
@@ -170,37 +196,39 @@ namespace trtui
         applyButton->setEnabled(false);
         reloadButton->setEnabled(false);
 
-        QFutureWatcher<Catalog>* watcher = new QFutureWatcher<Catalog>(this);
-        connect(watcher, &QFutureWatcher<Catalog>::finished, this, [this, watcher]
+        const std::shared_ptr<const trtcore::DataSnapshot> snapshot = ntrt::dataMonitor->getSnapshot();
+        const trtcore::InstrumentCatalogSnapshot* previous = snapshot->marketData.getCatalog(selectedExchange, selectedType);
+        catalogRevision = previous ? previous->revision : 0;
+        catalogPending = true;
+        ntrt::dataMonitor->requestCatalog(selectedExchange, selectedType);
+    }
+
+    void InstrumentDialog::updateCatalog()
+    {
+        if (!catalogPending) return;
+        const std::shared_ptr<const trtcore::DataSnapshot> snapshot = ntrt::dataMonitor->getSnapshot();
+        const trtcore::InstrumentCatalogSnapshot* catalog = snapshot->marketData.getCatalog(
+            static_cast<trtdata::Exchange>(exchange->currentData().toInt()), static_cast<trttrade::InstType>(type->currentData().toInt()));
+        if (!catalog || catalog->loading || catalog->revision <= catalogRevision) return;
+        catalogPending = false;
+        catalogRevision = catalog->revision;
+        if (catalog->error.isEmpty())
         {
-            try
-            {
-                const Catalog catalog = watcher->result();
-                const std::span<const InstrumentPtr> saved = ntrt::configManager->getInstruments();
-                for (const InstrumentPtr& candidate : catalog)
+            const std::span<const InstrumentPtr> saved = ntrt::configManager->getInstruments();
+            for (const InstrumentPtr& candidate : catalog->instruments)
+                if (std::ranges::none_of(saved, [&candidate](const InstrumentPtr& instrument)
                 {
-                    const bool exists = std::ranges::any_of(saved, [&candidate](const InstrumentPtr& instrument)
-                    {
-                        return instrument->exchange == candidate->exchange && instrument->instType == candidate->
-                            instType && instrument->instId == candidate->instId;
-                    });
-                    if (!exists)
-                        entries.push_back(candidate);
-                }
-                std::ranges::sort(entries, {}, &trtdata::Instrument::instId);
-                populate();
-                status->setText(entries.empty() ? "No instruments to add." : "0 selected");
-            } catch (const std::exception& error)
-            {
-                status->setText(QString::fromUtf8(error.what()));
-            }
-            exchange->setEnabled(true);
-            type->setEnabled(true);
-            reloadButton->setEnabled(true);
-            applyButton->setEnabled(!table->getCheckedIds().isEmpty());
-            watcher->deleteLater();
-        });
-        watcher->setFuture(api.fetchInstruments(selectedType));
+                    return instrument->exchange == candidate->exchange && instrument->instType == candidate->instType && instrument->instId == candidate->instId;
+                })) entries.push_back(candidate);
+            std::ranges::sort(entries, {}, &trtdata::Instrument::instId);
+            populate();
+            status->setText(entries.empty() ? "No instruments to add." : "0 selected");
+        }
+        else status->setText(catalog->error);
+        exchange->setEnabled(true);
+        type->setEnabled(true);
+        reloadButton->setEnabled(true);
+        applyButton->setEnabled(!table->getCheckedIds().isEmpty());
     }
 
     void InstrumentDialog::populate()

@@ -2,7 +2,7 @@
 #define NTRT_OKXACCOUNTUTIL_H
 #include "main/trade/AccountDef.h"
 #include "main/trade/AccountDataDef.h"
-#include "main/data/config/AccountConfig.h"
+#include "main/trade/AccountCredentials.h"
 #include "main/util/JsonUtil.h"
 #include <QUrlQuery>
 #include "main/trade/parser/OKXParser.h"

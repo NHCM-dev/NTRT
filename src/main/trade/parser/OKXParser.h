@@ -9,7 +9,7 @@
 #include "main/trade/TradeDataDef.h"
 #include <QByteArray>
 #include "main/trade/TradeDef.h"
-#include "../../core/TradingTimeDef.h"
+#include "main/data/core/TradingTimeDef.h"
 
 #include "main/util/JsonUtil.h"
 

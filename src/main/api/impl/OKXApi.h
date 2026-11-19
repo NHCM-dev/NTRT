@@ -6,7 +6,7 @@
 #define NTRT_OKXAPI_H
 
 #include "../AbstractApi.h"
-#include "main/data/config/AccountConfig.h"
+#include "main/trade/AccountCredentials.h"
 #include "main/trade/AccountDef.h"
 #include "main/trade/AccountDataDef.h"
 #include "main/market/abstract/Instrument.h"

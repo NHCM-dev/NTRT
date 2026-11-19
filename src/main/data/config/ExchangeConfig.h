@@ -1,7 +1,7 @@
 #ifndef NTRT_EXCHANGECONFIGDEF_H
 #define NTRT_EXCHANGECONFIGDEF_H
 
-#include "../../core/ExchangeDef.h"
+#include "main/data/core/ExchangeDef.h"
 #include <string>
 
 namespace trtdata

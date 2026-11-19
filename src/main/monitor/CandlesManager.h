@@ -3,7 +3,7 @@
 
 #include "main/trade/TradeSnapshotDef.h"
 #include "main/market/abstract/Instrument.h"
-#include "../core/TradingTimeDef.h"
+#include "main/data/core/TradingTimeDef.h"
 #include <QFutureWatcher>
 #include <QTimer>
 #include "main/api/CandleStream.h"

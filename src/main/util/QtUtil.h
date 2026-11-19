@@ -35,7 +35,6 @@ namespace trtutils
     void centerOnScreen(QWidget * widget);
 
     void fitWindowToScreen(QWidget* widget);
-    QTableWidget* createHeaderTable(QWidget * parent = nullptr, QStringList headers = {});
 } // trtutils
 
 #endif //NTRT_QTUTIL_H

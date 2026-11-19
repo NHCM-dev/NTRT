@@ -2,7 +2,7 @@
 #define NTRT_CANDLESTREAM_H
 #include "main/trade/TradeDef.h"
 #include "main/trade/TradeDataDef.h"
-#include "../core/TradingTimeDef.h"
+#include "main/data/core/TradingTimeDef.h"
 #include <QObject>
 #include <QString>
 #include <vector>

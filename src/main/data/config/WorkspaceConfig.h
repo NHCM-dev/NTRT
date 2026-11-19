@@ -1,7 +1,7 @@
 #ifndef NTRT_WORKSPACECONFIGDEF_H
 #define NTRT_WORKSPACECONFIGDEF_H
 
-#include "main/data/core/Workspace.h"
+#include "main/data/core/WorkspaceDef.h"
 #include "main/trade/TradeDef.h"
 #include <QByteArray>
 #include <QRect>

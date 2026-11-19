@@ -3,6 +3,7 @@
 
 #include "main/data/persistence/ConfigManager.h"
 #include <QDialog>
+#include <QVBoxLayout>
 #include <QComboBox>
 #include <QLabel>
 #include <QLineEdit>
@@ -32,6 +33,14 @@ namespace trtui
         QPushButton* upButton = nullptr;
         QPushButton* downButton = nullptr;
 
+        bool catalogPending = false;
+        qint64 catalogRevision = 0;
+        void initUi();
+        void initSelectors(QVBoxLayout* layout);
+        void initTable(QVBoxLayout* layout);
+        void initActions(QVBoxLayout* layout);
+        void initFooter(QVBoxLayout* layout);
+        void updateCatalog();
         void loadTypes();
 
         void fetchCatalog();
