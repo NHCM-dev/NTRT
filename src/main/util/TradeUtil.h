@@ -2,6 +2,7 @@
 #define NTRT_TRADEUTIL_H
 
 #include "main/trade/TradeDef.h"
+#include "main/trade/AccountDataDef.h"
 #include "main/trade/TradeDataDef.h"
 #include <string_view>
 #include <optional>
@@ -178,5 +179,13 @@ namespace trtdata
     Exchange readExchange(std::string_view name);
 }
 
+
+
+namespace trttrade
+{
+    QString accountNumber(const std::string& value, bool signedValue = false);
+    QString accountPercent(const std::string& value);
+    QString accountPositionSide(const PositionData& position);
+}
 
 #endif //NTRT_TRADEUTIL_H

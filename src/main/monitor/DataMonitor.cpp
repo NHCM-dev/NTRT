@@ -3,14 +3,31 @@
 
 namespace trtcore
 {
-    DataMonitor::Worker::Worker(std::atomic<std::shared_ptr<const DataSnapshot>>& destination) : destination(destination)
+    DataMonitor::Worker::Worker(std::atomic<std::shared_ptr<const DataSnapshot>>& destination, const trtdata::AccountManager& accounts)
+        : destination(destination), accountData(accounts)
     {
+        accountTimer.setInterval(5000);
+        QObject::connect(&accountTimer, &QTimer::timeout, &accountTimer, [this] { accountData.refresh(); });
         publicationTimer.setInterval(100);
         QObject::connect(&publicationTimer, &QTimer::timeout, &publicationTimer, [this]
         {
             publish();
         });
         publicationTimer.start();
+    }
+
+    void DataMonitor::Worker::enableAccounts()
+    {
+        if (accountTimer.isActive()) return;
+        accountData.refresh();
+        accountTimer.start();
+    }
+
+    void DataMonitor::enableAccountMonitoring()
+    {
+        if (accountsEnabled) return;
+        accountsEnabled = true;
+        if (running) QMetaObject::invokeMethod(workerContext, [this] { worker->enableAccounts(); }, Qt::QueuedConnection);
     }
 
     DataMonitor::Worker::~Worker()
@@ -61,7 +78,8 @@ namespace trtcore
     {
         destination.store(std::make_shared<const DataSnapshot>(DataSnapshot{
             marketData.getSnapshot(),
-            candlesManager.getReadSnapshot()
+            candlesManager.getReadSnapshot(),
+            accountData.getSnapshot()
         }));
     }
 
@@ -101,9 +119,11 @@ namespace trtcore
         connect(&workerThread, &QThread::finished, workerContext, &QObject::deleteLater);
         workerThread.start();
         const std::map<CandleSeriesKey, std::size_t> readers = chartReaders;
-        QMetaObject::invokeMethod(workerContext, [this, readers]
+        const bool enableAccounts = accountsEnabled;
+        QMetaObject::invokeMethod(workerContext, [this, readers, enableAccounts]
         {
-            worker = std::make_unique<Worker>(snapshot);
+            worker = std::make_unique<Worker>(snapshot, *configManager.getAccountManager());
+            if (enableAccounts) worker->enableAccounts();
             for (const std::pair<const CandleSeriesKey, std::size_t>& entry : readers)
             {
                 for (std::size_t index = 0; index < entry.second; index++)

@@ -29,6 +29,9 @@ namespace trttrade
         std::string instType;
         std::string instId;
         std::string posId;
+        std::string posCcy;
+        std::string bePx;
+        std::string mgnRatio;
         std::string posSide;
         std::string mgnMode;
         std::string pos;

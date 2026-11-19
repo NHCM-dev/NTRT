@@ -107,7 +107,8 @@ if(NTRT_BUILD_TESTS)
     qt_add_executable(OKXAccountTest tests/OKXAccountTest.cpp
         src/main/util/exchange/OKXAccountUtil.cpp src/main/trade/parser/OKXParser.cpp
         src/main/util/JsonUtil.cpp src/main/util/FileUtil.cpp
-        src/main/network/RestAPITemplate.cpp src/main/util/NetworkUtil.cpp)
+        src/main/network/RestAPITemplate.cpp src/main/util/NetworkUtil.cpp
+        src/main/util/WorkspaceStateUtil.cpp)
     target_include_directories(OKXAccountTest PRIVATE src)
     target_link_libraries(OKXAccountTest PRIVATE Qt6::Widgets Qt6::Network simdjson::simdjson)
     if(MSVC)

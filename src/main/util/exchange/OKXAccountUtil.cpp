@@ -238,6 +238,9 @@ namespace trtdata::okx
         value.instType = field(row, "instType");
         value.instId = field(row, "instId");
         value.posId = field(row, "posId");
+        value.posCcy = field(row, "posCcy");
+        value.bePx = field(row, "bePx");
+        value.mgnRatio = field(row, "mgnRatio");
         value.posSide = field(row, "posSide");
         value.mgnMode = field(row, "mgnMode");
         value.pos = field(row, "pos");

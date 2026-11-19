@@ -181,6 +181,18 @@ namespace trtui
                 getCurrentWorkspace()->showInstrumentList();
         });
         elements->addSeparator();
+        connect(elements->addAction("Account Balances"), &QAction::triggered, this, [this]
+        {
+            if (getCurrentWorkspace()) getCurrentWorkspace()->createAccountWindow(trtdata::WorkspaceWindowType::AccountBalance);
+        });
+        connect(elements->addAction("Account Positions"), &QAction::triggered, this, [this]
+        {
+            if (getCurrentWorkspace()) getCurrentWorkspace()->createAccountWindow(trtdata::WorkspaceWindowType::AccountPositions);
+        });
+        connect(elements->addAction("Current Orders"), &QAction::triggered, this, [this]
+        {
+            if (getCurrentWorkspace()) getCurrentWorkspace()->createAccountWindow(trtdata::WorkspaceWindowType::AccountOrders);
+        });
         connect(elements->addAction("Add Instruments…"), &QAction::triggered, this, [this]
         {
             InstrumentDialog dialog(InstrumentDialog::Mode::Add, this);

@@ -4,6 +4,8 @@
 #include <QDoubleSpinBox>
 #include <QLabel>
 #include <QStyledItemDelegate>
+#include <QStyleOptionViewItem>
+#include <QModelIndex>
 #include <optional>
 
 namespace trtui
@@ -28,6 +30,13 @@ namespace trtui
         explicit PriceLabel(QWidget* parent = nullptr);
         void setPriceText(const QString& prefix, const QString& price, const QString& suffix,
                           double movement = 0, qint64 age = -1, bool flashEnabled = false);
+    };
+
+    class ForegroundItemDelegate final : public QStyledItemDelegate
+    {
+        void initStyleOption(QStyleOptionViewItem* option, const QModelIndex& index) const override;
+    public:
+        explicit ForegroundItemDelegate(QObject* parent = nullptr);
     };
 
     class ValueBarDelegate final : public QStyledItemDelegate

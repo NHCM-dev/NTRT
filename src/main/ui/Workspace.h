@@ -14,6 +14,7 @@
 #include "main/ui/panels/InstrumentListPanel.h"
 #include "main/ui/panels/ChartPanel.h"
 #include "main/ui/panels/BookDepthPanel.h"
+#include "main/ui/panels/AccountPanel.h"
 
 namespace trtui
 {
@@ -24,6 +25,7 @@ namespace trtui
             WorkspaceWindow* window = nullptr;
             ChartPanel* chart = nullptr;
             BookDepthPanel* bookDepth = nullptr;
+            AccountPanel* account = nullptr;
         };
 
         QMdiArea* desktop = nullptr;
@@ -94,6 +96,8 @@ namespace trtui
         void createChartWindow();
 
         void createBookDepthWindow();
+
+        void createAccountWindow(trtdata::WorkspaceWindowType type);
     };
 }
 #endif //NTRT_WORKSPACE_H

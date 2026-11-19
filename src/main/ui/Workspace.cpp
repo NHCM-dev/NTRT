@@ -1,4 +1,6 @@
 #include "Workspace.h"
+#include "main/NTRT.h"
+#include <QUuid>
 #include "WorkspaceWindow.h"
 #include "panels/InstrumentListPanel.h"
 #include "panels/ChartPanel.h"
@@ -64,6 +66,7 @@ namespace trtui
                     saved.type = trtdata::WorkspaceWindowType::Chart;
                 else if (entry.bookDepth)
                     saved.type = trtdata::WorkspaceWindowType::BookDepth;
+                if (entry.account) saved.type = entry.account->getType();
                 saved.geometry = entry.window->getNormalGeometry();
                 saved.visible = !window->isHidden();
                 if (window->isMaximized())
@@ -96,6 +99,11 @@ namespace trtui
                     nextChartId = saved.id.mid(5).toInt();
                     addChartWindow();
                     windows.back().chart->restoreState(saved.chart);
+                    break;
+                case trtdata::WorkspaceWindowType::AccountBalance:
+                case trtdata::WorkspaceWindowType::AccountPositions:
+                case trtdata::WorkspaceWindowType::AccountOrders:
+                    createAccountWindow(saved.type);
                     break;
                 case trtdata::WorkspaceWindowType::BookDepth:
                     nextBookDepthId = saved.id.mid(9).toInt();
@@ -471,7 +479,7 @@ namespace trtui
         std::vector<WindowPlacement> charts;
         for (const WindowEntry& entry : windows)
         {
-            if (!entry.chart && !entry.bookDepth)
+            if (!entry.chart && !entry.bookDepth && !entry.account)
                 continue;
             entry.window->showNormal();
             charts.push_back({entry.window, entry.window->geometry()});
@@ -482,6 +490,23 @@ namespace trtui
         selectedWindow = nullptr;
     }
 
+    void Workspace::createAccountWindow(trtdata::WorkspaceWindowType type)
+    {
+        QString title;
+        switch (type)
+        {
+            case trtdata::WorkspaceWindowType::AccountBalance: title = "Account Balances"; break;
+            case trtdata::WorkspaceWindowType::AccountPositions: title = "Account Positions"; break;
+            case trtdata::WorkspaceWindowType::AccountOrders: title = "Current Orders"; break;
+            default: return;
+        }
+        AccountPanel* panel = new AccountPanel(type, desktop);
+        WorkspaceWindow* window = addWindow(panel, "OKX · " + title, "account" + QUuid::createUuid().toString(QUuid::WithoutBraces));
+        windows.back().account = panel;
+        window->setWindowGeometry(QRect(QPoint(40, 40), panel->sizeHint()));
+        ntrt::dataMonitor->enableAccountMonitoring();
+    }
+
     void Workspace::updateData()
     {
         if (!isVisible() || window()->isMinimized())
@@ -490,6 +515,8 @@ namespace trtui
             instruments->update();
         for (const WindowEntry& entry : windows)
         {
+            if (entry.account && entry.window->isVisible() && !entry.window->isMinimized())
+                entry.account->updateData();
             if (entry.chart && entry.window->isVisible() && !entry.window->isMinimized())
                 entry.chart->updateData();
             if (entry.bookDepth && entry.window->isVisible() && !entry.window->isMinimized())

@@ -1,6 +1,7 @@
 #include "main/util/exchange/OKXAccountUtil.h"
 #include "main/util/NetworkUtil.h"
 #include "main/network/RestAPITemplate.h"
+#include "main/util/WorkspaceStateUtil.h"
 #include <QCoreApplication>
 #include <QEventLoop>
 #include <QFutureWatcher>
@@ -39,8 +40,8 @@ int main(int argc, char** argv)
         const trttrade::AccountBalance balance = parseOne<trttrade::AccountBalance>(R"({"code":"0","data":[{"totalEq":"1.123456789123456789","details":[{"ccy":"BTC","eq":"0.00000001","availEq":""}]}]})", parseAccountBalance);
         check(balance.totalEq == "1.123456789123456789" && balance.details[0].availEq.empty(), "Balance precision/empty field lost");
         check(parseList<trttrade::PositionData>(R"({"code":"0","data":[]})", parsePositionData).empty(), "Empty positions failed");
-        const trttrade::PositionData position = parseOne<trttrade::PositionData>(R"({"code":"0","data":[{"instId":"BTC-USDT-SWAP","pos":"-2","posSide":"net","liqPx":""}]})", parsePositionData);
-        check(position.pos == "-2" && position.liqPx.empty(), "Signed position lost");
+        const trttrade::PositionData position = parseOne<trttrade::PositionData>(R"({"code":"0","data":[{"instId":"BTC-USDT-SWAP","pos":"-2","posSide":"net","liqPx":"","upl":"-64.30","uplRatio":"-0.2956","bePx":"113.18","mgnRatio":"20.0367"}]})", parsePositionData);
+        check(position.pos == "-2" && position.liqPx.empty() && position.upl == "-64.30" && position.uplRatio == "-0.2956" && position.bePx == "113.18", "Signed position/P&L fields lost");
         rejected = false;
         try { parseOne<trttrade::OrderResult>(R"({"code":"0","data":[{"sCode":"51000","sMsg":"invalid order"}]})", parseOrderResult); }
         catch (const std::exception&) { rejected = true; }
@@ -55,6 +56,25 @@ int main(int argc, char** argv)
         check(rejected, "Missing order result accepted");
         const trttrade::AccountConfiguration config = parseOne<trttrade::AccountConfiguration>(R"({"code":"0","data":[{"uid":"123","autoLoan":true,"perm":"read_only"}]})", parseAccountConfiguration);
         check(config.autoLoan && config.uid == "123", "Account configuration boolean failed");
+        trtdata::WorkspaceConfig layout;
+        trtdata::WorkspaceState workspace;
+        workspace.id = "workspace1";
+        workspace.name = "Test";
+        int accountId = 1;
+        for (trtdata::WorkspaceWindowType type : {trtdata::WorkspaceWindowType::AccountBalance,
+            trtdata::WorkspaceWindowType::AccountPositions, trtdata::WorkspaceWindowType::AccountOrders})
+        {
+            trtdata::WorkspaceWindowState window;
+            window.id = QString("account%1").arg(accountId++);
+            window.type = type;
+            window.geometry = QRect(40, 40, 800, 400);
+            workspace.windows.push_back(window);
+        }
+        layout.workspaces.push_back(workspace);
+        trtdata::WorkspaceConfig restored;
+        check(trtutils::parseWorkspaceConfig(trtutils::serializeWorkspaceConfig(layout), restored), "Account window layout parse failed");
+        check(restored.workspaces[0].windows.size() == 3 && restored.workspaces[0].windows[2].type == trtdata::WorkspaceWindowType::AccountOrders,
+            "Account window layout roundtrip failed");
         QTcpServer server;
         check(server.listen(QHostAddress::LocalHost), "Local test server failed");
         QByteArray received;

@@ -1,3 +1,5 @@
+#include <cmath>
+#include <QStringList>
 #include "TradeUtil.h"
 #include "NumberUtil.h"
 #include "main/trade/TradeDataDef.h"
@@ -78,5 +80,47 @@ namespace trtutils
         if (buy + sell <= 0)
             return std::nullopt;
         return static_cast<double>(buy / (buy + sell));
+    }
+}
+
+namespace trttrade
+{
+    QString accountNumber(const std::string& value, bool signedValue)
+    {
+        if (value.empty()) return {};
+        bool valid = false;
+        const double parsed = QString::fromStdString(value).toDouble(&valid);
+        if (!valid || !std::isfinite(parsed)) return "—";
+        const QString rounded = trtutils::formatDecimal(parsed, 8);
+        const QString formatted = rounded == "0" && parsed != 0 ? trtutils::formatQuantity(parsed) : rounded;
+        return signedValue && parsed > 0 && formatted != "0" ? "+" + formatted : formatted;
+    }
+
+    QString accountPercent(const std::string& value)
+    {
+        if (value.empty()) return {};
+        bool valid = false;
+        const double parsed = QString::fromStdString(value).toDouble(&valid);
+        return valid && std::isfinite(parsed) ? trtutils::formatDecimal(parsed * 100, 2) + "%" : QString("—");
+    }
+
+    QString accountPositionSide(const PositionData& position)
+    {
+        if (position.posSide == "long") return "Long";
+        if (position.posSide == "short") return "Short";
+        if (position.posSide != "net") return QString::fromStdString(position.posSide);
+        if (position.instType == "MARGIN")
+        {
+            const QStringList parts = QString::fromStdString(position.instId).split('-');
+            if (parts.size() >= 2 && position.posCcy == parts[0].toStdString()) return "Long";
+            if (parts.size() >= 2 && position.posCcy == parts[1].toStdString()) return "Short";
+            return "Net";
+        }
+        bool valid = false;
+        const double size = QString::fromStdString(position.pos).toDouble(&valid);
+        if (!valid) return "Net";
+        if (size > 0) return "Long";
+        if (size < 0) return "Short";
+        return "Flat";
     }
 }

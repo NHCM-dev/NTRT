@@ -2,6 +2,7 @@
 #define NTRT_DATASNAPSHOTDEF_H
 
 #include "main/trade/TradeSnapshotDef.h"
+#include "main/trade/AccountSnapshotDef.h"
 
 namespace trtcore
 {
@@ -9,6 +10,7 @@ namespace trtcore
     {
         MarketDataSnapshot marketData;
         CandlesSnapshot candles;
+        AccountSnapshot account;
     };
 }
 

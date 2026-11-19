@@ -102,6 +102,7 @@ namespace trtdata
         WorkspaceManager* getWorkspaceManager();
 
         AccountManager* getAccountManager() { return &accountManager; }
+        const AccountManager* getAccountManager() const { return &accountManager; }
 
         TradingTimeZone getTradingDataTimeZone() const;
 

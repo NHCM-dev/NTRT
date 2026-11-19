@@ -126,6 +126,9 @@ namespace trtutils
                 appendWorkspaceIdentifier(builder, window.chart.instrument);
                 switch (window.type)
                 {
+                    case trtdata::WorkspaceWindowType::AccountBalance:
+                    case trtdata::WorkspaceWindowType::AccountPositions:
+                    case trtdata::WorkspaceWindowType::AccountOrders:
                     case trtdata::WorkspaceWindowType::Instruments:
                     case trtdata::WorkspaceWindowType::Chart:
                         break;
@@ -208,9 +211,14 @@ namespace trtutils
                     if (window.id.isEmpty() || windowIds.contains(window.id))
                         return false;
                     windowIds.insert(window.id);
-                    window.type = static_cast<trtdata::WorkspaceWindowType>(readWorkspaceInt(item, "type", 0, 2));
+                    window.type = static_cast<trtdata::WorkspaceWindowType>(readWorkspaceInt(item, "type", 0, 5));
                     switch (window.type)
                     {
+                        case trtdata::WorkspaceWindowType::AccountBalance:
+                        case trtdata::WorkspaceWindowType::AccountPositions:
+                        case trtdata::WorkspaceWindowType::AccountOrders:
+                            if (!window.id.startsWith("account")) return false;
+                            break;
                         case trtdata::WorkspaceWindowType::Instruments:
                             if (hasInstruments)
                                 return false;

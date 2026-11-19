@@ -50,7 +50,6 @@ namespace trtui
         instrumentBox->setInsertPolicy(QComboBox::NoInsert);
         instrumentBox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
         instrumentBox->setMinimumWidth(140);
-        instrumentBox->setToolTip("Select or search a tracked instrument");
         instrumentBox->completer()->setFilterMode(Qt::MatchContains);
         instrumentBox->completer()->setCompletionMode(QCompleter::PopupCompletion);
         instrumentBox->completer()->setCaseSensitivity(Qt::CaseInsensitive);
@@ -73,7 +72,6 @@ namespace trtui
         for (const std::pair<const char*, trttrade::CandleTimeframe>& frame : frames)
             timeframeBox->addItem(frame.first, static_cast<int>(frame.second));
         timeframeBox->setCurrentIndex(3);
-        timeframeBox->setToolTip("Candle interval");
         controls->addWidget(timeframeBox);
         QToolButton* volume = new QToolButton(toolbar);
         volumeButton = volume;
@@ -180,8 +178,6 @@ namespace trtui
         status = new QLabel("Select an instrument to begin", this);
         status->setObjectName("chartStatus");
         status->setWordWrap(true);
-        status->setToolTip(
-            "Drag: pan · Wheel / pinch: zoom · Horizontal swipe: pan · Double-click chart: reset · End: latest\nDrag price axis: scale · A / double-click price axis: AutoScale. Pan left or click History to load older candles.");
         layout->addWidget(status);
     }
 
@@ -344,8 +340,6 @@ namespace trtui
         if (status->text() != text)
             status->setText(text);
         status->setVisible(!text.isEmpty());
-        status->setToolTip(snapshot->error.isEmpty()
-                               ? "Drag: pan · Wheel / pinch: zoom · Horizontal swipe: pan · Double-click chart: reset · End: latest\nDrag price axis: scale · A / double-click price axis: AutoScale. Live candles via WebSocket. Pan left or click History to load older candles."
-                               : snapshot->error);
+        status->setToolTip(snapshot->error);
     }
 }

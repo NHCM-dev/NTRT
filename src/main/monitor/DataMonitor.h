@@ -2,6 +2,7 @@
 #define NTRT_DATAMONITOR_H
 
 #include "MarketData.h"
+#include "AccountData.h"
 #include "DataSnapshotDef.h"
 #include "CandlesManager.h"
 #include "InstrumentIconManager.h"
@@ -18,11 +19,14 @@ namespace trtcore
         {
             std::atomic<std::shared_ptr<const DataSnapshot>>& destination;
             QTimer publicationTimer;
+            QTimer accountTimer;
+            AccountData accountData;
             MarketData marketData;
             CandlesManager candlesManager;
 
         public:
-            explicit Worker(std::atomic<std::shared_ptr<const DataSnapshot>>& destination);
+            explicit Worker(std::atomic<std::shared_ptr<const DataSnapshot>>& destination, const trtdata::AccountManager& accounts);
+            void enableAccounts();
 
             ~Worker();
 
@@ -51,6 +55,7 @@ namespace trtcore
         std::map<CandleSeriesKey, std::size_t> chartReaders;
         std::map<trtdata::InstIdentifier, std::size_t> bookReaders;
         bool running = false;
+        bool accountsEnabled = false;
 
         void updateBookInstruments();
 
@@ -64,6 +69,8 @@ namespace trtcore
         ~DataMonitor() override;
 
         void start();
+
+        void enableAccountMonitoring();
 
         void stop();
 

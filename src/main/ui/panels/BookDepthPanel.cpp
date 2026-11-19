@@ -99,7 +99,6 @@ namespace trtui
         rowsBox->setObjectName("bookRows");
         rowsBox->setRange(1, 100);
         rowsBox->setValue(state.rows);
-        rowsBox->setToolTip("Displayed price buckets per side");
         display->addWidget(new QLabel("Rows", this));
         display->addWidget(rowsBox);
         layoutBox = new QComboBox(this);
@@ -150,7 +149,6 @@ namespace trtui
             table->setFocusPolicy(Qt::NoFocus);
             table->setShowGrid(false);
             table->setMinimumHeight(60);
-            table->setToolTip("Size and cumulative total: base currency for spot, contracts for derivatives. Best prices next to latest price.");
         }
         layout->addWidget(asks, 1);
         latest = new PriceLabel(this);
@@ -324,8 +322,9 @@ namespace trtui
                                         : column == 2 && maximum > 0 ? total / maximum : 0;
                 item->setData(ValueBarDelegate::FractionRole, fraction);
                 item->setData(ValueBarDelegate::RisingRole, buy);
-                item->setToolTip(column == 0 ? trtutils::formatDecimal(levels[index].price)
-                                           : trtutils::formatQuantity(column == 1 ? levels[index].size : total));
+                const QString fullValue = column == 0 ? trtutils::formatDecimal(levels[index].price)
+                                                      : trtutils::formatQuantity(column == 1 ? levels[index].size : total);
+                item->setToolTip(fullValue == values[column] ? QString() : fullValue);
             }
         }
     }

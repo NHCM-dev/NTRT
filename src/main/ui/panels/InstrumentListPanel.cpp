@@ -401,7 +401,6 @@ namespace trtui
                 icon->setPixmap(image.pixmap(QSize(20, 20)));
                 icon->setProperty("iconCacheKey", image.cacheKey());
             }
-            icon->setToolTip(symbol);
             QTableWidgetItem* symbolItem = trtutils::updateTableItem(table, row, 3, symbol);
             symbolItem->setData(Qt::UserRole, static_cast<int>(instrument->exchange));
             symbolItem->setData(Qt::UserRole + 1, static_cast<int>(instrument->instType));
@@ -434,7 +433,7 @@ namespace trtui
             change->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
             QTableWidgetItem* amount = trtutils::updateTableItem(table, row, 6, "-");
             amount->setData(Qt::ForegroundRole, QVariant());
-            amount->setToolTip("Latest ticker price minus the trading day's open (" + timeZone + ").");
+            amount->setToolTip(QString());
             amount->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
             const std::optional<double> dailyAmount = snapshot && snapshot->ticker
                 ? trtutils::dailyChangeAmount(daily, snapshot->ticker->last) : std::nullopt;

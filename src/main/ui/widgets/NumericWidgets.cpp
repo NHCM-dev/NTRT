@@ -49,6 +49,19 @@ namespace trtui
                                       alignment(), highlightStart, highlightLength, color);
     }
 
+    ForegroundItemDelegate::ForegroundItemDelegate(QObject* parent) : QStyledItemDelegate(parent)
+    {}
+
+    void ForegroundItemDelegate::initStyleOption(QStyleOptionViewItem* option, const QModelIndex& index) const
+    {
+        QStyledItemDelegate::initStyleOption(option, index);
+        if (option->state.testFlag(QStyle::State_Selected))
+        {
+            option->backgroundBrush = option->palette.brush(QPalette::Midlight);
+            option->state.setFlag(QStyle::State_Selected, false);
+        }
+    }
+
     ValueBarDelegate::ValueBarDelegate(QObject* parent) : QStyledItemDelegate(parent)
     {}
 
