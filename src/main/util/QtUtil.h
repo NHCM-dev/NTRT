@@ -5,10 +5,17 @@
 #ifndef NTRT_QTUTIL_H
 #define NTRT_QTUTIL_H
 #include <QTableWidget>
+#include <QWheelEvent>
 #include <qwidget.h>
 
 namespace trtutils
 {
+    double wheelZoomFactor(const QWheelEvent& event);
+
+    bool isWheelPan(const QWheelEvent& event);
+
+    double wheelPanPixels(const QWheelEvent& event);
+
     QRect boundedWidgetGeometry(const QRect& geometry, const QRect& bounds);
 
     QRect resizedWidgetGeometry(const QRect& geometry, const QPoint& delta, Qt::Edges edges,

@@ -54,25 +54,29 @@ namespace trtui
 
     void ChartViewport::updateRange(std::span<const trttrade::CandleData> candles)
     {
-        priceMin = std::numeric_limits<double>::max();
-        priceMax = std::numeric_limits<double>::lowest();
+        double minimum = std::numeric_limits<double>::max();
+        double maximum = std::numeric_limits<double>::lowest();
         volumeMax = 0;
         const std::size_t end = std::min(candles.size(), getLastVisible());
         for (std::size_t index = getFirstVisible(); index < end; index++)
         {
-            priceMin = std::min(priceMin, candles[index].low);
-            priceMax = std::max(priceMax, candles[index].high);
+            minimum = std::min(minimum, candles[index].low);
+            maximum = std::max(maximum, candles[index].high);
             volumeMax = std::max(volumeMax, candles[index].volume);
         }
-        if (priceMin > priceMax)
+        if ((autoScale || !priceRangeInitialized) && minimum <= maximum)
         {
-            priceMin = 0;
-            priceMax = 1;
+            const double padding = std::max((maximum - minimum) * 0.08, std::max(std::abs(maximum) * 0.0001, 1e-12));
+            priceMin = minimum - padding;
+            priceMax = maximum + padding;
+            priceRangeInitialized = true;
         }
-        const double padding = std::max((priceMax - priceMin) * 0.08, std::max(std::abs(priceMax) * 0.0001, 1e-12));
-        priceMin -= padding;
-        priceMax += padding;
         volumeMax = std::max(volumeMax * 1.15, 1e-12);
+    }
+
+    void ChartViewport::setAutoScale(bool enabled)
+    {
+        autoScale = enabled;
     }
 
     void ChartViewport::pan(double pixels)
@@ -80,6 +84,19 @@ namespace trtui
         following = false;
         firstBar -= pixels / barWidth;
         constrain();
+    }
+
+    void ChartViewport::panPrice(double pixels)
+    {
+        if (autoScale || !std::isfinite(pixels) || pixels == 0)
+            return;
+        const double shift = pixels / priceRect.height() * (priceMax - priceMin);
+        const double minimum = priceMin + shift;
+        const double maximum = priceMax + shift;
+        if (!std::isfinite(minimum) || !std::isfinite(maximum) || minimum >= maximum)
+            return;
+        priceMin = minimum;
+        priceMax = maximum;
     }
 
     void ChartViewport::zoom(double factor, double anchorX)
@@ -91,9 +108,28 @@ namespace trtui
         constrain();
     }
 
+    void ChartViewport::scalePrice(double factor)
+    {
+        if (!std::isfinite(factor) || factor <= 0 || factor == 1)
+            return;
+        const double range = priceMax - priceMin;
+        const double center = priceMin + range * 0.5;
+        const double minimum = std::max(std::abs(center) * 1e-10, 1e-12);
+        const double maximum = std::max(std::abs(center) * 1e6, 1e6);
+        const double halfRange = std::clamp(range / factor, minimum, maximum) * 0.5;
+        priceMin = center - halfRange;
+        priceMax = center + halfRange;
+        autoScale = false;
+        priceRangeInitialized = true;
+    }
+
     void ChartViewport::reset()
     {
         barWidth = 8;
+        autoScale = true;
+        priceRangeInitialized = false;
+        priceMin = 0;
+        priceMax = 1;
         followLatest();
     }
 
@@ -111,6 +147,11 @@ namespace trtui
     bool ChartViewport::isVolumeVisible() const
     {
         return volumeVisible;
+    }
+
+    bool ChartViewport::isAutoScale() const
+    {
+        return autoScale;
     }
 
     const QRectF& ChartViewport::getReadoutRect() const { return readoutRect; }

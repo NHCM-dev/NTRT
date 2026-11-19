@@ -25,6 +25,8 @@ namespace trtui
         double volumeMax = 1;
         bool following = true;
         bool volumeVisible = true;
+        bool autoScale = true;
+        bool priceRangeInitialized = false;
 
         void constrain();
 
@@ -35,11 +37,17 @@ namespace trtui
 
         void setVolumeVisible(bool visible, const QSize& size);
 
+        void setAutoScale(bool enabled);
+
         void updateRange(std::span<const trttrade::CandleData> candles);
 
         void pan(double pixels);
 
+        void panPrice(double pixels);
+
         void zoom(double factor, double anchorX);
+
+        void scalePrice(double factor);
 
         void reset();
 
@@ -48,6 +56,8 @@ namespace trtui
         bool isFollowing() const;
 
         bool isVolumeVisible() const;
+
+        bool isAutoScale() const;
 
         const QRectF& getReadoutRect() const;
         const QRectF& getVolumeReadoutRect() const;

@@ -8,6 +8,7 @@
 #include <QOpenGLWidget>
 #include <QOpenGLFunctions>
 #include <QPainter>
+#include <QToolButton>
 
 namespace trtui
 {
@@ -15,8 +16,11 @@ namespace trtui
     {
         Q_OBJECT
 
+        enum class DragMode { None, Plot, Time, PriceScale };
+
         ChartViewport viewport;
         ChartRenderer renderer;
+        QToolButton* autoScaleButton = nullptr;
         std::vector<std::unique_ptr<ChartLayer>> layers;
         std::vector<trttrade::CandleData> candles;
         std::vector<ChartVertex> vertices;
@@ -25,7 +29,7 @@ namespace trtui
         QPointF cursorPosition;
         QPointF dragPosition;
         bool cursorVisible = false;
-        bool dragging = false;
+        DragMode dragMode = DragMode::None;
         bool geometryDirty = true;
         bool rendererReady = false;
         trttrade::InstType instrumentType = trttrade::InstType::Spot;
@@ -39,6 +43,18 @@ namespace trtui
         void initSurface();
 
         void initInteraction();
+
+        void initControls();
+
+        void positionControls();
+
+        void setAutoScale(bool enabled);
+
+        bool isPriceAxis(const QPointF& position) const;
+
+        void updateCursor(const QPointF& position);
+
+        void zoomAt(double factor, const QPointF& position);
 
         void cleanup();
 
@@ -65,6 +81,8 @@ namespace trtui
         QColor getFallingColor() const;
 
     protected:
+        bool event(QEvent* event) override;
+
         void initializeGL() override;
 
         void resizeGL(int width, int height) override;

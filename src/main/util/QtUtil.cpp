@@ -9,10 +9,37 @@
 #include <QProxyStyle>
 #include <QStyleOption>
 #include <QPainter>
+#include <QPointingDevice>
 #include <algorithm>
+#include <cmath>
 
 namespace trtutils
 {
+    double wheelZoomFactor(const QWheelEvent& event)
+    {
+        const bool pixels = !event.pixelDelta().isNull();
+        const QPoint delta = pixels ? event.pixelDelta() : event.angleDelta();
+        return std::pow(1.15, delta.y() / (pixels ? 40.0 : 120.0));
+    }
+
+    bool isWheelPan(const QWheelEvent& event)
+    {
+        // Windows precision-touchpad pinch is delivered as Ctrl+wheel. Native
+        // pinch is handled separately; ordinary two-finger scrolling must not zoom.
+        return !event.modifiers().testFlag(Qt::ControlModifier) &&
+            (!event.pixelDelta().isNull() || event.phase() != Qt::NoScrollPhase || event.angleDelta().x() != 0 ||
+                event.modifiers().testFlag(Qt::ShiftModifier) || event.pointingDevice()->type() == QInputDevice::DeviceType::TouchPad);
+    }
+
+    double wheelPanPixels(const QWheelEvent& event)
+    {
+        if (!event.pixelDelta().isNull())
+            return event.pixelDelta().x();
+        const QPoint delta = event.angleDelta();
+        const int horizontal = delta.x() == 0 && event.modifiers().testFlag(Qt::ShiftModifier) ? delta.y() : delta.x();
+        return horizontal / 120.0 * 40.0;
+    }
+
     QRect boundedWidgetGeometry(const QRect& geometry, const QRect& bounds)
     {
         if (bounds.isEmpty())
