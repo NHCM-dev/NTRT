@@ -6,7 +6,8 @@ namespace trtcore
     DataMonitor::Worker::Worker(std::atomic<std::shared_ptr<const DataSnapshot>>& destination, const trtdata::AccountManager& accounts)
         : destination(destination), accountData(accounts)
     {
-        accountTimer.setInterval(5000);
+        accountTimer.setInterval(AccountSnapshot::refreshIntervalMs);
+        accountTimer.setTimerType(Qt::PreciseTimer);
         QObject::connect(&accountTimer, &QTimer::timeout, &accountTimer, [this] { accountData.refresh(); });
         publicationTimer.setInterval(100);
         QObject::connect(&publicationTimer, &QTimer::timeout, &publicationTimer, [this]

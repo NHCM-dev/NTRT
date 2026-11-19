@@ -7,7 +7,6 @@
 #include <QVBoxLayout>
 #include <functional>
 #include <QHeaderView>
-#include <QDateTime>
 #include <QTimer>
 #include <QScrollBar>
 namespace trtui
@@ -144,7 +143,6 @@ namespace trtui
         const std::shared_ptr<const trtcore::DataSnapshot> snapshot = ntrt::dataMonitor->getSnapshot();
         qint64 timestamp = 0;
         QString error;
-        bool loading = false;
         std::vector<QStringList> rows;
         const trtcore::AccountSnapshot& account = snapshot->account;
         const std::function<QString(const std::string&)> text = [](const std::string& value) { return QString::fromStdString(value); };
@@ -152,19 +150,19 @@ namespace trtui
         switch (type)
         {
             case trtdata::WorkspaceWindowType::AccountBalance:
-                timestamp = account.balance.timestamp; error = account.balance.error; loading = account.balance.loading;
+                timestamp = account.balance.timestamp; error = account.balance.error;
                 if (timestamp != displayedTimestamp)
                     for (const trttrade::BalanceDetail& row : account.balance.data.details)
                         rows.push_back({text(row.ccy), number(row.eqUsd), number(row.eq), number(row.availBal), trttrade::accountNumber(row.upl, true), number(row.frozenBal)});
                 break;
             case trtdata::WorkspaceWindowType::AccountPositions:
-                timestamp = account.positions.timestamp; error = account.positions.error; loading = account.positions.loading;
+                timestamp = account.positions.timestamp; error = account.positions.error;
                 if (timestamp != displayedTimestamp)
                     for (const trttrade::PositionData& row : account.positions.data)
                         rows.push_back({text(row.instId), trttrade::accountPositionSide(row), number(row.lever) + "x", number(row.margin) + " " + text(row.ccy), number(row.pos) + (row.instType == "MARGIN" ? " " + text(row.posCcy) : " contracts"), trttrade::accountNumber(row.upl, true) + " " + text(row.ccy), trttrade::accountPercent(row.uplRatio), number(row.avgPx), number(row.markPx), number(row.liqPx), number(row.bePx), text(row.mgnMode), text(row.ccy), number(row.availPos)});
                 break;
             case trtdata::WorkspaceWindowType::AccountOrders:
-                timestamp = account.orders.timestamp; error = account.orders.error; loading = account.orders.loading;
+                timestamp = account.orders.timestamp; error = account.orders.error;
                 if (timestamp != displayedTimestamp)
                     for (const trttrade::OrderData& row : account.orders.data)
                         rows.push_back({text(row.instId), text(row.ordType), text(row.side), number(row.px), number(row.sz), number(row.accFillSz), number(row.avgPx), text(row.state), text(row.ordId)});
@@ -172,11 +170,8 @@ namespace trtui
             default: return;
         }
         if (timestamp != displayedTimestamp) { displayRows(rows); displayedTimestamp = timestamp; }
-        QString message = "OKX · Live · Refresh: 5s";
-        if (timestamp > 0) message += " · Updated " + QDateTime::fromMSecsSinceEpoch(timestamp).toString("HH:mm:ss");
+        QString message = "OKX · Live";
         if (!error.isEmpty()) message += " · " + error + " (previous data may be stale)";
-        else if (loading) message += " · Refreshing…";
-        else if (timestamp > 0 && table->rowCount() == 0) message += " · No records";
         status->setText(message);
     }
 }

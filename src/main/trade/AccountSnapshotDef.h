@@ -14,6 +14,7 @@ namespace trtcore
     };
     struct AccountSnapshot
     {
+        static constexpr int refreshIntervalMs = 500;
         AccountReadSnapshot<trttrade::AccountBalance> balance;
         AccountReadSnapshot<std::vector<trttrade::PositionData>> positions;
         AccountReadSnapshot<std::vector<trttrade::OrderData>> orders;

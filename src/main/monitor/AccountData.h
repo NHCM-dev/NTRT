@@ -4,6 +4,7 @@
 #include "main/data/persistence/AccountManager.h"
 #include <QObject>
 #include <QFutureWatcher>
+#include <QElapsedTimer>
 namespace trtcore
 {
     class AccountData final : public QObject
@@ -16,6 +17,9 @@ namespace trtcore
         QFutureWatcher<std::vector<trttrade::OrderData>> orders;
         std::vector<trttrade::OrderData> pendingOrders;
         std::string cursor;
+        QElapsedTimer lastRefresh;
+        QElapsedTimer lastOrderRequest;
+        QElapsedTimer failureCooldown;
         void requestOrders();
         void finishOrders();
     public:

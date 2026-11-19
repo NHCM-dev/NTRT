@@ -1,5 +1,6 @@
 #include "AccountData.h"
 #include <QDateTime>
+#include <QTimer>
 #include <stdexcept>
 namespace trtcore
 {
@@ -13,7 +14,7 @@ namespace trtcore
                 snapshot.balance.data = balance.result();
                 snapshot.balance.timestamp = QDateTime::currentMSecsSinceEpoch();
                 snapshot.balance.error.clear();
-            } catch (const std::exception& error) { snapshot.balance.error = QString::fromUtf8(error.what()); }
+            } catch (const std::exception& error) { snapshot.balance.error = QString::fromUtf8(error.what()); failureCooldown.restart(); }
         });
         connect(&positions, &QFutureWatcher<std::vector<trttrade::PositionData>>::finished, this, [this]
         {
@@ -23,20 +24,25 @@ namespace trtcore
                 snapshot.positions.data = positions.result();
                 snapshot.positions.timestamp = QDateTime::currentMSecsSinceEpoch();
                 snapshot.positions.error.clear();
-            } catch (const std::exception& error) { snapshot.positions.error = QString::fromUtf8(error.what()); }
+            } catch (const std::exception& error) { snapshot.positions.error = QString::fromUtf8(error.what()); failureCooldown.restart(); }
         });
         connect(&orders, &QFutureWatcher<std::vector<trttrade::OrderData>>::finished, this, &AccountData::finishOrders);
     }
 
     void AccountData::refresh()
     {
+        if ((lastRefresh.isValid() && lastRefresh.elapsed() < AccountSnapshot::refreshIntervalMs)
+            || (lastOrderRequest.isValid() && lastOrderRequest.elapsed() < AccountSnapshot::refreshIntervalMs)
+            || (failureCooldown.isValid() && failureCooldown.elapsed() < 5000)) return;
         if (snapshot.balance.loading || snapshot.positions.loading || snapshot.orders.loading || balance.isRunning() || positions.isRunning() || orders.isRunning())
             return;
+        lastRefresh.restart();
         try
         {
             account = manager.createOKXAccount(trttrade::TradingEnvironment::Live);
         } catch (const std::exception&)
         {
+            failureCooldown.restart();
             snapshot = {};
             snapshot.balance.error = snapshot.positions.error = snapshot.orders.error = "Configure complete OKX credentials in Settings > API.";
             return;
@@ -52,7 +58,7 @@ namespace trtcore
         } catch (const std::exception& error)
         {
             snapshot.balance.loading = snapshot.positions.loading = snapshot.orders.loading = false;
-            snapshot.balance.error = snapshot.positions.error = snapshot.orders.error = QString::fromUtf8(error.what());
+            snapshot.balance.error = snapshot.positions.error = snapshot.orders.error = QString::fromUtf8(error.what()); failureCooldown.restart();
         }
     }
 
@@ -60,6 +66,7 @@ namespace trtcore
     {
         trttrade::AccountQuery query;
         query.after = cursor;
+        lastOrderRequest.restart();
         orders.setFuture(account->listOrders(query));
     }
 
@@ -74,13 +81,22 @@ namespace trtcore
                 if (page.back().ordId.empty() || page.back().ordId == cursor || pendingOrders.size() > 100000)
                     throw std::runtime_error("Could not complete order pagination");
                 cursor = page.back().ordId;
-                requestOrders();
+                QTimer::singleShot(AccountSnapshot::refreshIntervalMs, Qt::PreciseTimer, this, [this]
+                {
+                    try { requestOrders(); }
+                    catch (const std::exception& error)
+                    {
+                        snapshot.orders.error = QString::fromUtf8(error.what());
+                        snapshot.orders.loading = false;
+                        failureCooldown.restart();
+                    }
+                });
                 return;
             }
             snapshot.orders.data = std::move(pendingOrders);
             snapshot.orders.timestamp = QDateTime::currentMSecsSinceEpoch();
             snapshot.orders.error.clear();
-        } catch (const std::exception& error) { snapshot.orders.error = QString::fromUtf8(error.what()); }
+        } catch (const std::exception& error) { snapshot.orders.error = QString::fromUtf8(error.what()); failureCooldown.restart(); }
         snapshot.orders.loading = false;
     }
 
