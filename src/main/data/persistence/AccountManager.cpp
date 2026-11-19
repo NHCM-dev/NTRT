@@ -1,4 +1,6 @@
 #include "AccountManager.h"
+#include "main/trade/accimpl/OKXTradingAccount.h"
+#include <stdexcept>
 #include "main/util/CredentialUtil.h"
 #include "main/util/JsonUtil.h"
 #include "main/util/FileUtil.h"
@@ -77,6 +79,15 @@ namespace trtdata
         const std::string_view json = builder.view();
         return trtutils::writeAllBytesAtomically(credentialPath,
             trtutils::encryptCredentials(QByteArray(json.data(), static_cast<qsizetype>(json.size()))));
+    }
+
+    std::unique_ptr<trttrade::TradingAccount> AccountManager::createOKXAccount(trttrade::TradingEnvironment environment) const
+    {
+        OKXCredentials loaded;
+        bool found = false;
+        if (!loadOKXCredentials(loaded, found) || !found || loaded.apiKey.isEmpty() || loaded.secretKey.isEmpty() || loaded.passphrase.isEmpty())
+            throw std::runtime_error("Complete saved OKX credentials required");
+        return std::make_unique<trttrade::OKXTradingAccount>(std::move(loaded), environment);
     }
 
     bool AccountManager::removeOKXCredentials()

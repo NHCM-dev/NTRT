@@ -6,6 +6,9 @@
 #define NTRT_OKXAPI_H
 
 #include "../AbstractApi.h"
+#include "main/data/config/AccountConfig.h"
+#include "main/trade/AccountDef.h"
+#include "main/trade/AccountDataDef.h"
 #include "main/market/abstract/Instrument.h"
 #include "main/network/RestAPITemplate.h"
 
@@ -46,7 +49,22 @@ namespace trtdata::okx
 
     class OKXApi final : public trtcore::AbstractApi
     {
+        static QNetworkReply* requestPrivate(const trtnet::RestAPITemplate& endpoint, const OKXCredentials& credentials,
+            trttrade::TradingEnvironment environment, const QUrlQuery& query, const QByteArray& body = {});
+
     public:
+        static QFuture<trttrade::AccountBalance> fetchBalance(const OKXCredentials& credentials, trttrade::TradingEnvironment environment, const std::string& ccy);
+        static QFuture<std::vector<trttrade::FundingBalance>> fetchFundingBalance(const OKXCredentials& credentials, trttrade::TradingEnvironment environment, const std::string& ccy);
+        static QFuture<std::vector<trttrade::PositionData>> fetchPositions(const OKXCredentials& credentials, trttrade::TradingEnvironment environment, const trttrade::AccountQuery& query);
+        static QFuture<std::vector<trttrade::OrderData>> listOrders(const OKXCredentials& credentials, trttrade::TradingEnvironment environment, const trttrade::AccountQuery& query);
+        static QFuture<std::vector<trttrade::OrderData>> listOrderHistory(const OKXCredentials& credentials, trttrade::TradingEnvironment environment, const trttrade::AccountQuery& query);
+        static QFuture<std::vector<trttrade::FillData>> listFills(const OKXCredentials& credentials, trttrade::TradingEnvironment environment, const trttrade::AccountQuery& query);
+        static QFuture<trttrade::OrderData> fetchOrder(const OKXCredentials& credentials, trttrade::TradingEnvironment environment, const trttrade::OrderIdentifier& order);
+        static QFuture<trttrade::OrderResult> placeOrder(const OKXCredentials& credentials, trttrade::TradingEnvironment environment, const trttrade::PlaceOrderRequest& order);
+        static QFuture<trttrade::OrderResult> cancelOrder(const OKXCredentials& credentials, trttrade::TradingEnvironment environment, const trttrade::OrderIdentifier& order);
+        static QFuture<trttrade::OrderResult> amendOrder(const OKXCredentials& credentials, trttrade::TradingEnvironment environment, const trttrade::AmendOrderRequest& order);
+        static QFuture<trttrade::AccountConfiguration> fetchConfiguration(const OKXCredentials& credentials, trttrade::TradingEnvironment environment);
+        static QFuture<std::vector<trttrade::LeverageData>> setLeverage(const OKXCredentials& credentials, trttrade::TradingEnvironment environment, const trttrade::LeverageRequest& request);
         std::unique_ptr<trtcore::BookStream> createBookStream() const override;
 
         std::unique_ptr<trtcore::CandleStream> createCandleStream() const override;

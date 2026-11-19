@@ -2,6 +2,8 @@
 #define NTRT_ACCOUNTMANAGER_H
 
 #include "main/data/config/AccountConfig.h"
+#include "main/trade/TradingAccount.h"
+#include <memory>
 
 namespace trtdata
 {
@@ -17,6 +19,7 @@ namespace trtdata
         bool importOKXCredentials(const OKXCredentials& credentials);
         bool setOKXCredential(OKXCredentialField field, const QString& value);
         bool removeOKXCredentials();
+        std::unique_ptr<trttrade::TradingAccount> createOKXAccount(trttrade::TradingEnvironment environment) const;
     };
 }
 

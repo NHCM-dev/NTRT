@@ -14,3 +14,11 @@ cmake --build --preset release
 ```
 
 The Windows package is generated in `build/release/dist/NTRT`. Release builds intentionally omit compiler optimization flags.
+
+Local protocol tests (no API credentials required):
+
+```shell
+cmake --preset release -DNTRT_BUILD_TESTS=ON
+cmake --build --preset release
+ctest --test-dir build/release --output-on-failure
+```

@@ -24,6 +24,7 @@ Choose the smallest complete change that addresses the request. A question about
 | Instrument list, chart and book depth content | `ui/panels/InstrumentListPanel`, `ui/panels/ChartPanel`, `ui/panels/BookDepthPanel` |
 | Settings dialog and setting rows | `ui/dialog/SettingsDialog`, `ui/pages/SettingPage` |
 | Typed settings and persistence | `data/persistence/ConfigManager`, `data/persistence/AppearanceManager`, `data/persistence/WorkspaceManager` |
+| Account queries, order commands and OKX credentials | `trade/TradingAccount`, `trade/accimpl/OKXTradingAccount`, `data/persistence/AccountManager`, `api/impl/OKXAccountApi.cpp` |
 | Background subscriptions and lifecycle | `monitor/DataMonitor` |
 | Quotes, order books, candles and icon caches | `monitor/MarketData`, `monitor/CandlesManager`, `monitor/InstrumentIconManager` |
 | Common exchange interface and OKX behavior | `api/AbstractApi`, `api/impl/OKXApi`, `api/impl/OKXTickerStream`, `api/impl/OKXBookStream` |

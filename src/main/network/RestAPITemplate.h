@@ -6,6 +6,10 @@
 #define NTRT_RESTREQUEST_H
 
 #include <cstdint>
+#include <QByteArray>
+#include <QList>
+#include <QPair>
+#include <QSet>
 #include <QUrlQuery>
 #include <QtNetwork/QNetworkReply>
 
@@ -32,7 +36,8 @@ namespace trtnet
           requiredParameters(std::move(required)), optionalParameters(std::move(optional))
         {}
 
-        QNetworkReply* request(const QUrlQuery& parameters) const;
+        QNetworkReply* request(const QUrlQuery& parameters, const QByteArray& body = {},
+                               const QList<QPair<QByteArray, QByteArray>>& headers = {}) const;
     };
 } // trtnet
 

@@ -8,7 +8,7 @@
 namespace trtnet
 {
     QNetworkReply* RestAPITemplate::request(
-        const QUrlQuery& parameters
+        const QUrlQuery& parameters, const QByteArray& body, const QList<QPair<QByteArray, QByteArray>>& headers
     ) const
     {
         const QList<QPair<QString, QString>> items = parameters.queryItems();
@@ -43,16 +43,15 @@ namespace trtnet
         QUrl url = domain;
         url.setPath(endpoint);
 
-        QUrlQuery query;
-
-        for (const QPair<QString, QString>& item : items)
-        {
-            query.addQueryItem(item.first, item.second);
-        }
-
-        url.setQuery(query);
+        if (!parameters.isEmpty())
+            url.setQuery(parameters);
 
         QNetworkRequest req(url);
+        req.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::ManualRedirectPolicy);
+        if (!body.isEmpty())
+            req.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+        for (const QPair<QByteArray, QByteArray>& header : headers)
+            req.setRawHeader(header.first, header.second);
 
         // Execute request
         switch (httpMethod)
@@ -61,14 +60,14 @@ namespace trtnet
                 return getNetworkManager().get(req);
 
             case HTTPMethod::POST:
-                return getNetworkManager().post(req, QByteArray{});
+                return getNetworkManager().post(req, body);
 
             case HTTPMethod::PUT:
-                return getNetworkManager().put(req, QByteArray{});
+                return getNetworkManager().put(req, body);
 
             case HTTPMethod::PATCH:
                 return getNetworkManager().sendCustomRequest(
-                    req, "PATCH", QByteArray{}
+                    req, "PATCH", body
                 );
 
             case HTTPMethod::DELETE:
@@ -79,12 +78,12 @@ namespace trtnet
 
             case HTTPMethod::OPTIONS:
                 return getNetworkManager().sendCustomRequest(
-                    req, "OPTIONS", QByteArray{}
+                    req, "OPTIONS", body
                 );
 
             case HTTPMethod::TRACE:
                 return getNetworkManager().sendCustomRequest(
-                    req, "TRACE", QByteArray{}
+                    req, "TRACE", body
                 );
 
             default:

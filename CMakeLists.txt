@@ -100,3 +100,22 @@ if(MSVC)
 else()
     target_compile_options(NTRT PRIVATE -Wall -Wextra -Wpedantic)
 endif()
+
+option(NTRT_BUILD_TESTS "Build local protocol and transport tests" OFF)
+if(NTRT_BUILD_TESTS)
+    enable_testing()
+    qt_add_executable(OKXAccountTest tests/OKXAccountTest.cpp
+        src/main/util/exchange/OKXAccountUtil.cpp src/main/trade/parser/OKXParser.cpp
+        src/main/util/JsonUtil.cpp src/main/util/FileUtil.cpp
+        src/main/network/RestAPITemplate.cpp src/main/util/NetworkUtil.cpp)
+    target_include_directories(OKXAccountTest PRIVATE src)
+    target_link_libraries(OKXAccountTest PRIVATE Qt6::Widgets Qt6::Network simdjson::simdjson)
+    if(MSVC)
+        target_compile_options(OKXAccountTest PRIVATE /W4 /utf-8 /Zc:__cplusplus)
+    endif()
+    if(TARGET ntrt_runtime)
+        add_dependencies(OKXAccountTest ntrt_runtime)
+    endif()
+    add_test(NAME okx_account COMMAND OKXAccountTest)
+    set_tests_properties(okx_account PROPERTIES TIMEOUT 10)
+endif()

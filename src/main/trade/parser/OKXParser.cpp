@@ -61,7 +61,7 @@ namespace trtdata::OKXParser
             std::string_view message;
             if (json["msg"].get_string().get(message) != simdjson::SUCCESS)
                 message = {};
-            throw std::runtime_error("OKX ticker error " + std::string(code) + ": " + std::string(message));
+            throw std::runtime_error("OKX API error " + std::string(code) + ": " + std::string(message));
         }
     }
 
