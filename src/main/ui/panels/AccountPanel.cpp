@@ -3,6 +3,7 @@
 #include "main/ui/widgets/NumericWidgets.h"
 #include "main/util/TradeUtil.h"
 #include "main/util/PaletteUtil.h"
+#include "main/util/QtUtil.h"
 #include <algorithm>
 #include <QVBoxLayout>
 #include <functional>
@@ -13,7 +14,15 @@
 #include <QDateTime>
 #include <QCalendarWidget>
 #include <QIcon>
+#include <QGraphicsColorizeEffect>
+#include <QGraphicsOpacityEffect>
+#include <QMenu>
+#include <QPushButton>
+#include <QMouseEvent>
+#include <QTableView>
+#include <QSpinBox>
 #include <QLocale>
+#include <QMdiSubWindow>
 #include <QSignalBlocker>
 #include <QTextCharFormat>
 #include <QToolButton>
@@ -86,13 +95,18 @@ namespace trtui
         historySource->addItem("Archive (3 months)", true);
         historySource->addItem("Recent (7 days, includes unfilled cancellations)", false);
         historySource->setVisible(type == trtdata::WorkspaceWindowType::AccountOrderHistory);
+        historySource->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
+        historySource->setMinimumContentsLength(18);
         filters->addWidget(historySource);
+        QPushButton* refresh = new QPushButton("Refresh", this);
+        filters->addWidget(refresh);
+        connect(refresh, &QPushButton::clicked, this, [this] { queryHistory(true); });
         layout->addLayout(filters);
         initHistoryDates(layout);
 
         historyInputDelay.setSingleShot(true);
         historyInputDelay.setInterval(350);
-        connect(&historyInputDelay, &QTimer::timeout, this, &AccountPanel::queryHistory);
+        connect(&historyInputDelay, &QTimer::timeout, this, [this] { queryHistory(false); });
         connect(instrumentType, &QComboBox::currentIndexChanged, this, &AccountPanel::scheduleHistoryQuery);
         connect(instrument, &QLineEdit::textChanged, this, &AccountPanel::scheduleHistoryQuery);
         connect(historySource, &QComboBox::currentIndexChanged, this, [this]
@@ -103,7 +117,7 @@ namespace trtui
             endDate->setMinimumDate(minimum);
             scheduleHistoryQuery();
         });
-        QTimer::singleShot(0, this, &AccountPanel::queryHistory);
+        QTimer::singleShot(0, this, [this] { queryHistory(false); });
     }
 
     void AccountPanel::initHistoryDates(QVBoxLayout* layout)
@@ -126,12 +140,14 @@ namespace trtui
         for (QDateEdit* control : {beginDate, endDate})
         {
             control->setObjectName("historyDate");
+            initHistoryHover(control);
             control->setLocale(QLocale::English);
             control->setDisplayFormat("dd MMM yyyy");
             control->setKeyboardTracking(false);
             control->setDateRange(today.addMonths(-3), today);
             control->setCalendarPopup(true);
             QCalendarWidget* calendar = control->calendarWidget();
+            calendar->window()->installEventFilter(this);
             calendar->setObjectName("historyCalendar");
             calendar->setLocale(QLocale::English);
             calendar->setFirstDayOfWeek(Qt::Monday);
@@ -141,6 +157,34 @@ namespace trtui
             calendar->setMinimumSize(260, 180);
             calendar->setWeekdayTextFormat(Qt::Saturday, QTextCharFormat());
             calendar->setWeekdayTextFormat(Qt::Sunday, QTextCharFormat());
+            QToolButton* month = calendar->findChild<QToolButton*>("qt_calendar_monthbutton");
+            QToolButton* year = calendar->findChild<QToolButton*>("qt_calendar_yearbutton");
+            if (month && month->menu())
+            {
+                QMenu* menu = month->menu();
+                menu->setObjectName("historyMonthMenu");
+                menu->installEventFilter(this);
+                const std::function<void()> updateMonths = [calendar, menu]
+                {
+                    for (QAction* action : menu->actions())
+                    {
+                        const QDate first(calendar->yearShown(), action->data().toInt(), 1);
+                        action->setVisible(first.isValid() && first <= calendar->maximumDate() &&
+                            first.addMonths(1) > calendar->minimumDate());
+                    }
+                };
+                connect(calendar, &QCalendarWidget::currentPageChanged, menu, updateMonths);
+                connect(menu, &QMenu::aboutToShow, menu, updateMonths);
+                updateMonths();
+            }
+            if (month) initHistoryHover(month);
+            if (year) initHistoryHover(year);
+            QSpinBox* yearEdit = calendar->findChild<QSpinBox*>("qt_calendar_yearedit");
+            if (yearEdit) initHistoryHover(yearEdit);
+            QTableView* days = calendar->findChild<QTableView*>();
+            if (days) initHistoryDayHover(days);
+            connect(calendar, &QCalendarWidget::clicked, control, &QDateEdit::setDate);
+            connect(calendar, &QCalendarWidget::activated, control, &QDateEdit::setDate);
             QToolButton* previous = calendar->findChild<QToolButton*>("qt_calendar_prevmonth");
             QToolButton* next = calendar->findChild<QToolButton*>("qt_calendar_nextmonth");
             if (previous && next)
@@ -151,6 +195,8 @@ namespace trtui
                 next->setToolButtonStyle(Qt::ToolButtonTextOnly);
                 previous->setText("‹");
                 next->setText("›");
+                initHistoryHover(previous);
+                initHistoryHover(next);
             }
         }
         connect(beginDate, &QDateEdit::dateChanged, this, [this](const QDate& date)
@@ -179,8 +225,61 @@ namespace trtui
         historyInputDelay.start();
     }
 
-    void AccountPanel::queryHistory()
+    void AccountPanel::initHistoryHover(QWidget* control)
     {
+        QGraphicsColorizeEffect* tint = new QGraphicsColorizeEffect(control);
+        tint->setStrength(0.0);
+        control->setGraphicsEffect(tint);
+        QVariantAnimation* animation = new QVariantAnimation(control);
+        animation->setDuration(140);
+        animation->setEasingCurve(QEasingCurve::OutCubic);
+        connect(animation, &QVariantAnimation::valueChanged, tint, [control, tint](const QVariant& value)
+        {
+            tint->setColor(control->palette().color(QPalette::Highlight));
+            tint->setStrength(value.toReal());
+        });
+        historyHover.insert(control, animation);
+        control->installEventFilter(this);
+    }
+
+    void AccountPanel::initHistoryDayHover(QTableView* days)
+    {
+        QWidget* viewport = days->viewport();
+        viewport->setMouseTracking(true);
+        QFrame* highlight = new QFrame(viewport);
+        highlight->setObjectName("historyDayHover");
+        highlight->setAttribute(Qt::WA_TransparentForMouseEvents);
+        highlight->hide();
+        QGraphicsOpacityEffect* opacity = new QGraphicsOpacityEffect(highlight);
+        opacity->setOpacity(0.0);
+        highlight->setGraphicsEffect(opacity);
+        QPropertyAnimation* animation = new QPropertyAnimation(opacity, "opacity", highlight);
+        animation->setDuration(140);
+        historyDayHovers.insert(viewport, {days, highlight, animation});
+        viewport->installEventFilter(this);
+    }
+
+    void AccountPanel::updateHistoryDayHover(const DayHover& hover, const QRect& cell)
+    {
+        QGraphicsOpacityEffect* opacity = static_cast<QGraphicsOpacityEffect*>(hover.highlight->graphicsEffect());
+        if (cell.isValid())
+        {
+            if (!hover.highlight->isHidden() && hover.highlight->geometry() == cell && hover.animation->endValue().toReal() > 0.0)
+                return;
+            if (hover.highlight->geometry() != cell) opacity->setOpacity(0.0);
+            hover.highlight->setGeometry(cell);
+            hover.highlight->show();
+            hover.highlight->raise();
+        }
+        hover.animation->stop();
+        hover.animation->setStartValue(opacity->opacity());
+        hover.animation->setEndValue(cell.isValid() ? 0.32 : 0.0);
+        hover.animation->start();
+    }
+
+    void AccountPanel::queryHistory(bool refresh)
+    {
+        historyInputDelay.stop();
         const trttrade::AccountHistoryQuery query{
             .positions = type == trtdata::WorkspaceWindowType::AccountPositionHistory,
             .instType = static_cast<trttrade::InstType>(instrumentType->currentData().toInt()),
@@ -189,7 +288,7 @@ namespace trtui
             .end = endDate->date().endOfDay(QTimeZone::UTC).toMSecsSinceEpoch(),
             .archive = historySource->currentData().toBool()
         };
-        ntrt::dataMonitor->queryAccountHistory(historyId, query);
+        ntrt::dataMonitor->queryAccountHistory(historyId, query, refresh);
     }
 
     void AccountPanel::displayRows(const std::vector<QStringList>& rows)
@@ -275,6 +374,48 @@ namespace trtui
     bool AccountPanel::eventFilter(QObject* watched, QEvent* event)
     {
         if (table && watched == table->viewport() && event->type() == QEvent::Resize) updateColumnWidths();
+        if (event->type() == QEvent::Enter || event->type() == QEvent::Leave || event->type() == QEvent::EnabledChange)
+        {
+            QWidget* control = qobject_cast<QWidget*>(watched);
+            QVariantAnimation* animation = historyHover.value(control, nullptr);
+            if (animation)
+            {
+                QGraphicsColorizeEffect* tint = static_cast<QGraphicsColorizeEffect*>(control->graphicsEffect());
+                animation->stop();
+                animation->setStartValue(tint->strength());
+                const bool hovered = event->type() == QEvent::Enter || (event->type() == QEvent::EnabledChange && control->underMouse());
+                animation->setEndValue(hovered ? 0.55 : 0.0);
+                if (control->isEnabled()) animation->start();
+                else tint->setStrength(0.0);
+            }
+        }
+        const QHash<QWidget*, DayHover>::const_iterator hover = historyDayHovers.constFind(qobject_cast<QWidget*>(watched));
+        if (hover != historyDayHovers.cend() && (event->type() == QEvent::MouseMove || event->type() == QEvent::Leave || event->type() == QEvent::Hide))
+        {
+            QRect cell;
+            if (event->type() == QEvent::MouseMove)
+            {
+                const QModelIndex index = hover->days->indexAt(static_cast<QMouseEvent*>(event)->position().toPoint());
+                if (index.row() > 0 && index.flags().testFlag(Qt::ItemIsEnabled)) cell = hover->days->visualRect(index);
+            }
+            updateHistoryDayHover(*hover, cell);
+        }
+        if (event->type() == QEvent::Show && beginDate && endDate &&
+            (watched->objectName() == "historyMonthMenu" || watched == beginDate->calendarWidget()->window() || watched == endDate->calendarWidget()->window()))
+        {
+            QWidget* popup = qobject_cast<QWidget*>(watched);
+            QWidget* container = parentWidget();
+            while (container && !qobject_cast<QMdiSubWindow*>(container)) container = container->parentWidget();
+            QWidget* viewport = container ? container->parentWidget() : window();
+            QRect bounds(viewport->mapToGlobal(QPoint()), viewport->size());
+            if (container)
+            {
+                const QRect subwindow(container->mapToGlobal(QPoint()), container->size());
+                const QRect visible = bounds.intersected(subwindow);
+                if (visible.width() >= popup->width() && visible.height() >= popup->height()) bounds = visible;
+            }
+            popup->move(trtutils::boundedWidgetGeometry(popup->geometry(), bounds).topLeft());
+        }
         return QFrame::eventFilter(watched, event);
     }
 

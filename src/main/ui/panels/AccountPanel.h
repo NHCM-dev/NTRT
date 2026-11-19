@@ -11,6 +11,10 @@
 #include <QComboBox>
 #include <QLineEdit>
 #include <QVBoxLayout>
+#include <QHash>
+#include <QVariantAnimation>
+#include <QPropertyAnimation>
+#include <QTableView>
 #include "main/trade/AccountDef.h"
 #include "main/data/core/WorkspaceDef.h"
 namespace trtui
@@ -28,10 +32,21 @@ namespace trtui
         QComboBox* historySource = nullptr;
         QLineEdit* instrument = nullptr;
         QTimer historyInputDelay;
+        QHash<QWidget*, QVariantAnimation*> historyHover;
+        struct DayHover
+        {
+            QTableView* days;
+            QFrame* highlight;
+            QPropertyAnimation* animation;
+        };
+        QHash<QWidget*, DayHover> historyDayHovers;
         void initHistoryUi(QVBoxLayout* layout);
         void initHistoryDates(QVBoxLayout* layout);
+        void initHistoryHover(QWidget* control);
+        void initHistoryDayHover(QTableView* days);
+        void updateHistoryDayHover(const DayHover& hover, const QRect& cell);
         void scheduleHistoryQuery();
-        void queryHistory();
+        void queryHistory(bool refresh);
         void initUi();
         void updateColumnWidths();
         void updateColors();

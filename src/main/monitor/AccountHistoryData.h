@@ -44,7 +44,7 @@ namespace trtcore
         void finishPositions();
     public:
         explicit AccountHistoryData(const trtdata::AccountManager& manager);
-        void setQuery(const trttrade::AccountHistoryQuery& query);
+        void setQuery(const trttrade::AccountHistoryQuery& query, bool refresh);
         bool submit();
         const AccountHistorySnapshot& getSnapshot() const;
     signals:

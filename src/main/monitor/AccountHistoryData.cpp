@@ -11,9 +11,9 @@ namespace trtcore
         connect(&positions, &QFutureWatcher<std::vector<trttrade::PositionHistoryData>>::finished, this, &AccountHistoryData::finishPositions);
     }
 
-    void AccountHistoryData::setQuery(const trttrade::AccountHistoryQuery& query)
+    void AccountHistoryData::setQuery(const trttrade::AccountHistoryQuery& query, bool refresh)
     {
-        if (selected == query && snapshot.error.isEmpty())
+        if (selected == query && (snapshot.loading || (!refresh && snapshot.error.isEmpty())))
             return;
 
         generation++;
@@ -26,7 +26,7 @@ namespace trtcore
         const qint64 now = QDateTime::currentMSecsSinceEpoch();
         requestEnd = std::min(query.end, now);
 
-        std::erase_if(cache, [now](const CachedQuery& entry) { return entry.expiresAt <= now; });
+        std::erase_if(cache, [now, refresh, &query](const CachedQuery& entry) { return entry.expiresAt <= now || (refresh && entry.query == query); });
         const std::deque<CachedQuery>::iterator cached = std::find_if(cache.begin(), cache.end(),
             [&query](const CachedQuery& entry) { return entry.query == query; });
         if (cached != cache.end())

@@ -315,9 +315,8 @@ QCalendarWidget#historyCalendar QToolButton {
     color: palette(window-text);
     background: palette(window);
 }
-QCalendarWidget#historyCalendar QToolButton:enabled:hover {
+QCalendarWidget#historyCalendar QToolButton:enabled:pressed {
     background: palette(midlight);
-    border-color: palette(highlight);
 }
 QCalendarWidget#historyCalendar QToolButton#qt_calendar_prevmonth,
 QCalendarWidget#historyCalendar QToolButton#qt_calendar_nextmonth {
@@ -333,4 +332,8 @@ QCalendarWidget#historyCalendar QTableView {
     selection-background-color: palette(highlight);
     selection-color: palette(highlighted-text);
     outline: 0;
+}
+QFrame#historyDayHover {
+    background: palette(highlight);
+    border-radius: 3px;
 }
