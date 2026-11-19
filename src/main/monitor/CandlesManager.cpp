@@ -405,7 +405,7 @@ namespace trtcore
             {
                 const trtdata::TickerData& ticker = *quote->ticker;
                 const qint64 expiry = ticker.ts + marketFeedTimeoutMs;
-                if (ticker.ts > subscription.snapshot.updatedAt && ticker.ts <= now + marketFeedTimeoutMs && expiry > now)
+                if (ticker.ts <= now + marketFeedTimeoutMs && expiry > now)
                 {
                     trttrade::CandleData candle = subscription.snapshot.candles.back();
                     if (candle.close != ticker.last && trtutils::applyLivePrice(candle, entry.first.timeframe, ticker))

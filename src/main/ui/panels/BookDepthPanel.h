@@ -59,6 +59,7 @@ namespace trtui
         trtdata::BookDepthPanelState getState() const;
         void restoreState(const trtdata::BookDepthPanelState& value);
         void updateData();
+        void updateData(const trtcore::MarketDataSnapshot& snapshot);
 
     signals:
         void titleChanged(const QString& title);

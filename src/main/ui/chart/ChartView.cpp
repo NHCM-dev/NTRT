@@ -161,6 +161,14 @@ namespace trtui
         invalidateGeometry();
     }
 
+    void ChartView::setLatestPrice(std::optional<double> value)
+    {
+        if (latestPrice == value)
+            return;
+        latestPrice = value;
+        update();
+    }
+
     void ChartView::setTimeZone(const QTimeZone& value)
     {
         if (timeZone == value)
@@ -260,6 +268,7 @@ namespace trtui
         }
         geometryDirty = false;
         drawAxes(painter);
+        drawLatestPrice(painter);
         drawReadout(painter);
         drawCrosshair(painter);
         if (!candles.empty() && viewport.indexFromX(viewport.getPriceRect().left()) < 0 && (historyLoading ||
@@ -347,17 +356,29 @@ namespace trtui
             painter.drawText(QRectF(area.right() + 6, viewport.getVolumeRect().top(), 86, 20), Qt::AlignLeft,
                              trtutils::formatVolume(viewport.getVolumeMax()));
         }
-        const trttrade::CandleData& latest = candles.back();
-        const double y = viewport.yFromPrice(latest.close);
-        if (y >= area.top() && y <= area.bottom())
+    }
+
+    void ChartView::drawLatestPrice(QPainter& painter)
+    {
+        if (!latestPrice && candles.empty())
+            return;
+
+        const QRectF area = viewport.getPriceRect();
+        const double price = latestPrice ? *latestPrice : candles.back().close;
+        const double y = viewport.yFromPrice(price);
+        const QColor color = candles.empty() || price >= candles.back().open ? getRisingColor() : getFallingColor();
+        const bool inRange = !candles.empty() && y >= area.top() && y <= area.bottom();
+        if (inRange)
         {
-            const QColor color = latest.close >= latest.open ? getRisingColor() : getFallingColor();
             QColor lineColor = color;
             lineColor.setAlphaF(0.4);
             painter.setPen(QPen(lineColor, 1, Qt::DashLine));
             painter.drawLine(QPointF(area.left(), y), QPointF(area.right(), y));
-            trtutils::drawBadge(painter, QRectF(area.right() + 1, y - 10, 91, 20), trtutils::formatPrice(latest.close),
-                                color);
+        }
+        if (inRange || latestPrice)
+        {
+            const double badgeY = candles.empty() ? area.center().y() : std::clamp(y, area.top(), area.bottom());
+            trtutils::drawBadge(painter, QRectF(area.right() + 1, badgeY - 10, 91, 20), trtutils::formatPrice(price), color);
         }
     }
 

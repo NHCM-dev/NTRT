@@ -235,37 +235,39 @@ namespace trtui
         if (older) older->setEnabled(history.hasMore && !history.loading);
         const std::function<QString(const std::string&)> text = [](const std::string& value) { return QString::fromStdString(value); };
         const std::function<QString(const std::string&)> number = [](const std::string& value) { return trttrade::accountNumber(value); };
+        const std::function<QString(const std::string&)> calculatedPrice = [](const std::string& value) { return trttrade::accountNumber(value, false, 2); };
+        const std::function<QString(const std::string&)> amount = [](const std::string& value) { return trttrade::accountNumber(value, false, 4); };
         switch (type)
         {
             case trtdata::WorkspaceWindowType::AccountBalance:
                 timestamp = account.balance.timestamp; error = account.balance.error;
                 if (timestamp != displayedTimestamp)
                     for (const trttrade::BalanceDetail& row : account.balance.data.details)
-                        rows.push_back({text(row.ccy), number(row.eqUsd), number(row.eq), number(row.availBal), trttrade::accountNumber(row.upl, true), number(row.frozenBal)});
+                        rows.push_back({text(row.ccy), amount(row.eqUsd), amount(row.eq), amount(row.availBal), trttrade::accountNumber(row.upl, true, 4), amount(row.frozenBal)});
                 break;
             case trtdata::WorkspaceWindowType::AccountPositions:
                 timestamp = account.positions.timestamp; error = account.positions.error;
                 if (timestamp != displayedTimestamp)
                     for (const trttrade::PositionData& row : account.positions.data)
-                        rows.push_back({text(row.instId), trttrade::accountPositionSide(row), number(row.lever) + "x", number(row.margin) + " " + text(row.ccy), number(row.pos) + (row.instType == "MARGIN" ? " " + text(row.posCcy) : " contracts"), trttrade::accountNumber(row.upl, true) + " " + text(row.ccy), trttrade::accountPercent(row.uplRatio), number(row.avgPx), number(row.markPx), number(row.liqPx), number(row.bePx), text(row.mgnMode), text(row.ccy), number(row.availPos)});
+                        rows.push_back({text(row.instId), trttrade::accountPositionSide(row), number(row.lever) + "x", amount(row.margin) + " " + text(row.ccy), number(row.pos) + (row.instType == "MARGIN" ? " " + text(row.posCcy) : " contracts"), trttrade::accountNumber(row.upl, true, 4) + " " + text(row.ccy), trttrade::accountPercent(row.uplRatio), calculatedPrice(row.avgPx), number(row.markPx), calculatedPrice(row.liqPx), calculatedPrice(row.bePx), text(row.mgnMode), text(row.ccy), number(row.availPos)});
                 break;
             case trtdata::WorkspaceWindowType::AccountOrderHistory:
                 timestamp = history.revision; error = history.error;
                 if (timestamp != displayedTimestamp)
                     for (const trttrade::OrderData& row : history.orders)
-                        rows.push_back({text(row.instId), text(row.ordType), text(row.side), number(row.px), number(row.sz), number(row.accFillSz), number(row.avgPx), text(row.state), trttrade::accountNumber(row.pnl, true), number(row.fee) + " " + text(row.feeCcy), trttrade::accountTime(row.uTime), text(row.ordId)});
+                        rows.push_back({text(row.instId), text(row.ordType), text(row.side), number(row.px), number(row.sz), number(row.accFillSz), calculatedPrice(row.avgPx), text(row.state), trttrade::accountNumber(row.pnl, true, 4), amount(row.fee) + " " + text(row.feeCcy), trttrade::accountTime(row.uTime), text(row.ordId)});
                 break;
             case trtdata::WorkspaceWindowType::AccountPositionHistory:
                 timestamp = history.revision; error = history.error;
                 if (timestamp != displayedTimestamp)
                     for (const trttrade::PositionHistoryData& row : history.positions)
-                        rows.push_back({text(row.instId), trttrade::accountHistorySide(row), trttrade::accountNumber(row.realizedPnl, true), trttrade::accountPercent(row.pnlRatio), number(row.openAvgPx), number(row.closeAvgPx), number(row.openMaxPos), number(row.closeTotalPos), number(row.fee), number(row.fundingFee), text(row.ccy), trttrade::accountTime(row.uTime), text(row.posId)});
+                        rows.push_back({text(row.instId), trttrade::accountHistorySide(row), trttrade::accountNumber(row.realizedPnl, true, 4), trttrade::accountPercent(row.pnlRatio), calculatedPrice(row.openAvgPx), calculatedPrice(row.closeAvgPx), number(row.openMaxPos), number(row.closeTotalPos), amount(row.fee), amount(row.fundingFee), text(row.ccy), trttrade::accountTime(row.uTime), text(row.posId)});
                 break;
             case trtdata::WorkspaceWindowType::AccountOrders:
                 timestamp = account.orders.timestamp; error = account.orders.error;
                 if (timestamp != displayedTimestamp)
                     for (const trttrade::OrderData& row : account.orders.data)
-                        rows.push_back({text(row.instId), text(row.ordType), text(row.side), number(row.px), number(row.sz), number(row.accFillSz), number(row.avgPx), text(row.state), text(row.ordId)});
+                        rows.push_back({text(row.instId), text(row.ordType), text(row.side), number(row.px), number(row.sz), number(row.accFillSz), calculatedPrice(row.avgPx), text(row.state), text(row.ordId)});
                 break;
             default: return;
         }

@@ -616,10 +616,10 @@ namespace trtui
                 continue;
             if (accountsChanged && entry.account)
                 entry.account->updateData();
-            if (candlesChanged && entry.chart)
-                entry.chart->updateData();
+            if ((tickersChanged || candlesChanged) && entry.chart)
+                entry.chart->updateData(*next);
             if (marketChanged && entry.bookDepth)
-                entry.bookDepth->updateData();
+                entry.bookDepth->updateData(*next->marketData);
         }
     }
 }

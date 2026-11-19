@@ -2,6 +2,7 @@
 #define NTRT_CHARTVIEW_H
 
 #include <QTimeZone>
+#include <optional>
 #include "ChartRenderer.h"
 #include "main/trade/TradeDataDef.h"
 #include "main/data/core/TradingTimeDef.h"
@@ -23,6 +24,7 @@ namespace trtui
         QToolButton* autoScaleButton = nullptr;
         std::vector<std::unique_ptr<ChartLayer>> layers;
         std::vector<trttrade::CandleData> candles;
+        std::optional<double> latestPrice;
         std::vector<ChartVertex> vertices;
         QTimeZone timeZone = QTimeZone::utc();
         QMetaObject::Connection contextCleanup;
@@ -65,6 +67,8 @@ namespace trtui
         void drawGrid(QPainter& painter);
 
         void drawAxes(QPainter& painter);
+
+        void drawLatestPrice(QPainter& painter);
 
         void drawCrosshair(QPainter& painter);
 
@@ -115,6 +119,8 @@ namespace trtui
         void setInstrument(const trtdata::InstIdentifier& instrument);
 
         void setCandles(std::span<const trttrade::CandleData> data);
+
+        void setLatestPrice(std::optional<double> value);
 
         void setTimeZone(const QTimeZone& value);
 

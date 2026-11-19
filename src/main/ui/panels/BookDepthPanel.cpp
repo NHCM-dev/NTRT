@@ -35,7 +35,7 @@ namespace trtui
         initContent(layout);
         displayDeadline.setSingleShot(true);
         displayDeadline.setTimerType(Qt::PreciseTimer);
-        connect(&displayDeadline, &QTimer::timeout, this, &BookDepthPanel::updateData);
+        connect(&displayDeadline, &QTimer::timeout, this, [this] { updateData(); });
         rebuildInstruments();
         applyControls();
         connect(ntrt::configManager.get(), &trtdata::ConfigManager::instrumentsChanged,
@@ -337,6 +337,12 @@ namespace trtui
 
     void BookDepthPanel::updateData()
     {
+        if (const std::shared_ptr<trtcore::DataMonitor> backend = monitor.lock())
+            updateData(*backend->getMarketData());
+    }
+
+    void BookDepthPanel::updateData(const trtcore::MarketDataSnapshot& snapshot)
+    {
         if (!isVisible() || window()->isMinimized())
             return;
         for (QWidget* ancestor = parentWidget(); ancestor; ancestor = ancestor->parentWidget())
@@ -345,13 +351,11 @@ namespace trtui
             if (child && child->isMinimized())
                 return;
         }
-        const std::shared_ptr<trtcore::DataMonitor> backend = monitor.lock();
-        if (!backend || !state.instrument)
+        if (!state.instrument)
             return;
-        const std::shared_ptr<const trtcore::MarketDataSnapshot> snapshot = backend->getMarketData();
         const qint64 now = QDateTime::currentMSecsSinceEpoch();
         qint64 deadline = 0;
-        const trtcore::MarketSnapshot* ticker = snapshot->getSnapshot(*state.instrument);
+        const trtcore::MarketSnapshot* ticker = snapshot.getSnapshot(*state.instrument);
         if (ticker && ticker->ticker)
         {
             const trtdata::TickerData& data = *ticker->ticker;
@@ -371,7 +375,7 @@ namespace trtui
             }
         } else
             latest->setPriceText({}, "—", {});
-        const std::shared_ptr<const trttrade::BookSnapshot> book = snapshot->getBook(*state.instrument);
+        const std::shared_ptr<const trttrade::BookSnapshot> book = snapshot.getBook(*state.instrument);
         if (!book || book->sequence < 0)
         {
             if (displayedBook)

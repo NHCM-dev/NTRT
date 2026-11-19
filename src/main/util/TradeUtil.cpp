@@ -104,13 +104,16 @@ namespace trttrade
         return valid && timestamp > 0 ? QDateTime::fromMSecsSinceEpoch(timestamp, QTimeZone::UTC).toString("yyyy-MM-dd HH:mm:ss") : QString();
     }
 
-    QString accountNumber(const std::string& value, bool signedValue)
+    QString accountNumber(const std::string& value, bool signedValue, int maximumDecimals)
     {
         if (value.empty()) return {};
         bool valid = false;
         const double parsed = QString::fromStdString(value).toDouble(&valid);
         if (!valid || !std::isfinite(parsed)) return "—";
-        const QString rounded = trtutils::formatDecimal(parsed, 8);
+        int decimals = maximumDecimals;
+        if (parsed != 0 && std::abs(parsed) < 1)
+            decimals = std::max(decimals, std::min(12, 3 - static_cast<int>(std::floor(std::log10(std::abs(parsed))))));
+        const QString rounded = trtutils::formatDecimal(parsed, decimals);
         const QString formatted = rounded == "0" && parsed != 0 ? trtutils::formatQuantity(parsed) : rounded;
         return signedValue && parsed > 0 && formatted != "0" ? "+" + formatted : formatted;
     }

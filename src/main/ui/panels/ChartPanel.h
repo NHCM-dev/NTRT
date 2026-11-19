@@ -11,6 +11,7 @@
 #include <QStackedWidget>
 #include <QToolButton>
 #include <QVBoxLayout>
+#include "main/monitor/DataSnapshotDef.h"
 #include "main/monitor/DataMonitor.h"
 #include "main/ui/chart/ChartView.h"
 
@@ -65,6 +66,7 @@ namespace trtui
         void restoreState(const trtdata::ChartPanelState& state);
 
         void updateData();
+        void updateData(const trtcore::DataSnapshot& snapshot);
 
         signals  :
 

@@ -69,7 +69,7 @@ namespace trttrade
 {
     QString accountHistorySide(const PositionHistoryData& position);
     QString accountTime(const std::string& value);
-    QString accountNumber(const std::string& value, bool signedValue = false);
+    QString accountNumber(const std::string& value, bool signedValue = false, int maximumDecimals = 8);
     QString accountPercent(const std::string& value);
     QString accountPositionSide(const PositionData& position);
 }

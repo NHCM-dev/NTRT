@@ -15,6 +15,8 @@
 #include <QToolButton>
 #include <QVBoxLayout>
 #include <algorithm>
+#include <cmath>
+#include <optional>
 
 namespace trtui
 {
@@ -248,6 +250,7 @@ namespace trtui
         instrument = selected;
         chart->setInstrument(selected);
         displayedUpdate = -1;
+        chart->setLatestPrice(std::nullopt);
         chart->setCandles({});
         chart->resetView();
         const std::shared_ptr<trtcore::DataMonitor> backend = monitor.lock();
@@ -266,6 +269,7 @@ namespace trtui
         releaseSeries();
         timeframe = value;
         displayedUpdate = -1;
+        chart->setLatestPrice(std::nullopt);
         chart->setCandles({});
         chart->resetView();
         const std::shared_ptr<trtcore::DataMonitor> backend = monitor.lock();
@@ -303,6 +307,12 @@ namespace trtui
 
     void ChartPanel::updateData()
     {
+        if (const std::shared_ptr<trtcore::DataMonitor> backend = monitor.lock())
+            updateData(*backend->getSnapshot());
+    }
+
+    void ChartPanel::updateData(const trtcore::DataSnapshot& data)
+    {
         displayDeadline.stop();
         if (!instrument)
             return;
@@ -313,13 +323,14 @@ namespace trtui
             status->setToolTip(renderingError);
             return;
         }
-        const std::shared_ptr<trtcore::DataMonitor> backend = monitor.lock();
-        if (!backend)
-            return;
-        const std::shared_ptr<const trtcore::CandlesSnapshot> data = backend->getCandlesManager();
-        const trtcore::CandlesSnapshot& manager = *data;
+        const trtcore::MarketSnapshot* market = data.marketData->getSnapshot(*instrument);
+        std::optional<double> latestPrice;
+        if (market && market->ticker && std::isfinite(market->ticker->last) && market->ticker->last > 0)
+            latestPrice = market->ticker->last;
+        chart->setLatestPrice(latestPrice);
+
         chart->setTimeZone(QTimeZone(QByteArray::fromStdString(ntrt::configManager->getDisplayTimeZone())));
-        const trtcore::CandleSnapshot* snapshot = manager.getSnapshot(*instrument, timeframe);
+        const trtcore::CandleSnapshot* snapshot = data.candles->getSnapshot(*instrument, timeframe);
         if (!snapshot)
             return;
         chart->setHistoryState(snapshot->historyLoading, snapshot->historyExhausted);
