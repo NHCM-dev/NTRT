@@ -56,6 +56,8 @@ Every enabled button must provide visible hover feedback, including text/icon bu
 
 For table changes, update column indices, delegates, visibility settings, width calculations, headers and tooltips together. Reuse cells and cached pixmaps; avoid recreating every item on periodic refresh. Skip unnecessary UI refresh for hidden/minimized panels while maintaining backend updates.
 
+Keep chart input routing in ChartView and transform state in ChartViewport. Price-scale operations must preserve the time transform; distinguish scrolling/panning from pinching/zooming before applying input deltas. With AutoScale disabled, dragging the price plot pans its manual price range vertically without changing its scale; volume-pane drags remain horizontal.
+
 ## Format numeric data consistently
 
 Inspect `NumberUtil`, `PaintUtil` and `ui/widgets/NumericWidgets` before adding numeric rendering. Use shared decimal formatting for controls, table values and full-value tooltips; remove redundant trailing zeros and binary floating-point residue while preserving supported small nonzero values. Verify decimal aggregation on both sides of a tick boundary, including large price-to-step ratios. Do not use raw `g16` tooltips or fixed-decimal controls that expose implementation precision to the user.

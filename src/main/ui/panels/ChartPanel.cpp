@@ -181,7 +181,7 @@ namespace trtui
         status->setObjectName("chartStatus");
         status->setWordWrap(true);
         status->setToolTip(
-            "Drag: pan · Wheel: zoom · Double-click: reset · End: latest\nPan left or click History to load older candles.");
+            "Drag: pan · Wheel / pinch: zoom · Horizontal swipe: pan · Double-click chart: reset · End: latest\nDrag price axis: scale · A / double-click price axis: AutoScale. Pan left or click History to load older candles.");
         layout->addWidget(status);
     }
 
@@ -345,7 +345,7 @@ namespace trtui
             status->setText(text);
         status->setVisible(!text.isEmpty());
         status->setToolTip(snapshot->error.isEmpty()
-                               ? "Drag: pan · Wheel: zoom · Double-click: reset · End: latest\nLive candles via WebSocket. Pan left or click History to load older candles."
+                               ? "Drag: pan · Wheel / pinch: zoom · Horizontal swipe: pan · Double-click chart: reset · End: latest\nDrag price axis: scale · A / double-click price axis: AutoScale. Live candles via WebSocket. Pan left or click History to load older candles."
                                : snapshot->error);
     }
 }

@@ -209,3 +209,28 @@ QLabel#bookStatus {
     color: palette(placeholder-text);
     padding: 3px;
 }
+
+QToolButton#chartAutoScale {
+    padding: 0px;
+    border-radius: 3px;
+    font-weight: 600;
+    background-color: palette(base);
+    color: palette(text);
+    border: 1px solid palette(mid);
+}
+QToolButton#chartAutoScale:checked {
+    border-color: palette(text);
+    background-color: palette(text);
+    color: palette(base);
+}
+QToolButton#chartAutoScale:enabled:hover {
+    background-color: palette(mid);
+}
+QToolButton#chartAutoScale:checked:enabled:hover {
+    background-color: palette(window-text);
+    border-color: palette(highlight);
+}
+QToolButton#chartAutoScale:enabled:pressed {
+    background-color: palette(highlight);
+    color: palette(highlighted-text);
+}

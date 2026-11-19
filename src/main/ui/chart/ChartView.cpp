@@ -4,12 +4,15 @@
 #include "main/util/PaletteUtil.h"
 #include "main/util/PaintUtil.h"
 #include "main/util/TimeUtil.h"
+#include "main/util/QtUtil.h"
 #include <QDateTime>
 #include <QKeyEvent>
 #include <QMouseEvent>
+#include <QNativeGestureEvent>
 #include <QPainter>
 #include <QOpenGLContext>
 #include <QSurfaceFormat>
+#include <QSignalBlocker>
 #include <QTimeZone>
 #include <QTimer>
 #include <QWheelEvent>
@@ -22,6 +25,7 @@ namespace trtui
     {
         initSurface();
         initInteraction();
+        initControls();
         layers.push_back(std::make_unique<VolumeLayer>());
         layers.push_back(std::make_unique<CandlestickLayer>());
     }
@@ -50,6 +54,39 @@ namespace trtui
     ChartView::~ChartView()
     {
         cleanup();
+    }
+
+    void ChartView::initControls()
+    {
+        autoScaleButton = new QToolButton(this);
+        autoScaleButton->setObjectName("chartAutoScale");
+        autoScaleButton->setCursor(Qt::ArrowCursor);
+        autoScaleButton->setText("A");
+        autoScaleButton->setAccessibleName("AutoScale price axis");
+        autoScaleButton->setCheckable(true);
+        autoScaleButton->setChecked(viewport.isAutoScale());
+        autoScaleButton->setToolTip("Fit the price axis to visible candles. Turn off to freeze the price range.\nDouble-click the price axis to enable AutoScale.");
+        connect(autoScaleButton, &QToolButton::toggled, this, &ChartView::setAutoScale);
+    }
+
+    void ChartView::positionControls()
+    {
+        const QRectF& area = viewport.getPriceRect();
+        const int side = std::max(20, fontMetrics().height() + 4);
+        const QSize buttonSize(side, side);
+        autoScaleButton->resize(buttonSize);
+        autoScaleButton->move(width() - buttonSize.width() - 8,
+            std::max(0, static_cast<int>(area.bottom()) - buttonSize.height() - 5));
+    }
+
+    void ChartView::setAutoScale(bool enabled)
+    {
+        // Freeze the current visible range even if a geometry update is still pending.
+        viewport.updateRange(candles);
+        viewport.setAutoScale(enabled);
+        const QSignalBlocker blocker(autoScaleButton);
+        autoScaleButton->setChecked(enabled);
+        invalidateGeometry();
     }
 
     void ChartView::initializeGL()
@@ -81,6 +118,7 @@ namespace trtui
     void ChartView::resizeGL(int, int)
     {
         viewport.setSize(size(), fontMetrics().height() + 8);
+        positionControls();
         geometryDirty = true;
     }
 
@@ -151,12 +189,15 @@ namespace trtui
     void ChartView::setVolumeVisible(bool visible)
     {
         viewport.setVolumeVisible(visible, size());
+        positionControls();
         invalidateGeometry();
     }
 
     void ChartView::resetView()
     {
         viewport.reset();
+        const QSignalBlocker blocker(autoScaleButton);
+        autoScaleButton->setChecked(viewport.isAutoScale());
         invalidateGeometry();
     }
 
@@ -402,9 +443,19 @@ namespace trtui
     {
         if (event->button() == Qt::LeftButton)
         {
-            dragging = true;
+            if (isPriceAxis(event->position()))
+                dragMode = DragMode::PriceScale;
+            else if (viewport.getPriceRect().contains(event->position()))
+                dragMode = DragMode::Plot;
+            else if (event->position().x() <= viewport.getPriceRect().right())
+                dragMode = DragMode::Time;
+            else
+            {
+                QOpenGLWidget::mousePressEvent(event);
+                return;
+            }
             dragPosition = event->position();
-            setCursor(Qt::ClosedHandCursor);
+            updateCursor(dragPosition);
             setFocus(Qt::MouseFocusReason);
             event->accept();
             return;
@@ -417,21 +468,40 @@ namespace trtui
         cursorPosition = event->position();
         cursorVisible = viewport.getPriceRect().contains(cursorPosition) ||
             (viewport.isVolumeVisible() && viewport.getVolumeRect().contains(cursorPosition));
-        if (dragging)
+        switch (dragMode)
         {
-            viewport.pan(cursorPosition.x() - dragPosition.x());
-            dragPosition = cursorPosition;
-            invalidateGeometry();
-        } else
-            update();
+            case DragMode::Plot:
+                viewport.panPrice(cursorPosition.y() - dragPosition.y());
+                [[fallthrough]];
+            case DragMode::Time:
+                if (cursorPosition.x() != dragPosition.x())
+                    viewport.pan(cursorPosition.x() - dragPosition.x());
+                invalidateGeometry();
+                break;
+            case DragMode::PriceScale:
+                if (cursorPosition.y() != dragPosition.y())
+                {
+                    viewport.updateRange(candles);
+                    viewport.scalePrice(std::exp((dragPosition.y() - cursorPosition.y()) * 0.01));
+                    const QSignalBlocker blocker(autoScaleButton);
+                    autoScaleButton->setChecked(viewport.isAutoScale());
+                    invalidateGeometry();
+                }
+                break;
+            case DragMode::None:
+                update();
+                break;
+        }
+        dragPosition = cursorPosition;
+        updateCursor(cursorPosition);
     }
 
     void ChartView::mouseReleaseEvent(QMouseEvent* event)
     {
         if (event->button() == Qt::LeftButton)
         {
-            dragging = false;
-            unsetCursor();
+            dragMode = DragMode::None;
+            updateCursor(event->position());
             event->accept();
             return;
         }
@@ -442,9 +512,12 @@ namespace trtui
     {
         if (event->button() == Qt::LeftButton)
         {
-            dragging = false;
-            unsetCursor();
-            resetView();
+            dragMode = DragMode::None;
+            updateCursor(event->position());
+            if (isPriceAxis(event->position()))
+                setAutoScale(true);
+            else
+                resetView();
             event->accept();
             return;
         }
@@ -453,9 +526,88 @@ namespace trtui
 
     void ChartView::wheelEvent(QWheelEvent* event)
     {
-        viewport.zoom(std::pow(1.15, event->angleDelta().y() / 120.0), event->position().x());
-        invalidateGeometry();
+        if (trtutils::isWheelPan(*event))
+        {
+            const double pixels = trtutils::wheelPanPixels(*event);
+            if (pixels != 0)
+            {
+                viewport.pan(pixels);
+                invalidateGeometry();
+            }
+        }
+        else
+            zoomAt(trtutils::wheelZoomFactor(*event), event->position());
         event->accept();
+    }
+
+    bool ChartView::isPriceAxis(const QPointF& position) const
+    {
+        const QRectF& area = viewport.getPriceRect();
+        return position.x() > area.right() && position.x() < width() &&
+            position.y() >= area.top() && position.y() <= area.bottom();
+    }
+
+    void ChartView::updateCursor(const QPointF& position)
+    {
+        switch (dragMode)
+        {
+            case DragMode::Plot:
+            case DragMode::Time:
+                setCursor(Qt::ClosedHandCursor);
+                break;
+            case DragMode::PriceScale:
+                setCursor(Qt::SizeVerCursor);
+                break;
+            case DragMode::None:
+                if (isPriceAxis(position))
+                    setCursor(Qt::SizeVerCursor);
+                else
+                    unsetCursor();
+                break;
+        }
+    }
+
+    void ChartView::zoomAt(double factor, const QPointF& position)
+    {
+        if (!std::isfinite(factor) || factor <= 0 || factor == 1)
+            return;
+        viewport.zoom(factor, std::clamp(position.x(), viewport.getPriceRect().left(), viewport.getPriceRect().right()));
+        invalidateGeometry();
+    }
+
+    bool ChartView::event(QEvent* event)
+    {
+        if (event->type() == QEvent::UngrabMouse)
+        {
+            dragMode = DragMode::None;
+            unsetCursor();
+        }
+        if (event->type() == QEvent::NativeGesture)
+        {
+            QNativeGestureEvent* gesture = static_cast<QNativeGestureEvent*>(event);
+            switch (gesture->gestureType())
+            {
+                case Qt::BeginNativeGesture:
+                case Qt::EndNativeGesture:
+                    event->accept();
+                    return true;
+                case Qt::ZoomNativeGesture:
+                    zoomAt(1.0 + gesture->value(), gesture->position());
+                    event->accept();
+                    return true;
+                case Qt::PanNativeGesture:
+                    if (gesture->delta().x() != 0)
+                    {
+                        viewport.pan(gesture->delta().x());
+                        invalidateGeometry();
+                    }
+                    event->accept();
+                    return true;
+                default:
+                    break;
+            }
+        }
+        return QOpenGLWidget::event(event);
     }
 
     void ChartView::keyPressEvent(QKeyEvent* event)
@@ -479,8 +631,9 @@ namespace trtui
                 viewport.followLatest();
                 break;
             case Qt::Key_Home:
-                viewport.reset();
-                break;
+                resetView();
+                event->accept();
+                return;
             default:
                 QOpenGLWidget::keyPressEvent(event);
                 return;
@@ -492,6 +645,8 @@ namespace trtui
     void ChartView::leaveEvent(QEvent* event)
     {
         cursorVisible = false;
+        if (dragMode == DragMode::None)
+            unsetCursor();
         update();
         QOpenGLWidget::leaveEvent(event);
     }
@@ -500,7 +655,10 @@ namespace trtui
     {
         QOpenGLWidget::changeEvent(event);
         if (event->type() == QEvent::FontChange)
+        {
             viewport.setSize(size(), fontMetrics().height() + 8);
+            positionControls();
+        }
         if (event->type() == QEvent::PaletteChange || event->type() == QEvent::FontChange)
             invalidateGeometry();
     }
