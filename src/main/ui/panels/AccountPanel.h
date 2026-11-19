@@ -6,6 +6,12 @@
 #include <QLabel>
 #include <QEvent>
 #include <QTableWidget>
+#include <QDateTimeEdit>
+#include <QComboBox>
+#include <QLineEdit>
+#include <QPushButton>
+#include <QVBoxLayout>
+#include "main/trade/AccountDef.h"
 #include "main/data/core/Workspace.h"
 namespace trtui
 {
@@ -15,6 +21,16 @@ namespace trtui
         QLabel* status = nullptr;
         QTableWidget* table = nullptr;
         qint64 displayedTimestamp = -1;
+        QString historyId;
+        QDateTimeEdit* beginTime = nullptr;
+        QDateTimeEdit* endTime = nullptr;
+        QComboBox* instrumentType = nullptr;
+        QComboBox* historySource = nullptr;
+        QLineEdit* instrument = nullptr;
+        QPushButton* older = nullptr;
+        trttrade::AccountHistoryQuery historyQuery;
+        void initHistoryUi(QVBoxLayout* layout);
+        void queryHistory(bool append);
         void initUi();
         void updateColumnWidths();
         void updateColors();
@@ -23,6 +39,7 @@ namespace trtui
         void displayRows(const std::vector<QStringList>& rows);
     public:
         explicit AccountPanel(trtdata::WorkspaceWindowType type, QWidget* parent = nullptr);
+        ~AccountPanel() override;
         trtdata::WorkspaceWindowType getType() const;
         void updateData();
         QSize sizeHint() const override;

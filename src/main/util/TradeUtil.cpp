@@ -1,4 +1,6 @@
 #include <cmath>
+#include <QDateTime>
+#include <QTimeZone>
 #include <QStringList>
 #include "TradeUtil.h"
 #include "NumberUtil.h"
@@ -32,6 +34,8 @@ namespace trtdata
 
 #include <algorithm>
 #include <cmath>
+#include <QDateTime>
+#include <QTimeZone>
 
 namespace trtutils
 {
@@ -85,6 +89,21 @@ namespace trtutils
 
 namespace trttrade
 {
+    QString accountHistorySide(const PositionHistoryData& position)
+    {
+        const std::string& side = position.direction.empty() ? position.posSide : position.direction;
+        if (side == "long") return "Long";
+        if (side == "short") return "Short";
+        return "—";
+    }
+
+    QString accountTime(const std::string& value)
+    {
+        bool valid = false;
+        const qint64 timestamp = QString::fromStdString(value).toLongLong(&valid);
+        return valid && timestamp > 0 ? QDateTime::fromMSecsSinceEpoch(timestamp, QTimeZone::UTC).toString("yyyy-MM-dd HH:mm:ss") : QString();
+    }
+
     QString accountNumber(const std::string& value, bool signedValue)
     {
         if (value.empty()) return {};

@@ -27,6 +27,8 @@ namespace trtcore
         public:
             explicit Worker(std::atomic<std::shared_ptr<const DataSnapshot>>& destination, const trtdata::AccountManager& accounts);
             void enableAccounts();
+            void queryAccountHistory(const QString& id, const trttrade::AccountHistoryQuery& query, bool append);
+            void releaseAccountHistory(const QString& id);
 
             ~Worker();
 
@@ -71,6 +73,8 @@ namespace trtcore
         void start();
 
         void enableAccountMonitoring();
+        void queryAccountHistory(const QString& id, const trttrade::AccountHistoryQuery& query, bool append = false);
+        void releaseAccountHistory(const QString& id);
 
         void stop();
 

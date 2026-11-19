@@ -7,7 +7,7 @@ namespace trtdata
 
     enum class BookLayout { Both, BuyOnly, SellOnly };
 
-    enum class WorkspaceWindowType { Instruments, Chart, BookDepth, AccountBalance, AccountPositions, AccountOrders };
+    enum class WorkspaceWindowType { Instruments, Chart, BookDepth, AccountBalance, AccountPositions, AccountOrders, AccountOrderHistory, AccountPositionHistory };
 
     enum class WorkspaceWindowMode { Normal, Minimized, Maximized };
 }

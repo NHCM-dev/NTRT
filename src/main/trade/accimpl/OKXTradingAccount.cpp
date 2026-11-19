@@ -27,6 +27,11 @@ namespace trttrade
         return trtdata::okx::OKXApi::listOrders(credentials, environment, query);
     }
 
+    QFuture<std::vector<PositionHistoryData>> OKXTradingAccount::listPositionHistory(const AccountQuery& query) const
+    {
+        return trtdata::okx::OKXApi::listPositionHistory(credentials, environment, query);
+    }
+
     QFuture<std::vector<OrderData>> OKXTradingAccount::listOrderHistory(const AccountQuery& query) const
     {
         return trtdata::okx::OKXApi::listOrderHistory(credentials, environment, query);

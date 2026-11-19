@@ -9,6 +9,10 @@
 #include <QHeaderView>
 #include <QTimer>
 #include <QScrollBar>
+#include <QUuid>
+#include <QDateTime>
+#include <QTimeZone>
+#include <QHBoxLayout>
 namespace trtui
 {
     AccountPanel::AccountPanel(trtdata::WorkspaceWindowType type, QWidget* parent) : QFrame(parent), type(type) { initUi(); }
@@ -17,15 +21,24 @@ namespace trtui
     void AccountPanel::initUi()
     {
         QVBoxLayout* layout = new QVBoxLayout(this);
-        status = new QLabel("OKX · Live account · Waiting for data…", this);
+        status = new QLabel(this);
+        status->hide();
         status->setWordWrap(true);
         layout->addWidget(status);
+        switch (type)
+        {
+            case trtdata::WorkspaceWindowType::AccountOrderHistory:
+            case trtdata::WorkspaceWindowType::AccountPositionHistory: initHistoryUi(layout); break;
+            default: break;
+        }
         table = new QTableWidget(this);
         QStringList headers;
         switch (type)
         {
             case trtdata::WorkspaceWindowType::AccountBalance: headers = {"Currency", "Equity (USD)", "Equity", "Available", "Unrealized P&L", "Frozen"}; break;
             case trtdata::WorkspaceWindowType::AccountPositions: headers = {"Instrument", "Side", "Leverage", "Margin", "Position", "P&L", "Return", "Entry price", "Mark price", "Liq. price", "Break-even", "Margin mode", "Currency", "Available"}; break;
+            case trtdata::WorkspaceWindowType::AccountOrderHistory: headers = {"Instrument", "Type", "Side", "Price", "Size", "Filled", "Average price", "State", "P&L", "Fee", "Updated (UTC)", "Order ID"}; break;
+            case trtdata::WorkspaceWindowType::AccountPositionHistory: headers = {"Instrument", "Side", "Realized P&L", "Return", "Open price", "Close price", "Max position", "Closed", "Fee", "Funding fee", "Currency", "Updated (UTC)", "Position ID"}; break;
             case trtdata::WorkspaceWindowType::AccountOrders: headers = {"Instrument", "Type", "Side", "Price", "Size", "Filled", "Average price", "State", "Order ID"}; break;
             default: break;
         }
@@ -42,6 +55,75 @@ namespace trtui
         layout->addWidget(table, 1);
         setMinimumWidth(440);
         updateColumnWidths();
+    }
+
+    AccountPanel::~AccountPanel()
+    {
+        if (!historyId.isEmpty()) ntrt::dataMonitor->releaseAccountHistory(historyId);
+    }
+
+    void AccountPanel::initHistoryUi(QVBoxLayout* layout)
+    {
+        historyId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+        QHBoxLayout* filters = new QHBoxLayout;
+        instrumentType = new QComboBox(this);
+        instrumentType->addItem("Perpetual", static_cast<int>(trttrade::InstType::Swap));
+        instrumentType->addItem("Futures", static_cast<int>(trttrade::InstType::Futures));
+        instrumentType->addItem("Margin", static_cast<int>(trttrade::InstType::Margin));
+        instrumentType->addItem("Options", static_cast<int>(trttrade::InstType::Option));
+        if (type == trtdata::WorkspaceWindowType::AccountOrderHistory) instrumentType->addItem("Spot", static_cast<int>(trttrade::InstType::Spot));
+        filters->addWidget(instrumentType);
+        instrument = new QLineEdit(this);
+        instrument->setPlaceholderText("Instrument (optional)");
+        filters->addWidget(instrument, 1);
+        historySource = new QComboBox(this);
+        historySource->addItem("Archive (3 months)", true);
+        historySource->addItem("Recent (7 days, includes unfilled cancellations)", false);
+        historySource->setVisible(type == trtdata::WorkspaceWindowType::AccountOrderHistory);
+        filters->addWidget(historySource);
+        layout->addLayout(filters);
+        QHBoxLayout* dates = new QHBoxLayout;
+        const QDateTime now = QDateTime::currentDateTimeUtc();
+        beginTime = new QDateTimeEdit(now.addDays(-7), this);
+        endTime = new QDateTimeEdit(now, this);
+        for (QDateTimeEdit* control : {beginTime, endTime})
+        {
+            control->setTimeZone(QTimeZone::UTC);
+            control->setDisplayFormat("yyyy-MM-dd HH:mm 'UTC'");
+            control->setCalendarPopup(true);
+            control->setDateTimeRange(now.addMonths(-3), now.addDays(1));
+            dates->addWidget(control);
+        }
+        QPushButton* search = new QPushButton("Search", this);
+        older = new QPushButton("Load older", this);
+        older->setEnabled(false);
+        dates->addWidget(search);
+        dates->addWidget(older);
+        layout->addLayout(dates);
+        connect(search, &QPushButton::clicked, this, [this] { queryHistory(false); });
+        connect(instrument, &QLineEdit::returnPressed, this, [this] { queryHistory(false); });
+        connect(older, &QPushButton::clicked, this, [this] { queryHistory(true); });
+        connect(historySource, &QComboBox::currentIndexChanged, this, [this]
+        {
+            const QDateTime now = QDateTime::currentDateTimeUtc();
+            beginTime->setMinimumDateTime(historySource->currentData().toBool() ? now.addMonths(-3) : now.addDays(-7));
+        });
+        QTimer::singleShot(0, this, [this] { queryHistory(false); });
+    }
+
+    void AccountPanel::queryHistory(bool append)
+    {
+        if (!append)
+        {
+            historyQuery.positions = type == trtdata::WorkspaceWindowType::AccountPositionHistory;
+            historyQuery.instType = static_cast<trttrade::InstType>(instrumentType->currentData().toInt());
+            historyQuery.instId = instrument->text().trimmed().toUpper().toStdString();
+            historyQuery.begin = beginTime->dateTime().toMSecsSinceEpoch();
+            historyQuery.end = endTime->dateTime().toMSecsSinceEpoch();
+            historyQuery.archive = historySource->currentData().toBool();
+        }
+        older->setEnabled(false);
+        ntrt::dataMonitor->queryAccountHistory(historyId, historyQuery, append);
     }
 
     void AccountPanel::displayRows(const std::vector<QStringList>& rows)
@@ -65,6 +147,8 @@ namespace trtui
         switch (type)
         {
             case trtdata::WorkspaceWindowType::AccountBalance: return QSize(850, 340);
+            case trtdata::WorkspaceWindowType::AccountOrderHistory:
+            case trtdata::WorkspaceWindowType::AccountPositionHistory:
             case trtdata::WorkspaceWindowType::AccountPositions: return QSize(1180, 360);
             case trtdata::WorkspaceWindowType::AccountOrders: return QSize(1050, 360);
             default: return QSize(850, 340);
@@ -145,6 +229,10 @@ namespace trtui
         QString error;
         std::vector<QStringList> rows;
         const trtcore::AccountSnapshot& account = snapshot->account;
+        const trtcore::AccountHistorySnapshot emptyHistory;
+        const std::map<QString, trtcore::AccountHistorySnapshot>::const_iterator found = account.histories.find(historyId);
+        const trtcore::AccountHistorySnapshot& history = found == account.histories.end() ? emptyHistory : found->second;
+        if (older) older->setEnabled(history.hasMore && !history.loading);
         const std::function<QString(const std::string&)> text = [](const std::string& value) { return QString::fromStdString(value); };
         const std::function<QString(const std::string&)> number = [](const std::string& value) { return trttrade::accountNumber(value); };
         switch (type)
@@ -161,6 +249,18 @@ namespace trtui
                     for (const trttrade::PositionData& row : account.positions.data)
                         rows.push_back({text(row.instId), trttrade::accountPositionSide(row), number(row.lever) + "x", number(row.margin) + " " + text(row.ccy), number(row.pos) + (row.instType == "MARGIN" ? " " + text(row.posCcy) : " contracts"), trttrade::accountNumber(row.upl, true) + " " + text(row.ccy), trttrade::accountPercent(row.uplRatio), number(row.avgPx), number(row.markPx), number(row.liqPx), number(row.bePx), text(row.mgnMode), text(row.ccy), number(row.availPos)});
                 break;
+            case trtdata::WorkspaceWindowType::AccountOrderHistory:
+                timestamp = history.revision; error = history.error;
+                if (timestamp != displayedTimestamp)
+                    for (const trttrade::OrderData& row : history.orders)
+                        rows.push_back({text(row.instId), text(row.ordType), text(row.side), number(row.px), number(row.sz), number(row.accFillSz), number(row.avgPx), text(row.state), trttrade::accountNumber(row.pnl, true), number(row.fee) + " " + text(row.feeCcy), trttrade::accountTime(row.uTime), text(row.ordId)});
+                break;
+            case trtdata::WorkspaceWindowType::AccountPositionHistory:
+                timestamp = history.revision; error = history.error;
+                if (timestamp != displayedTimestamp)
+                    for (const trttrade::PositionHistoryData& row : history.positions)
+                        rows.push_back({text(row.instId), trttrade::accountHistorySide(row), trttrade::accountNumber(row.realizedPnl, true), trttrade::accountPercent(row.pnlRatio), number(row.openAvgPx), number(row.closeAvgPx), number(row.openMaxPos), number(row.closeTotalPos), number(row.fee), number(row.fundingFee), text(row.ccy), trttrade::accountTime(row.uTime), text(row.posId)});
+                break;
             case trtdata::WorkspaceWindowType::AccountOrders:
                 timestamp = account.orders.timestamp; error = account.orders.error;
                 if (timestamp != displayedTimestamp)
@@ -170,8 +270,7 @@ namespace trtui
             default: return;
         }
         if (timestamp != displayedTimestamp) { displayRows(rows); displayedTimestamp = timestamp; }
-        QString message = "OKX · Live";
-        if (!error.isEmpty()) message += " · " + error + " (previous data may be stale)";
-        status->setText(message);
+        status->setText(error);
+        status->setVisible(!error.isEmpty());
     }
 }

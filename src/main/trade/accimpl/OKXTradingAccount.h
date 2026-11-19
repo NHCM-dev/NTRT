@@ -16,6 +16,7 @@ namespace trttrade
         QFuture<std::vector<FundingBalance>> fetchFundingBalance(const std::string& ccy = {}) const override;
         QFuture<std::vector<PositionData>> fetchPositions(const AccountQuery& query = {}) const override;
         QFuture<std::vector<OrderData>> listOrders(const AccountQuery& query = {}) const override;
+        QFuture<std::vector<PositionHistoryData>> listPositionHistory(const AccountQuery& query = {}) const override;
         QFuture<std::vector<OrderData>> listOrderHistory(const AccountQuery& query = {}) const override;
         QFuture<std::vector<FillData>> listFills(const AccountQuery& query = {}) const override;
         QFuture<OrderData> fetchOrder(const OrderIdentifier& order) const override;

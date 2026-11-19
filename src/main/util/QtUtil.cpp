@@ -3,6 +3,7 @@
 //
 
 #include "QtUtil.h"
+#include "main/ui/dialog/ListManagerDialog.h"
 
 #include <QHeaderView>
 #include <QScreen>
@@ -15,6 +16,38 @@
 
 namespace trtutils
 {
+    std::optional<QStringList> selectList(QWidget* parent, const QString& title, const QStringList& names, const QString& actionText, bool multiple)
+    {
+        std::optional<QStringList> selected;
+        trtui::ListManagerDialog dialog(title, [&names]
+        {
+            trtui::ListManagerDialog::Items items;
+            for (int index = 0; index < names.size(); index++) items.append({QString::number(index), names[index]});
+            return items;
+        }, parent, multiple);
+        dialog.addAction(actionText, [&dialog, &selected, &names](const QStringList& ids)
+        {
+            QStringList values;
+            for (const QString& id : ids) values.append(names[id.toInt()]);
+            selected = values;
+            dialog.accept();
+        }, 1, multiple ? -1 : 1);
+        if (dialog.exec() != QDialog::Accepted) return std::nullopt;
+        return selected;
+    }
+
+    std::optional<QString> selectListSingle(QWidget* parent, const QString& title, const QStringList& names, const QString& actionText)
+    {
+        const std::optional<QStringList> selected = selectList(parent, title, names, actionText, false);
+        if (!selected || selected->isEmpty()) return std::nullopt;
+        return selected->first();
+    }
+
+    std::optional<QStringList> selectListMulti(QWidget* parent, const QString& title, const QStringList& names, const QString& actionText)
+    {
+        return selectList(parent, title, names, actionText, true);
+    }
+
     double wheelZoomFactor(const QWheelEvent& event)
     {
         const bool pixels = !event.pixelDelta().isNull();

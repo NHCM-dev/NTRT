@@ -18,6 +18,7 @@ namespace trtdata::okx
     QByteArray leverageBody(const trttrade::LeverageRequest& value);
     trttrade::BalanceDetail parseBalanceDetail(const trtdata::jsonElement& row);
     trttrade::FundingBalance parseFundingBalance(const trtdata::jsonElement& row);
+    trttrade::PositionHistoryData parsePositionHistoryData(const trtdata::jsonElement& row);
     trttrade::PositionData parsePositionData(const trtdata::jsonElement& row);
     trttrade::OrderData parseOrderData(const trtdata::jsonElement& row);
     trttrade::FillData parseFillData(const trtdata::jsonElement& row);

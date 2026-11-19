@@ -42,6 +42,15 @@ int main(int argc, char** argv)
         check(parseList<trttrade::PositionData>(R"({"code":"0","data":[]})", parsePositionData).empty(), "Empty positions failed");
         const trttrade::PositionData position = parseOne<trttrade::PositionData>(R"({"code":"0","data":[{"instId":"BTC-USDT-SWAP","pos":"-2","posSide":"net","liqPx":"","upl":"-64.30","uplRatio":"-0.2956","bePx":"113.18","mgnRatio":"20.0367"}]})", parsePositionData);
         check(position.pos == "-2" && position.liqPx.empty() && position.upl == "-64.30" && position.uplRatio == "-0.2956" && position.bePx == "113.18", "Signed position/P&L fields lost");
+        const trttrade::PositionHistoryData historicalPosition = parseOne<trttrade::PositionHistoryData>(R"({"code":"0","data":[{"instId":"BTC-USDT-SWAP","posId":"123","posSide":"net","direction":"short","openAvgPx":"100.123456789","closeAvgPx":"101","realizedPnl":"-2.25","fundingFee":"-0.75","uTime":"1700000000000"}]})", parsePositionHistoryData);
+        check(historicalPosition.direction == "short" && historicalPosition.posSide == "net" && historicalPosition.openAvgPx == "100.123456789" && historicalPosition.realizedPnl == "-2.25" && historicalPosition.fundingFee == "-0.75", "Position history decimals lost");
+        trttrade::AccountQuery historyQuery;
+        historyQuery.instType = trttrade::InstType::Swap;
+        historyQuery.begin = "1700000000000";
+        historyQuery.end = "1700001000000";
+        historyQuery.after = "12345";
+        const QUrlQuery historyParams = query(historyQuery, true);
+        check(historyParams.queryItemValue("begin") == "1700000000000" && historyParams.queryItemValue("end") == "1700001000000" && historyParams.queryItemValue("after") == "12345", "History time range/cursor lost");
         rejected = false;
         try { parseOne<trttrade::OrderResult>(R"({"code":"0","data":[{"sCode":"51000","sMsg":"invalid order"}]})", parseOrderResult); }
         catch (const std::exception&) { rejected = true; }
@@ -62,7 +71,7 @@ int main(int argc, char** argv)
         workspace.name = "Test";
         int accountId = 1;
         for (trtdata::WorkspaceWindowType type : {trtdata::WorkspaceWindowType::AccountBalance,
-            trtdata::WorkspaceWindowType::AccountPositions, trtdata::WorkspaceWindowType::AccountOrders})
+            trtdata::WorkspaceWindowType::AccountPositions, trtdata::WorkspaceWindowType::AccountOrders, trtdata::WorkspaceWindowType::AccountOrderHistory, trtdata::WorkspaceWindowType::AccountPositionHistory})
         {
             trtdata::WorkspaceWindowState window;
             window.id = QString("account%1").arg(accountId++);
@@ -73,7 +82,7 @@ int main(int argc, char** argv)
         layout.workspaces.push_back(workspace);
         trtdata::WorkspaceConfig restored;
         check(trtutils::parseWorkspaceConfig(trtutils::serializeWorkspaceConfig(layout), restored), "Account window layout parse failed");
-        check(restored.workspaces[0].windows.size() == 3 && restored.workspaces[0].windows[2].type == trtdata::WorkspaceWindowType::AccountOrders,
+        check(restored.workspaces[0].windows.size() == 5 && restored.workspaces[0].windows[4].type == trtdata::WorkspaceWindowType::AccountPositionHistory,
             "Account window layout roundtrip failed");
         QTcpServer server;
         check(server.listen(QHostAddress::LocalHost), "Local test server failed");

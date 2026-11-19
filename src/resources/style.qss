@@ -234,3 +234,62 @@ QToolButton#chartAutoScale:enabled:pressed {
     background-color: palette(highlight);
     color: palette(highlighted-text);
 }
+
+
+QTableWidget#selectionTable {
+    background-color: palette(base);
+    alternate-background-color: palette(alternate-base);
+    color: palette(text);
+    border: 1px solid palette(mid);
+    border-radius: 4px;
+    selection-background-color: palette(highlight);
+    selection-color: palette(highlighted-text);
+}
+QTableWidget#selectionTable::item {
+    padding: 5px 8px;
+    border-bottom: 1px solid palette(midlight);
+    border-right: 1px solid palette(mid);
+}
+QTableWidget#selectionTable::item:hover {
+    background-color: palette(midlight);
+    color: palette(text);
+}
+QTableWidget#selectionTable::item:selected {
+    background-color: palette(highlight);
+    color: palette(highlighted-text);
+}
+QDialog#listManagerDialog QLineEdit {
+    padding: 7px 9px;
+    border: 1px solid palette(mid);
+    border-radius: 4px;
+    background-color: palette(base);
+    color: palette(text);
+    selection-background-color: palette(highlight);
+    selection-color: palette(highlighted-text);
+}
+QDialog#listManagerDialog QLineEdit:focus {
+    border-color: palette(highlight);
+}
+QDialog#listManagerDialog QLabel#selectionCount {
+    color: palette(placeholder-text);
+}
+QDialog#listManagerDialog QPushButton {
+    padding: 7px 12px;
+    min-height: 18px;
+    background-color: palette(window);
+    color: palette(button-text);
+    border: 1px solid palette(mid);
+    border-radius: 4px;
+}
+QDialog#listManagerDialog QPushButton:enabled:hover {
+    background-color: palette(midlight);
+    border-color: palette(highlight);
+}
+QDialog#listManagerDialog QPushButton:enabled:pressed {
+    background-color: palette(highlight);
+    color: palette(highlighted-text);
+}
+QDialog#listManagerDialog QPushButton:disabled {
+    color: palette(placeholder-text);
+    border-color: palette(midlight);
+}

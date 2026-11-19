@@ -1,6 +1,8 @@
 #include "Workspace.h"
 #include "main/NTRT.h"
 #include <QUuid>
+#include "main/util/QtUtil.h"
+#include "dialog/ListManagerDialog.h"
 #include "WorkspaceWindow.h"
 #include "panels/InstrumentListPanel.h"
 #include "panels/ChartPanel.h"
@@ -102,6 +104,8 @@ namespace trtui
                     break;
                 case trtdata::WorkspaceWindowType::AccountBalance:
                 case trtdata::WorkspaceWindowType::AccountPositions:
+                case trtdata::WorkspaceWindowType::AccountOrderHistory:
+                case trtdata::WorkspaceWindowType::AccountPositionHistory:
                 case trtdata::WorkspaceWindowType::AccountOrders:
                     createAccountWindow(saved.type);
                     break;
@@ -352,10 +356,9 @@ namespace trtui
     void Workspace::addWindowActions(QMenu* menu)
     {
         windowMenu = menu;
-        windowActionsEnd = menu->addSeparator();
-        for (WindowEntry& entry : windows)
-            entry.window->addWindowAction(menu, windowActionsEnd);
-        connect(menu->addAction("Stack Windows"), &QAction::triggered, this, [this]
+        connect(menu->addAction("Manage Window…"), &QAction::triggered, this, &Workspace::showManageWindowDialog);
+        menu->addSeparator();
+        connect(menu->addAction("Stack Window"), &QAction::triggered, this, [this]
         {
             desktop->cascadeSubWindows();
             for (const WindowEntry& entry : windows)
@@ -368,10 +371,61 @@ namespace trtui
         {
             sortWindows();
         });
-        connect(menu->addAction("Reset Layout"), &QAction::triggered, this, [this]
+        connect(menu->addAction("Clear Windows"), &QAction::triggered, this, &Workspace::clearWindows);
+        menu->addSeparator();
+        windowActionsEnd = nullptr;
+        for (WindowEntry& entry : windows) entry.window->addWindowAction(menu, windowActionsEnd);
+    }
+
+    void Workspace::clearWindows()
+    {
+        std::vector<QPointer<WorkspaceWindow>> targets;
+        for (const WindowEntry& entry : windows) targets.push_back(entry.window);
+        for (const QPointer<WorkspaceWindow>& target : targets) if (target) target->close();
+    }
+
+    void Workspace::addWindowFromDialog()
+    {
+        const QStringList names = {"Chart", "Book Depth", "Instrument List", "Account Balances", "Account Positions", "Current Orders", "Order History", "Position History"};
+        const std::optional<QStringList> selected = trtutils::selectListMulti(this, "Add Windows", names, "Add Selected");
+        if (!selected) return;
+        for (const QString& name : *selected)
+            switch (names.indexOf(name))
+            {
+                case 0: createChartWindow(); break;
+                case 1: createBookDepthWindow(); break;
+                case 2: showInstrumentList(); break;
+                case 3: createAccountWindow(trtdata::WorkspaceWindowType::AccountBalance); break;
+                case 4: createAccountWindow(trtdata::WorkspaceWindowType::AccountPositions); break;
+                case 5: createAccountWindow(trtdata::WorkspaceWindowType::AccountOrders); break;
+                case 6: createAccountWindow(trtdata::WorkspaceWindowType::AccountOrderHistory); break;
+                case 7: createAccountWindow(trtdata::WorkspaceWindowType::AccountPositionHistory); break;
+                default: break;
+            }
+    }
+
+    void Workspace::showManageWindowDialog()
+    {
+        ListManagerDialog dialog("Manage Window", [this]
         {
-            resetLayout();
-        });
+            ListManagerDialog::Items items;
+            for (const WindowEntry& entry : windows) items.append({entry.window->objectName(), entry.window->windowTitle()});
+            return items;
+        }, this);
+        dialog.addAction("Add Window…", [this](const QStringList&) { addWindowFromDialog(); });
+        dialog.addAction("Close Selected", [this, &dialog](const QStringList& ids)
+        {
+            std::vector<QPointer<WorkspaceWindow>> targets;
+            for (const WindowEntry& entry : windows)
+                if (ids.contains(entry.window->objectName())) targets.push_back(entry.window);
+            for (const QPointer<WorkspaceWindow>& target : targets)
+                if (target)
+                {
+                    connect(target, &QObject::destroyed, &dialog, [&dialog] { dialog.reload(); });
+                    target->close();
+                }
+        }, 1);
+        dialog.exec();
     }
 
     void Workspace::sortWindows()
@@ -497,6 +551,8 @@ namespace trtui
         {
             case trtdata::WorkspaceWindowType::AccountBalance: title = "Account Balances"; break;
             case trtdata::WorkspaceWindowType::AccountPositions: title = "Account Positions"; break;
+            case trtdata::WorkspaceWindowType::AccountOrderHistory: title = "Order History"; break;
+            case trtdata::WorkspaceWindowType::AccountPositionHistory: title = "Position History"; break;
             case trtdata::WorkspaceWindowType::AccountOrders: title = "Current Orders"; break;
             default: return;
         }

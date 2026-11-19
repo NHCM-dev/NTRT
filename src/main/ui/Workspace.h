@@ -50,6 +50,10 @@ namespace trtui
             QRect geometry;
         };
 
+        void showManageWindowDialog();
+        void clearWindows();
+        void addWindowFromDialog();
+
         void sortWindows();
 
         void arrangeWindows(std::vector<WindowPlacement> placements, const QRect& area);

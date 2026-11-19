@@ -7,7 +7,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
-#include <QTableWidget>
+#include "main/ui/widgets/SelectionTable.h"
 
 namespace trtui
 {
@@ -22,7 +22,7 @@ namespace trtui
         using InstrumentPtr = std::shared_ptr<trtdata::Instrument>;
         const Mode mode;
         std::vector<InstrumentPtr> entries;
-        QTableWidget* table;
+        SelectionTable* table;
         QLineEdit* search;
         QComboBox* exchange = nullptr;
         QComboBox* type = nullptr;
@@ -37,8 +37,6 @@ namespace trtui
         void fetchCatalog();
 
         void populate();
-
-        void toggleRowSelection(int row, int column);
 
         void filterRows();
 

@@ -7,9 +7,14 @@
 #include <QTableWidget>
 #include <QWheelEvent>
 #include <qwidget.h>
+#include <optional>
+#include <QStringList>
 
 namespace trtutils
 {
+    std::optional<QString> selectListSingle(QWidget* parent, const QString& title, const QStringList& names, const QString& actionText = "Select");
+    std::optional<QStringList> selectListMulti(QWidget* parent, const QString& title, const QStringList& names, const QString& actionText = "Select");
+
     double wheelZoomFactor(const QWheelEvent& event);
 
     bool isWheelPan(const QWheelEvent& event);

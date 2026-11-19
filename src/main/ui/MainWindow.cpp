@@ -2,6 +2,7 @@
 #include <QApplication>
 #include <QCloseEvent>
 #include "MainWindow.h"
+#include "dialog/ListManagerDialog.h"
 #include "main/util/QtUtil.h"
 #include "Workspace.h"
 #include "dialog/SettingsDialog.h"
@@ -121,13 +122,12 @@ namespace trtui
     {
         menuBar()->setMouseTracking(true);
         QMenu* file = menuBar()->addMenu("File");
-        connect(file->addAction("Save Workspace Layout", QKeySequence::Save), &QAction::triggered, this, [this]
+        connect(file->addAction("Save Workspace Layout"), &QAction::triggered, this, [this]
         {
             saveWorkspaceState(true);
         });
         file->addSeparator();
         QAction* preferences = file->addAction("Settings…");
-        preferences->setShortcut(QKeySequence("Ctrl+,"));
         connect(preferences, &QAction::triggered, this, [this]
         {
             showSettings();
@@ -138,30 +138,21 @@ namespace trtui
             ntrt::quitApp();
         });
         QMenu* workspaceMenu = menuBar()->addMenu("Workspace");
-        connect(workspaceMenu->addAction("New Workspace", QKeySequence("Ctrl+T")), &QAction::triggered, this, [this]
+        connect(workspaceMenu->addAction("New Workspace"), &QAction::triggered, this, [this]
         {
             createWorkspace();
         });
-        connect(workspaceMenu->addAction("Rename Workspace…", QKeySequence("F2")), &QAction::triggered, this, [this]
+        connect(workspaceMenu->addAction("Rename Current…"), &QAction::triggered, this, [this]
         {
             renameWorkspace(workspaces->currentIndex());
         });
-        connect(workspaceMenu->addAction("Close Workspace", QKeySequence("Ctrl+W")), &QAction::triggered, this, [this]
+        connect(workspaceMenu->addAction("Close Current"), &QAction::triggered, this, [this]
         {
             closeWorkspace(workspaces->currentIndex());
         });
-        connect(workspaceMenu->addAction("Previous Workspace", QKeySequence("Ctrl+Shift+Tab")), &QAction::triggered,
-                this, [this]
-                {
-                    workspaces->setCurrentIndex(
-                        (workspaces->currentIndex() + workspaces->count() - 1) % workspaces->count());
-                });
-        connect(workspaceMenu->addAction("Next Workspace", QKeySequence("Ctrl+Tab")), &QAction::triggered, this, [this]
-        {
-            workspaces->setCurrentIndex((workspaces->currentIndex() + 1) % workspaces->count());
-        });
+        workspaceMenu->addSeparator();
+        connect(workspaceMenu->addAction("Manage Workspace…"), &QAction::triggered, this, &MainWindow::showManageWorkspaceDialog);
         QAction* newChart = new QAction("New Chart", this);
-        newChart->setShortcut(QKeySequence::New);
         connect(newChart, &QAction::triggered, this, [this]
         {
             if (getCurrentWorkspace())
@@ -193,6 +184,15 @@ namespace trtui
         {
             if (getCurrentWorkspace()) getCurrentWorkspace()->createAccountWindow(trtdata::WorkspaceWindowType::AccountOrders);
         });
+        connect(elements->addAction("Order History"), &QAction::triggered, this, [this]
+        {
+            if (getCurrentWorkspace()) getCurrentWorkspace()->createAccountWindow(trtdata::WorkspaceWindowType::AccountOrderHistory);
+        });
+        connect(elements->addAction("Position History"), &QAction::triggered, this, [this]
+        {
+            if (getCurrentWorkspace()) getCurrentWorkspace()->createAccountWindow(trtdata::WorkspaceWindowType::AccountPositionHistory);
+        });
+        elements->addSeparator();
         connect(elements->addAction("Add Instruments…"), &QAction::triggered, this, [this]
         {
             InstrumentDialog dialog(InstrumentDialog::Mode::Add, this);
@@ -221,7 +221,7 @@ namespace trtui
         add->setObjectName("newWorkspaceButton");
         add->setText("+");
         add->setFixedSize(28, 28);
-        add->setToolTip("New Workspace (Ctrl+T)");
+        add->setToolTip("New Workspace");
         cornerLayout->addWidget(add);
         workspaces->setCornerWidget(corner, Qt::TopRightCorner);
         connect(add, &QToolButton::clicked, this, [this]
@@ -296,6 +296,31 @@ namespace trtui
         removed->deleteLater();
     }
 
+    void MainWindow::showManageWorkspaceDialog()
+    {
+        ListManagerDialog dialog("Manage Workspace", [this]
+        {
+            ListManagerDialog::Items items;
+            for (int index = 0; index < workspaces->count(); index++)
+                items.append({workspaces->widget(index)->objectName(), workspaces->tabText(index)});
+            return items;
+        }, this);
+        dialog.addAction("New Workspace", [this](const QStringList&) { createWorkspace(); });
+        dialog.addAction("Rename…", [this](const QStringList& ids)
+        {
+            for (int index = 0; index < workspaces->count(); index++)
+                if (workspaces->widget(index)->objectName() == ids.first()) { renameWorkspace(index); break; }
+        }, 1, 1);
+        dialog.addAction("Close Selected", [this](const QStringList& ids)
+        {
+            std::vector<QPointer<QWidget>> targets;
+            for (int index = 0; index < workspaces->count(); index++)
+                if (ids.contains(workspaces->widget(index)->objectName())) targets.push_back(workspaces->widget(index));
+            for (const QPointer<QWidget>& target : targets) if (target) closeWorkspace(workspaces->indexOf(target));
+        }, 1);
+        dialog.exec();
+    }
+
     void MainWindow::showWorkspaceMenu(const QPoint& position)
     {
         QTabBar* bar = workspaces->tabBar();
@@ -328,15 +353,8 @@ namespace trtui
             {
                 closeWorkspace(index);
             });
-            menu.addSeparator();
-            menu.addMenu(elementsMenu);
-            menu.addMenu(getCurrentWorkspace()->getWindowMenu());
+
         }
-        menu.addSeparator();
-        connect(menu.addAction("Settings…"), &QAction::triggered, this, [this]
-        {
-            showSettings();
-        });
         menu.exec(bar->mapToGlobal(position));
     }
 

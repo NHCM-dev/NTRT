@@ -33,6 +33,8 @@ namespace trtui
 
         void closeWorkspace(int index);
 
+        void showManageWorkspaceDialog();
+
         void showWorkspaceMenu(const QPoint& position);
 
         SettingsDialog* settings = nullptr;

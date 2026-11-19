@@ -97,6 +97,8 @@ namespace trtdata::okx
             result.addQueryItem("instType", QString::fromUtf8(trtdata::OKXParser::getInstType(*value.instType)));
         if (!value.instId.empty())
             result.addQueryItem("instId", QString::fromStdString(value.instId));
+        if (!value.begin.empty()) result.addQueryItem("begin", QString::fromStdString(value.begin));
+        if (!value.end.empty()) result.addQueryItem("end", QString::fromStdString(value.end));
         if (paged)
         {
             require(value.limit >= 1 && value.limit <= 100, "Limit must be between 1 and 100");
@@ -229,6 +231,29 @@ namespace trtdata::okx
         value.bal = field(row, "bal");
         value.availBal = field(row, "availBal");
         value.frozenBal = field(row, "frozenBal");
+        return value;
+    }
+
+    trttrade::PositionHistoryData parsePositionHistoryData(const trtdata::jsonElement& row)
+    {
+        trttrade::PositionHistoryData value;
+        value.direction = field(row, "direction");
+        value.instId = field(row, "instId");
+        value.posId = field(row, "posId");
+        value.posSide = field(row, "posSide");
+        value.mgnMode = field(row, "mgnMode");
+        value.openAvgPx = field(row, "openAvgPx");
+        value.closeAvgPx = field(row, "closeAvgPx");
+        value.openMaxPos = field(row, "openMaxPos");
+        value.closeTotalPos = field(row, "closeTotalPos");
+        value.realizedPnl = field(row, "realizedPnl");
+        value.pnlRatio = field(row, "pnlRatio");
+        value.fee = field(row, "fee");
+        value.fundingFee = field(row, "fundingFee");
+        value.ccy = field(row, "ccy");
+        value.cTime = field(row, "cTime");
+        value.uTime = field(row, "uTime");
+        require(!value.instId.empty(), "Missing response instrument");
         return value;
     }
 

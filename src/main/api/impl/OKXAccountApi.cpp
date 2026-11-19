@@ -82,10 +82,18 @@ namespace trtdata::okx
         });
     }
 
+    QFuture<std::vector<trttrade::PositionHistoryData>> OKXApi::listPositionHistory(const OKXCredentials& credentials, trttrade::TradingEnvironment environment, const trttrade::AccountQuery& query)
+    {
+        return trtnet::replyToFuture(requestPrivate(POSITION_HISTORY, credentials, environment, trtdata::okx::query(query, true)), [](const QByteArray& bytes)
+        {
+            return trtdata::okx::parseList<trttrade::PositionHistoryData>(bytes, trtdata::okx::parsePositionHistoryData);
+        });
+    }
+
     QFuture<std::vector<trttrade::OrderData>> OKXApi::listOrderHistory(const OKXCredentials& credentials, trttrade::TradingEnvironment environment, const trttrade::AccountQuery& query)
     {
         if (!query.instType) throw std::invalid_argument("Instrument type required for order history");
-        return trtnet::replyToFuture(requestPrivate(ORDER_HISTORY, credentials, environment, trtdata::okx::query(query, true)), [](const QByteArray& bytes)
+        return trtnet::replyToFuture(requestPrivate(query.archive ? ORDER_ARCHIVE : ORDER_HISTORY, credentials, environment, trtdata::okx::query(query, true)), [](const QByteArray& bytes)
         {
             return trtdata::okx::parseList<trttrade::OrderData>(bytes, trtdata::okx::parseOrderData);
         });

@@ -183,6 +183,8 @@ namespace trtdata
 
 namespace trttrade
 {
+    QString accountHistorySide(const PositionHistoryData& position);
+    QString accountTime(const std::string& value);
     QString accountNumber(const std::string& value, bool signedValue = false);
     QString accountPercent(const std::string& value);
     QString accountPositionSide(const PositionData& position);

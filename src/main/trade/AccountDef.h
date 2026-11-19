@@ -3,6 +3,7 @@
 #include "TradeDef.h"
 #include <optional>
 #include <string>
+#include <QtGlobal>
 namespace trttrade
 {
     enum class TradingEnvironment { Live, Demo };
@@ -13,6 +14,18 @@ namespace trttrade
         std::string after;
         std::string before;
         int limit = 100;
+        std::string begin;
+        std::string end;
+        bool archive = false;
+    };
+    struct AccountHistoryQuery
+    {
+        bool positions = false;
+        InstType instType = InstType::Swap;
+        std::string instId;
+        qint64 begin = 0;
+        qint64 end = 0;
+        bool archive = true;
     };
     struct OrderIdentifier
     {

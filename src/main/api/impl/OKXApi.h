@@ -57,6 +57,7 @@ namespace trtdata::okx
         static QFuture<std::vector<trttrade::FundingBalance>> fetchFundingBalance(const OKXCredentials& credentials, trttrade::TradingEnvironment environment, const std::string& ccy);
         static QFuture<std::vector<trttrade::PositionData>> fetchPositions(const OKXCredentials& credentials, trttrade::TradingEnvironment environment, const trttrade::AccountQuery& query);
         static QFuture<std::vector<trttrade::OrderData>> listOrders(const OKXCredentials& credentials, trttrade::TradingEnvironment environment, const trttrade::AccountQuery& query);
+        static QFuture<std::vector<trttrade::PositionHistoryData>> listPositionHistory(const OKXCredentials& credentials, trttrade::TradingEnvironment environment, const trttrade::AccountQuery& query);
         static QFuture<std::vector<trttrade::OrderData>> listOrderHistory(const OKXCredentials& credentials, trttrade::TradingEnvironment environment, const trttrade::AccountQuery& query);
         static QFuture<std::vector<trttrade::FillData>> listFills(const OKXCredentials& credentials, trttrade::TradingEnvironment environment, const trttrade::AccountQuery& query);
         static QFuture<trttrade::OrderData> fetchOrder(const OKXCredentials& credentials, trttrade::TradingEnvironment environment, const trttrade::OrderIdentifier& order);

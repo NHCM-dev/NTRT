@@ -17,6 +17,7 @@ namespace trttrade
         virtual QFuture<std::vector<FundingBalance>> fetchFundingBalance(const std::string& ccy = {}) const = 0;
         virtual QFuture<std::vector<PositionData>> fetchPositions(const AccountQuery& query = {}) const = 0;
         virtual QFuture<std::vector<OrderData>> listOrders(const AccountQuery& query = {}) const = 0;
+        virtual QFuture<std::vector<PositionHistoryData>> listPositionHistory(const AccountQuery& query = {}) const = 0;
         virtual QFuture<std::vector<OrderData>> listOrderHistory(const AccountQuery& query = {}) const = 0;
         virtual QFuture<std::vector<FillData>> listFills(const AccountQuery& query = {}) const = 0;
         virtual QFuture<OrderData> fetchOrder(const OrderIdentifier& order) const = 0;

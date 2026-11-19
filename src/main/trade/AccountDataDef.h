@@ -47,6 +47,25 @@ namespace trttrade
         std::string cTime;
         std::string uTime;
     };
+    struct PositionHistoryData
+    {
+        std::string direction;
+        std::string instId;
+        std::string posId;
+        std::string posSide;
+        std::string mgnMode;
+        std::string openAvgPx;
+        std::string closeAvgPx;
+        std::string openMaxPos;
+        std::string closeTotalPos;
+        std::string realizedPnl;
+        std::string pnlRatio;
+        std::string fee;
+        std::string fundingFee;
+        std::string ccy;
+        std::string cTime;
+        std::string uTime;
+    };
     struct OrderData
     {
         std::string instType;

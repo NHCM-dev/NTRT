@@ -2,6 +2,7 @@
 #include <QDateTime>
 #include <QTimer>
 #include <stdexcept>
+#include <algorithm>
 namespace trtcore
 {
     AccountData::AccountData(const trtdata::AccountManager& manager) : manager(manager)
@@ -29,8 +30,33 @@ namespace trtcore
         connect(&orders, &QFutureWatcher<std::vector<trttrade::OrderData>>::finished, this, &AccountData::finishOrders);
     }
 
+    void AccountData::queryHistory(const QString& id, const trttrade::AccountHistoryQuery& query, bool append)
+    {
+        std::unique_ptr<AccountHistoryData>& history = histories[id];
+        if (!history) history = std::make_unique<AccountHistoryData>(manager);
+        history->setQuery(query, append);
+        snapshot.histories[id] = history->getSnapshot();
+    }
+
+    void AccountData::releaseHistory(const QString& id)
+    {
+        histories.erase(id);
+        snapshot.histories.erase(id);
+    }
+
+    void AccountData::refreshHistory()
+    {
+        bool submitted = historyThrottle.isValid() && historyThrottle.elapsed() < 500;
+        for (const std::pair<const QString, std::unique_ptr<AccountHistoryData>>& entry : histories)
+        {
+            if (!submitted && entry.second->submit()) { historyThrottle.restart(); submitted = true; }
+            snapshot.histories[entry.first] = entry.second->getSnapshot();
+        }
+    }
+
     void AccountData::refresh()
     {
+        refreshHistory();
         if ((lastRefresh.isValid() && lastRefresh.elapsed() < AccountSnapshot::refreshIntervalMs)
             || (lastOrderRequest.isValid() && lastOrderRequest.elapsed() < AccountSnapshot::refreshIntervalMs)
             || (failureCooldown.isValid() && failureCooldown.elapsed() < 5000)) return;
@@ -43,7 +69,9 @@ namespace trtcore
         } catch (const std::exception&)
         {
             failureCooldown.restart();
-            snapshot = {};
+            snapshot.balance = {};
+            snapshot.positions = {};
+            snapshot.orders = {};
             snapshot.balance.error = snapshot.positions.error = snapshot.orders.error = "Configure complete OKX credentials in Settings > API.";
             return;
         }
