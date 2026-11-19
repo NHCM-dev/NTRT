@@ -228,7 +228,7 @@ namespace trtui
         qint64 timestamp = 0;
         QString error;
         std::vector<QStringList> rows;
-        const trtcore::AccountSnapshot& account = snapshot->account;
+        const trtcore::AccountSnapshot& account = *snapshot->account;
         const trtcore::AccountHistorySnapshot emptyHistory;
         const std::map<QString, trtcore::AccountHistorySnapshot>::const_iterator found = account.histories.find(historyId);
         const trtcore::AccountHistorySnapshot& history = found == account.histories.end() ? emptyHistory : found->second;

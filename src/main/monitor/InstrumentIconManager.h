@@ -2,7 +2,7 @@
 #define NTRT_INSTRUMENTICONMANAGER_H
 
 #include <QHash>
-#include <QIcon>
+#include <QImage>
 #include <QNetworkAccessManager>
 #include <QPointer>
 #include <QTimer>
@@ -14,9 +14,9 @@ namespace trtcore
 {
     class InstrumentIconManager final : public QObject
     {
+        Q_OBJECT
         struct IconEntry
         {
-            QIcon icon;
             bool pending = false;
             qint64 nextRequest = 0;
             QPointer<QNetworkReply> reply{};
@@ -24,6 +24,7 @@ namespace trtcore
 
         QNetworkAccessManager network;
         QHash<QString, IconEntry> icons;
+        QHash<QString, QImage> images;
         QTimer requestTimer;
         bool running = false;
 
@@ -40,7 +41,9 @@ namespace trtcore
 
         void stop();
 
-        QIcon getIcon(const QString& instrumentId) const;
+        const QHash<QString, QImage>& getImages() const;
+    signals:
+        void snapshotChanged();
     };
 }
 

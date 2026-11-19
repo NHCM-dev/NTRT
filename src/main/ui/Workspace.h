@@ -11,6 +11,7 @@
 #include <QMenu>
 #include <QMdiArea>
 #include "main/ui/WorkspaceWindow.h"
+#include "main/monitor/DataSnapshotDef.h"
 #include "main/ui/panels/InstrumentListPanel.h"
 #include "main/ui/panels/ChartPanel.h"
 #include "main/ui/panels/BookDepthPanel.h"
@@ -40,6 +41,11 @@ namespace trtui
         int nextBookDepthId = 1;
         std::unique_ptr<InstrumentListPanel> instruments;
         std::vector<WindowEntry> windows;
+        std::shared_ptr<const trtcore::DataSnapshot> displayedData;
+        bool refreshPending = false;
+
+        void scheduleRefresh();
+        void refreshData(bool force);
         std::vector<QPointer<QMdiSubWindow>> instRequiredWindow;
 
         void rememberInstrumentWindow(QMdiSubWindow* window);

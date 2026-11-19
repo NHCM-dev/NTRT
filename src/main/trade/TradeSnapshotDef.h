@@ -24,8 +24,11 @@ namespace trttrade
 
 namespace trtcore
 {
+    inline constexpr qint64 marketFeedTimeoutMs = 15000;
+
     struct CandleSnapshot
     {
+        qint64 revision = 0;
         std::vector<trttrade::CandleData> candles;
         QString error;
         qint64 updatedAt = 0;
@@ -54,9 +57,11 @@ namespace trtcore
     public:
         const InstrumentCatalogSnapshot* getCatalog(trtdata::Exchange exchange, trttrade::InstType type) const;
 
+        qint64 getTickerRevision() const { return tickerRevision; }
+
         using Identifier2SnapshotMap = std::map<trtdata::InstIdentifier, MarketSnapshot>;
 
-        const trttrade::BookSnapshot* getBook(const trtdata::InstIdentifier& identifier) const;
+        std::shared_ptr<const trttrade::BookSnapshot> getBook(const trtdata::InstIdentifier& identifier) const;
 
         const MarketSnapshot* getSnapshot(const trtdata::InstIdentifier& identifier) const;
 
@@ -66,9 +71,10 @@ namespace trtcore
         // Required friendship declaration: including the owning manager would create an include cycle.
         friend class MarketData;
         std::map<std::pair<trtdata::Exchange, trttrade::InstType>, InstrumentCatalogSnapshot> catalogs;
+        qint64 tickerRevision = 0;
         std::map<trttrade::InstType, Identifier2SnapshotMap> tickersData;
         std::map<trtdata::Exchange, MarketSnapshot> failures;
-        std::map<trtdata::InstIdentifier, trttrade::BookSnapshot> books;
+        std::map<trtdata::InstIdentifier, std::shared_ptr<const trttrade::BookSnapshot>> books;
     };
 
     class CandlesSnapshot final

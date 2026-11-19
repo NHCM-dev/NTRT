@@ -23,6 +23,8 @@ namespace trtutils
 
     std::optional<double> dailyChangePercent(const trttrade::CandleData* candle, double latestPrice);
 
+    bool applyLivePrice(trttrade::CandleData& candle, trttrade::CandleTimeframe timeframe, const trtdata::TickerData& ticker);
+
     double baseVolume(const trttrade::CandleData& candle, trttrade::InstType type);
 }
 

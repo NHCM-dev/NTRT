@@ -22,6 +22,11 @@ namespace trtui
     Workspace::Workspace(QWidget* parent, const trtdata::WorkspaceState* state) : QFrame(parent)
     {
         initDesktop();
+        connect(ntrt::dataMonitor.get(), &trtcore::DataMonitor::snapshotChanged, this, [this] { refreshData(false); });
+        connect(ntrt::configManager.get(), &trtdata::ConfigManager::instrumentsChanged, this, &Workspace::scheduleRefresh);
+        connect(ntrt::configManager.get(), &trtdata::ConfigManager::tradingDataChanged, this, &Workspace::scheduleRefresh);
+        connect(ntrt::configManager->getAppearanceManager(), &trtdata::AppearanceManager::marketAppearanceChanged,
+                this, &Workspace::scheduleRefresh);
         if (state)
         {
             restoreState(*state);
@@ -236,6 +241,7 @@ namespace trtui
             }
         });
         window->show();
+        scheduleRefresh();
         return window;
     }
 
@@ -492,6 +498,8 @@ namespace trtui
                 return true;
             }
         }
+        if (watched != desktop->viewport() && (event->type() == QEvent::Show || event->type() == QEvent::WindowStateChange))
+            scheduleRefresh();
         if (event->type() == QEvent::Hide && selectedWindow == watched && selectedWindow->isHidden())
             selectedWindow = nullptr;
         return QFrame::eventFilter(watched, event);
@@ -501,6 +509,7 @@ namespace trtui
     {
         const QPointer<QMdiSubWindow> selected = selectedWindow;
         QFrame::showEvent(event);
+        scheduleRefresh();
         if (pendingState)
             QTimer::singleShot(0, this, &Workspace::applyRestoredLayout);
         else if (!restoring)
@@ -517,7 +526,10 @@ namespace trtui
     {
         QFrame::changeEvent(event);
         if (event->type() == QEvent::PaletteChange && desktop)
+        {
             desktop->setBackground(palette().brush(QPalette::Shadow));
+            scheduleRefresh();
+        }
     }
 
     void Workspace::resetLayout()
@@ -563,19 +575,50 @@ namespace trtui
         ntrt::dataMonitor->enableAccountMonitoring();
     }
 
+    void Workspace::scheduleRefresh()
+    {
+        if (refreshPending)
+            return;
+        refreshPending = true;
+        QMetaObject::invokeMethod(this, [this]
+        {
+            refreshPending = false;
+            updateData();
+        }, Qt::QueuedConnection);
+    }
+
     void Workspace::updateData()
     {
+        refreshData(true);
+    }
+
+    void Workspace::refreshData(bool force)
+    {
         if (!isVisible() || window()->isMinimized())
+        {
+            displayedData.reset();
             return;
-        if (instrumentWindow && instrumentWindow->isVisible() && !instrumentWindow->isMinimized())
+        }
+
+        const std::shared_ptr<const trtcore::DataSnapshot> next = ntrt::dataMonitor->getSnapshot();
+        const bool marketChanged = force || !displayedData || displayedData->marketData != next->marketData;
+        const bool tickersChanged = force || !displayedData || displayedData->marketData->getTickerRevision() != next->marketData->getTickerRevision();
+        const bool candlesChanged = force || !displayedData || displayedData->candles != next->candles;
+        const bool accountsChanged = force || !displayedData || displayedData->account != next->account;
+        const bool iconsChanged = force || !displayedData || displayedData->icons != next->icons;
+        displayedData = next;
+
+        if ((tickersChanged || candlesChanged || iconsChanged) && instrumentWindow && instrumentWindow->isVisible() && !instrumentWindow->isMinimized())
             instruments->update();
         for (const WindowEntry& entry : windows)
         {
-            if (entry.account && entry.window->isVisible() && !entry.window->isMinimized())
+            if (!entry.window->isVisible() || entry.window->isMinimized())
+                continue;
+            if (accountsChanged && entry.account)
                 entry.account->updateData();
-            if (entry.chart && entry.window->isVisible() && !entry.window->isMinimized())
+            if (candlesChanged && entry.chart)
                 entry.chart->updateData();
-            if (entry.bookDepth && entry.window->isVisible() && !entry.window->isMinimized())
+            if (marketChanged && entry.bookDepth)
                 entry.bookDepth->updateData();
         }
     }

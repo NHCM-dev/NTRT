@@ -3,7 +3,9 @@
 
 #include "main/data/config/WorkspaceConfig.h"
 #include "main/trade/TradeDataDef.h"
+#include "main/trade/TradeSnapshotDef.h"
 #include <QFrame>
+#include <QTimer>
 #include <memory>
 #include <QComboBox>
 #include <QDoubleSpinBox>
@@ -38,6 +40,8 @@ namespace trtui
         PriceLabel* latest = nullptr;
         RatioBar* balance = nullptr;
         QLabel* status = nullptr;
+        QTimer displayDeadline;
+        std::shared_ptr<const trttrade::BookSnapshot> displayedBook;
 
         void initControls(QVBoxLayout* layout);
         void initContent(QVBoxLayout* layout);

@@ -61,11 +61,18 @@ namespace trtutils
         return static_cast<double>((upward ? std::ceil(aligned) : std::floor(aligned)) * static_cast<long double>(step));
     }
 
+    qint64 nextPriceFlashDelay(qint64 age)
+    {
+        if (age < 0 || age >= priceFlashDurationMs)
+            return 0;
+        return (age < fullPriceFlashMs ? fullPriceFlashMs : priceFlashDurationMs) - age;
+    }
+
     qsizetype priceFlashOffset(const QString& price, double difference, qint64 age, bool enabled)
     {
-        if (!enabled || age < 0 || age >= 1500 || !std::isfinite(difference) || difference == 0)
+        if (!enabled || age < 0 || age >= priceFlashDurationMs || !std::isfinite(difference) || difference == 0)
             return -1;
-        return age < 500 ? 0 : changedDigitOffset(price, std::abs(difference));
+        return age < fullPriceFlashMs ? 0 : changedDigitOffset(price, std::abs(difference));
     }
 
     QString formatAxisPrice(double value, double pricePerPixel)

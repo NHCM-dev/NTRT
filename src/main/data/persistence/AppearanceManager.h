@@ -6,13 +6,15 @@
 #define NTRT_APPEARANCEMANAGER_H
 
 #include <QString>
+#include <QObject>
 
 #include "main/data/config/AppearanceConfig.h"
 
 namespace trtdata
 {
-    class AppearanceManager final
+    class AppearanceManager final : public QObject
     {
+        Q_OBJECT
         QString dataPath;
         AppearanceConfig appearanceConfig;
         int appliedDisplayScalePercent = 100;
@@ -46,6 +48,9 @@ namespace trtdata
 
         // Call after loading appearance settings, before constructing QApplication.
         void initializeDisplayScale();
+
+    signals:
+        void marketAppearanceChanged();
     };
 }
 

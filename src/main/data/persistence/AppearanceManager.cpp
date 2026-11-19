@@ -113,7 +113,10 @@ namespace trtdata
         const bool previous = appearanceConfig.priceFlash;
         appearanceConfig.priceFlash = enabled;
         if (saveConfig())
+        {
+            emit marketAppearanceChanged();
             return true;
+        }
         appearanceConfig.priceFlash = previous;
         return false;
     }
@@ -128,7 +131,10 @@ namespace trtdata
         const MarketColumnVisibility previous = appearanceConfig.marketColumns;
         appearanceConfig.marketColumns = columns;
         if (saveConfig())
+        {
+            emit marketAppearanceChanged();
             return true;
+        }
         appearanceConfig.marketColumns = previous;
         return false;
     }

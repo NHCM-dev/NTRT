@@ -34,7 +34,6 @@ namespace trtui
         initMenuBar();
         initWorkspaceTabs();
         initStatusBar();
-        init200msSchedules();
         initWorkspacePersistence();
     }
 
@@ -405,16 +404,11 @@ namespace trtui
         timer->start(1000);
     }
 
-    void MainWindow::init200msSchedules()
+    void MainWindow::changeEvent(QEvent* event)
     {
-        timer200ms = new QTimer(this);
-        connect(timer200ms, &QTimer::timeout, this, [this]
-        {
-            if (getCurrentWorkspace())
-                getCurrentWorkspace()->updateData();
-        });
-        if (getCurrentWorkspace())
-            getCurrentWorkspace()->updateData();
-        timer200ms->start(200);
+        QMainWindow::changeEvent(event);
+        if (event->type() == QEvent::WindowStateChange && workspaces && !isMinimized())
+            if (Workspace* workspace = getCurrentWorkspace())
+                workspace->updateData();
     }
 }

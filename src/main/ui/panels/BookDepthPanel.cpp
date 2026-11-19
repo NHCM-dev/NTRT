@@ -2,6 +2,7 @@
 #include "main/ui/widgets/NumericWidgets.h"
 #include "main/NTRT.h"
 #include "main/util/NumberUtil.h"
+#include "main/util/QtUtil.h"
 #include "main/util/PaletteUtil.h"
 #include "main/util/TradeUtil.h"
 #include <QScrollBar>
@@ -32,6 +33,9 @@ namespace trtui
         layout->setSpacing(4);
         initControls(layout);
         initContent(layout);
+        displayDeadline.setSingleShot(true);
+        displayDeadline.setTimerType(Qt::PreciseTimer);
+        connect(&displayDeadline, &QTimer::timeout, this, &BookDepthPanel::updateData);
         rebuildInstruments();
         applyControls();
         connect(ntrt::configManager.get(), &trtdata::ConfigManager::instrumentsChanged,
@@ -206,6 +210,7 @@ namespace trtui
             return;
         releaseBook();
         state.instrument = selected;
+        displayedBook.reset();
         const std::shared_ptr<trtcore::DataMonitor> backend = monitor.lock();
         if (backend)
             backend->acquireBook(selected);
@@ -222,6 +227,7 @@ namespace trtui
 
     void BookDepthPanel::applyControls()
     {
+        displayedBook.reset();
         state.depth = depthBox->value();
         state.priceStep = stepBox->value();
         state.rows = rowsBox->value();
@@ -343,37 +349,59 @@ namespace trtui
         if (!backend || !state.instrument)
             return;
         const std::shared_ptr<const trtcore::MarketDataSnapshot> snapshot = backend->getMarketData();
+        const qint64 now = QDateTime::currentMSecsSinceEpoch();
+        qint64 deadline = 0;
         const trtcore::MarketSnapshot* ticker = snapshot->getSnapshot(*state.instrument);
         if (ticker && ticker->ticker)
         {
             const trtdata::TickerData& data = *ticker->ticker;
             const QString price = trtutils::formatPrice(data.last);
-            const bool stale = !ticker->error.isEmpty() || QDateTime::currentMSecsSinceEpoch() - data.ts > 15000;
+            const qint64 expiry = data.ts + trtcore::marketFeedTimeoutMs;
+            const bool stale = !ticker->error.isEmpty() || expiry <= now;
             const double movement = data.previousLast ? data.last - *data.previousLast : 0;
             const qint64 age = ticker->priceChangeAge.isValid() ? ticker->priceChangeAge.elapsed() : -1;
-            latest->setPriceText({}, price, stale ? " · stale" : "", movement, age,
-                                 !stale && ntrt::configManager->getAppearanceManager()->isPriceFlashEnabled());
+            const bool flashEnabled = !stale && ntrt::configManager->getAppearanceManager()->isPriceFlashEnabled();
+            latest->setPriceText({}, price, stale ? " · stale" : "", movement, age, flashEnabled);
+            if (!stale)
+            {
+                deadline = expiry;
+                const qint64 phaseDelay = trtutils::nextPriceFlashDelay(age);
+                if (flashEnabled && movement != 0 && phaseDelay > 0)
+                    deadline = std::min(deadline, now + phaseDelay);
+            }
         } else
             latest->setPriceText({}, "—", {});
-        const trttrade::BookSnapshot* book = snapshot->getBook(*state.instrument);
+        const std::shared_ptr<const trttrade::BookSnapshot> book = snapshot->getBook(*state.instrument);
         if (!book || book->sequence < 0)
         {
-            updateSide(asks, {}, false);
-            updateSide(bids, {}, true);
-            balance->setShare(std::nullopt);
+            if (displayedBook)
+            {
+                displayedBook.reset();
+                updateSide(asks, {}, false);
+                updateSide(bids, {}, true);
+                balance->setShare(std::nullopt);
+            }
+            trtutils::scheduleDeadline(displayDeadline, deadline);
             status->show();
             status->setText(book && !book->error.isEmpty() ? book->error : "Waiting for book snapshot…");
             return;
         }
-        balance->setShare(trtutils::bookBuyShare(book->bids, book->asks, state.depth));
-        if (!asks->isHidden())
-            updateSide(asks, trtutils::aggregateBook(book->asks, false, state.depth, state.priceStep, state.rows), false);
-        if (!bids->isHidden())
-            updateSide(bids, trtutils::aggregateBook(book->bids, true, state.depth, state.priceStep, state.rows), true);
-        const qint64 age = std::max<qint64>(0, (QDateTime::currentMSecsSinceEpoch() - book->updatedAt) / 1000);
+        if (displayedBook != book)
+        {
+            displayedBook = book;
+            balance->setShare(trtutils::bookBuyShare(book->bids, book->asks, state.depth));
+            if (!asks->isHidden())
+                updateSide(asks, trtutils::aggregateBook(book->asks, false, state.depth, state.priceStep, state.rows), false);
+            if (!bids->isHidden())
+                updateSide(bids, trtutils::aggregateBook(book->bids, true, state.depth, state.priceStep, state.rows), true);
+        }
+        const qint64 expiry = book->updatedAt + trtcore::marketFeedTimeoutMs;
         QString text;
-        if (age > 15)
+        if (expiry <= now)
             text = "Waiting for feed";
+        else if (book->error.isEmpty() && (!deadline || expiry < deadline))
+            deadline = expiry;
+        trtutils::scheduleDeadline(displayDeadline, deadline);
         if (!book->error.isEmpty())
             text = book->error;
         status->setText(text);
@@ -384,7 +412,10 @@ namespace trtui
     {
         QFrame::changeEvent(event);
         if (event->type() == QEvent::PaletteChange && asks && bids)
+        {
+            displayedBook.reset();
             updateData();
+        }
     }
 
     void BookDepthPanel::showEvent(QShowEvent* event)

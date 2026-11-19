@@ -3,7 +3,6 @@
 #include "main/util/QtUtil.h"
 #include <QComboBox>
 #include <QDialogButtonBox>
-#include <QTimer>
 #include <QHeaderView>
 #include <QLabel>
 #include <QLineEdit>
@@ -25,9 +24,7 @@ namespace trtui
         {
             connect(exchange, &QComboBox::currentIndexChanged, this, &InstrumentDialog::loadTypes);
             connect(type, &QComboBox::currentIndexChanged, this, &InstrumentDialog::fetchCatalog);
-            QTimer* timer = new QTimer(this);
-            connect(timer, &QTimer::timeout, this, &InstrumentDialog::updateCatalog);
-            timer->start(100);
+            connect(ntrt::dataMonitor.get(), &trtcore::DataMonitor::snapshotChanged, this, &InstrumentDialog::updateCatalog);
             loadTypes();
         } else
         {
@@ -197,7 +194,7 @@ namespace trtui
         reloadButton->setEnabled(false);
 
         const std::shared_ptr<const trtcore::DataSnapshot> snapshot = ntrt::dataMonitor->getSnapshot();
-        const trtcore::InstrumentCatalogSnapshot* previous = snapshot->marketData.getCatalog(selectedExchange, selectedType);
+        const trtcore::InstrumentCatalogSnapshot* previous = snapshot->marketData->getCatalog(selectedExchange, selectedType);
         catalogRevision = previous ? previous->revision : 0;
         catalogPending = true;
         ntrt::dataMonitor->requestCatalog(selectedExchange, selectedType);
@@ -207,7 +204,7 @@ namespace trtui
     {
         if (!catalogPending) return;
         const std::shared_ptr<const trtcore::DataSnapshot> snapshot = ntrt::dataMonitor->getSnapshot();
-        const trtcore::InstrumentCatalogSnapshot* catalog = snapshot->marketData.getCatalog(
+        const trtcore::InstrumentCatalogSnapshot* catalog = snapshot->marketData->getCatalog(
             static_cast<trtdata::Exchange>(exchange->currentData().toInt()), static_cast<trttrade::InstType>(type->currentData().toInt()));
         if (!catalog || catalog->loading || catalog->revision <= catalogRevision) return;
         catalogPending = false;

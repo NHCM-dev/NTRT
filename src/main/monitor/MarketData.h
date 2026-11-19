@@ -19,6 +19,7 @@ namespace trtcore
 {
     class MarketData final : public QObject
     {
+        Q_OBJECT
     public:
         using Identifier2SnapshotMap = MarketDataSnapshot::Identifier2SnapshotMap;
 
@@ -46,6 +47,8 @@ namespace trtcore
         void updateConnection(trtdata::Exchange exchange, const QString& error);
 
         void updateError(const trtdata::InstIdentifier& identifier, const QString& error);
+    signals:
+        void snapshotChanged();
     };
 }
 

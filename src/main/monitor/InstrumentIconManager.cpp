@@ -1,9 +1,7 @@
 #include "InstrumentIconManager.h"
-#include "main/util/PaintUtil.h"
 #include <QDateTime>
 #include <QNetworkDiskCache>
 #include <QNetworkReply>
-#include <QPainter>
 #include <QSet>
 #include "main/util/FileUtil.h"
 
@@ -36,8 +34,9 @@ namespace trtcore
             const QString symbol = QString::fromStdString(instrument->instId).section('-', 0, 0).toUpper();
             desired.insert(symbol);
             if (!icons.contains(symbol))
-                icons.insert(symbol, IconEntry{trtutils::createLetterIcon(symbol)});
+                icons.insert(symbol, IconEntry{});
         }
+        bool imagesRemoved = false;
         for (QHash<QString, IconEntry>::iterator entry = icons.begin(); entry != icons.end();)
         {
             if (desired.contains(entry.key()))
@@ -46,10 +45,12 @@ namespace trtcore
                 continue;
             }
             QPointer<QNetworkReply> reply = entry->reply;
+            imagesRemoved |= images.remove(entry.key());
             entry = icons.erase(entry);
             if (reply)
                 reply->abort();
         }
+        if (imagesRemoved) emit snapshotChanged();
         running = !icons.empty();
         if (running)
             requestTimer.start();
@@ -70,11 +71,9 @@ namespace trtcore
         }
     }
 
-    QIcon InstrumentIconManager::getIcon(const QString& instrumentId) const
+    const QHash<QString, QImage>& InstrumentIconManager::getImages() const
     {
-        const QString symbol = instrumentId.section('-', 0, 0).toUpper();
-        const QHash<QString, IconEntry>::const_iterator entry = icons.constFind(symbol);
-        return entry == icons.cend() ? QIcon() : entry->icon;
+        return images;
     }
 
     void InstrumentIconManager::fetchNext()
@@ -111,11 +110,14 @@ namespace trtcore
             if (!running || !icons.contains(symbol) || icons[symbol].reply != reply)
                 return;
             const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-            QPixmap image;
+            QImage image;
             const bool loaded = reply->error() == QNetworkReply::NoError && image.loadFromData(reply->readAll());
             IconEntry& entry = icons[symbol];
             if (loaded)
-                entry.icon = QIcon(image);
+            {
+                images.insert(symbol, std::move(image));
+                emit snapshotChanged();
+            }
             if (!loaded && crypto && status == 404)
             {
                 requestIcon(symbol, false);

@@ -10,6 +10,7 @@ namespace trtcore
 {
     class AccountHistoryData final : public QObject
     {
+        Q_OBJECT
         trtdata::AccountManager manager;
         std::unique_ptr<trttrade::TradingAccount> account;
         QFutureWatcher<std::vector<trttrade::OrderData>> orders;
@@ -27,6 +28,8 @@ namespace trtcore
         void setQuery(const trttrade::AccountHistoryQuery& query, bool append);
         bool submit();
         const AccountHistorySnapshot& getSnapshot() const;
+    signals:
+        void snapshotChanged();
     };
 }
 #endif

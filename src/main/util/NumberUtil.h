@@ -37,6 +37,9 @@ namespace trtutils
     double roundToStep(double value, double step, bool upward);
 
     // -1 disables highlighting; full price for 500 ms, changed suffix for another 1000 ms.
+    inline constexpr qint64 fullPriceFlashMs = 500;
+    inline constexpr qint64 priceFlashDurationMs = 1500;
+    qint64 nextPriceFlashDelay(qint64 age);
     qsizetype priceFlashOffset(const QString& price, double difference, qint64 age, bool enabled);
 
     QString formatPriceChange(double value);

@@ -5,6 +5,7 @@
 #ifndef NTRT_INSTRUMENTLISTPANEL_H
 #define NTRT_INSTRUMENTLISTPANEL_H
 #include <QTableWidget>
+#include <QTimer>
 #include "main/data/config/WorkspaceConfig.h"
 #include <QObject>
 
@@ -21,6 +22,7 @@ namespace trtui
         QTableWidget* table = nullptr;
         QLineEdit* search = nullptr;
         QComboBox* typeFilter = nullptr;
+        QTimer displayDeadline;
 
         void initFilters(QFrame* page, QVBoxLayout* layout);
 

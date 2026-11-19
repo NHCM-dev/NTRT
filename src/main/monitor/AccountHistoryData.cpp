@@ -24,6 +24,7 @@ namespace trtcore
         }
         pending = query;
         snapshot.loading = true;
+        emit snapshotChanged();
     }
 
     bool AccountHistoryData::submit()
@@ -58,6 +59,7 @@ namespace trtcore
         {
             snapshot.error = QString::fromUtf8(error.what());
             snapshot.loading = false;
+            emit snapshotChanged();
         }
         return true;
     }
@@ -78,6 +80,7 @@ namespace trtcore
         }
         catch (const std::exception& error) { snapshot.error = QString::fromUtf8(error.what()); }
         snapshot.loading = false;
+        emit snapshotChanged();
     }
 
     void AccountHistoryData::finishPositions()
@@ -96,6 +99,7 @@ namespace trtcore
         }
         catch (const std::exception& error) { snapshot.error = QString::fromUtf8(error.what()); }
         snapshot.loading = false;
+        emit snapshotChanged();
     }
 
     const AccountHistorySnapshot& AccountHistoryData::getSnapshot() const { return snapshot; }

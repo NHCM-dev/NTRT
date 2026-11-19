@@ -15,17 +15,28 @@ namespace trtcore
 {
     class DataMonitor final : public QObject
     {
-        class Worker final
+        Q_OBJECT
+
+        class Worker final : public QObject
         {
-            std::atomic<std::shared_ptr<const DataSnapshot>>& destination;
-            QTimer publicationTimer;
+            DataMonitor& monitor;
+            DataSnapshot published;
+            bool publicationPending = false;
+            bool marketChanged = true;
+            bool candlesChanged = true;
+            bool accountChanged = true;
+            bool iconsChanged = true;
+
+            void schedulePublication();
+            void publish();
             QTimer accountTimer;
             AccountData accountData;
             MarketData marketData;
+            InstrumentIconManager instrumentIcons;
             CandlesManager candlesManager;
 
         public:
-            explicit Worker(std::atomic<std::shared_ptr<const DataSnapshot>>& destination, const trtdata::AccountManager& accounts);
+            explicit Worker(DataMonitor& monitor, const trtdata::AccountManager& accounts);
             void requestCatalog(trtdata::Exchange exchange, trttrade::InstType type);
             void enableAccounts();
             void queryAccountHistory(const QString& id, const trttrade::AccountHistoryQuery& query, bool append);
@@ -45,16 +56,17 @@ namespace trtcore
 
             void requestHistory(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe);
 
-            void publish();
         };
 
         const trtdata::ConfigManager& configManager;
-        InstrumentIconManager instrumentIconManager;
         QTimer subscriptionTimer;
         QThread workerThread;
         QObject* workerContext = nullptr;
         std::unique_ptr<Worker> worker;
         std::atomic<std::shared_ptr<const DataSnapshot>> snapshot;
+        std::atomic<bool> notificationPending = false;
+
+        void publishSnapshot(const DataSnapshot& data);
         std::map<CandleSeriesKey, std::size_t> chartReaders;
         std::map<trtdata::InstIdentifier, std::size_t> bookReaders;
         bool running = false;
@@ -99,7 +111,8 @@ namespace trtcore
 
         std::shared_ptr<const CandlesSnapshot> getCandlesManager() const;
 
-        const InstrumentIconManager& getInstrumentIconManager() const;
+    signals:
+        void snapshotChanged();
     };
 }
 

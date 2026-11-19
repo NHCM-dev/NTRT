@@ -1,3 +1,5 @@
+#include <QDateTime>
+#include <QTimeZone>
 #include "CandleUtil.h"
 #include <algorithm>
 #include <cmath>
@@ -91,4 +93,29 @@ namespace trtutils
         }
         return 0;
     }
+}
+
+bool trtutils::applyLivePrice(trttrade::CandleData& candle, trttrade::CandleTimeframe timeframe, const trtdata::TickerData& ticker)
+{
+    if (candle.confirmed || !std::isfinite(ticker.last) || ticker.last <= 0 || ticker.ts < candle.timestamp) return false;
+    qint64 end = candle.timestamp;
+    switch (timeframe)
+    {
+        case trttrade::CandleTimeframe::Minute1: end += 60000; break;
+        case trttrade::CandleTimeframe::Minute3: end += 180000; break;
+        case trttrade::CandleTimeframe::Minute5: end += 300000; break;
+        case trttrade::CandleTimeframe::Minute15: end += 900000; break;
+        case trttrade::CandleTimeframe::Minute30: end += 1800000; break;
+        case trttrade::CandleTimeframe::Hour1: end += 3600000; break;
+        case trttrade::CandleTimeframe::Hour2: end += 7200000; break;
+        case trttrade::CandleTimeframe::Hour4: end += 14400000; break;
+        case trttrade::CandleTimeframe::Day1: end += 86400000; break;
+        case trttrade::CandleTimeframe::Week1: end += 604800000; break;
+        case trttrade::CandleTimeframe::Month1: end = QDateTime::fromMSecsSinceEpoch(candle.timestamp, QTimeZone::UTC).addMonths(1).toMSecsSinceEpoch(); break;
+    }
+    if (ticker.ts >= end) return false;
+    candle.close = ticker.last;
+    candle.high = std::max(candle.high, ticker.last);
+    candle.low = std::min(candle.low, ticker.last);
+    return true;
 }

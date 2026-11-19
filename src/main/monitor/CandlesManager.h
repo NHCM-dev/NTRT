@@ -17,6 +17,7 @@ namespace trtcore
 {
     class CandlesManager final : public QObject
     {
+        Q_OBJECT
     public:
         using CandleMap = std::map<std::int64_t, trttrade::CandleData>;
 
@@ -24,6 +25,8 @@ namespace trtcore
         struct Subscription
         {
             CandleSnapshot snapshot;
+            std::optional<double> publishedPrice;
+            qint64 publicationRevision = 0;
             std::shared_ptr<const CandleSnapshot> publishedSnapshot;
             QFutureWatcher<std::vector<trttrade::CandleData>>* watcher = nullptr;
             qint64 nextRequest = 0;
@@ -46,6 +49,8 @@ namespace trtcore
 
         std::map<CandleSeriesKey, Subscription> subscriptions;
         QTimer requestTimer;
+        QTimer previewExpiry;
+        std::shared_ptr<const CandlesSnapshot> published;
         qint64 nextStreamStart = 0;
         trtdata::TradingTimeZone timeZone = trtdata::TradingTimeZone::UTC;
 
@@ -66,7 +71,7 @@ namespace trtcore
     public:
         CandlesManager();
 
-        CandlesSnapshot getReadSnapshot();
+        std::shared_ptr<const CandlesSnapshot> getReadSnapshot(const MarketDataSnapshot& market);
 
         void setInstruments(std::span<const std::shared_ptr<trtdata::Instrument>> instruments);
 
@@ -106,6 +111,8 @@ namespace trtcore
 
         std::optional<double>
         getDailyChangePercent(const trtdata::InstIdentifier& identifier, double latestPrice) const;
+    signals:
+        void snapshotChanged();
     };
 
 }

@@ -48,6 +48,7 @@ namespace trtcore
             entry.second->setInstruments(identifiers);
         }
 
+        snapshot.tickerRevision++;
         for (std::pair<const trttrade::InstType, Identifier2SnapshotMap>& group : snapshot.tickersData)
         {
             std::erase_if(group.second, [&desired](const Identifier2SnapshotMap::value_type& entry)
@@ -75,7 +76,8 @@ namespace trtcore
                     connect(stream.get(), &BookStream::bookReceived, this,
                             [this](const trtdata::InstIdentifier& instrument, const trttrade::BookSnapshot& book)
                     {
-                        snapshot.books.insert_or_assign(instrument, book);
+                        snapshot.books.insert_or_assign(instrument, std::make_shared<const trttrade::BookSnapshot>(book));
+                        emit snapshotChanged();
                     });
                     bookStreams.emplace(exchange, std::move(stream));
                 }
@@ -84,11 +86,13 @@ namespace trtcore
                 bookStreams.at(exchange)->setInstruments(desired);
             else
             {
+                trttrade::BookSnapshot unavailable;
+                unavailable.error = "Order book unavailable for this exchange";
                 for (const trtdata::InstIdentifier& instrument : desired)
-                    snapshot.books[instrument].error = "Order book unavailable for this exchange";
+                    snapshot.books[instrument] = std::make_shared<const trttrade::BookSnapshot>(unavailable);
             }
         }
-        std::erase_if(snapshot.books, [&instruments](const std::pair<const trtdata::InstIdentifier, trttrade::BookSnapshot>& entry)
+        std::erase_if(snapshot.books, [&instruments](const std::pair<const trtdata::InstIdentifier, std::shared_ptr<const trttrade::BookSnapshot>>& entry)
         {
             return !instruments.contains(entry.first);
         });
@@ -128,6 +132,8 @@ namespace trtcore
             snapshot.ticker = std::move(ticker);
         }
         snapshot.error.clear();
+        this->snapshot.tickerRevision++;
+        emit snapshotChanged();
     }
 
     void MarketData::updateConnection(trtdata::Exchange exchange, const QString& error)
@@ -145,6 +151,8 @@ namespace trtcore
                     entry.second.error = error;
             }
         }
+        snapshot.tickerRevision++;
+        emit snapshotChanged();
     }
 
     void MarketData::updateError(const trtdata::InstIdentifier& identifier, const QString& error)
@@ -152,6 +160,8 @@ namespace trtcore
         MarketSnapshot& snapshot = this->snapshot.tickersData[identifier.type]
                                    .try_emplace(identifier, MarketSnapshot{identifier.exchange}).first->second;
         snapshot.error = error;
+        this->snapshot.tickerRevision++;
+        emit snapshotChanged();
     }
 
     MarketDataSnapshot MarketData::getSnapshot() const
@@ -176,6 +186,7 @@ void trtcore::MarketData::requestCatalog(trtdata::Exchange exchange, trttrade::I
         catch (const std::exception& error) { result.error = QString::fromUtf8(error.what()); }
         result.loading = false;
         result.revision++;
+        emit snapshotChanged();
         watcher->deleteLater();
     });
     try { watcher->setFuture(exchangeApi(exchange).fetchInstruments(type)); }
@@ -184,6 +195,7 @@ void trtcore::MarketData::requestCatalog(trtdata::Exchange exchange, trttrade::I
         catalog.error = QString::fromUtf8(error.what());
         catalog.loading = false;
         catalog.revision++;
+        emit snapshotChanged();
         watcher->deleteLater();
     }
 }

@@ -6,7 +6,7 @@
 #include <QTabWidget>
 #include <QAction>
 #include <QMenu>
-#include <QTimer>
+#include <QEvent>
 #include "main/ui/Workspace.h"
 #include "main/ui/dialog/SettingsDialog.h"
 
@@ -38,7 +38,6 @@ namespace trtui
         void showWorkspaceMenu(const QPoint& position);
 
         SettingsDialog* settings = nullptr;
-        QTimer* timer200ms = nullptr;
 
         void initLayouts();
 
@@ -50,7 +49,7 @@ namespace trtui
 
         void initStatusBar();
 
-        void init200msSchedules();
+        void changeEvent(QEvent* event) override;
 
         void showSettings();
 

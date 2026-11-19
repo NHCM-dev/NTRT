@@ -11,6 +11,9 @@ namespace trtcore
 {
     CandlesManager::CandlesManager()
     {
+        previewExpiry.setSingleShot(true);
+        previewExpiry.setTimerType(Qt::PreciseTimer);
+        connect(&previewExpiry, &QTimer::timeout, this, &CandlesManager::snapshotChanged);
         requestTimer.setInterval(100);
         connect(&requestTimer, &QTimer::timeout, this, [this]
         {
@@ -92,6 +95,7 @@ namespace trtcore
                         trtutils::mergeCandles(current.historyLiveCandles, candles);
                     mergeCandles(current, candles);
                     current.snapshot.updatedAt = QDateTime::currentMSecsSinceEpoch();
+                    emit snapshotChanged();
                 });
         connect(subscription.stream.get(), &CandleStream::connectionChanged, this, [this, key](const QString& error)
         {
@@ -101,6 +105,7 @@ namespace trtcore
             current.streamError = error;
             current.snapshot.error = error;
             beginRecovery(current);
+            emit snapshotChanged();
         });
         subscription.stream->start(key.instrument, key.timeframe, timeZone);
     }
@@ -161,6 +166,7 @@ namespace trtcore
             }
             current.historyLiveCandles.clear();
             watcher->deleteLater();
+            emit snapshotChanged();
         });
         watcher->setFuture(
             exchangeApi(key.instrument.exchange).fetchCandleHistory(key.instrument, key.timeframe, timeZone, cursor));
@@ -245,6 +251,7 @@ namespace trtcore
             }
             current.requestLiveCandles.clear();
             watcher->deleteLater();
+            emit snapshotChanged();
         });
         const AbstractApi& api = exchangeApi(key.instrument.exchange);
         if (cursor)
@@ -383,17 +390,52 @@ namespace trtcore
         return result;
     }
 
-    CandlesSnapshot CandlesManager::getReadSnapshot()
+    std::shared_ptr<const CandlesSnapshot> CandlesManager::getReadSnapshot(const MarketDataSnapshot& market)
     {
         CandlesSnapshot result;
         result.timeZone = timeZone;
+        const qint64 now = QDateTime::currentMSecsSinceEpoch();
+        qint64 nextExpiry = 0;
         for (std::pair<const CandleSeriesKey, Subscription>& entry : subscriptions)
         {
-            if (!entry.second.publishedSnapshot)
-                entry.second.publishedSnapshot = std::make_shared<const CandleSnapshot>(entry.second.snapshot);
+            Subscription& subscription = entry.second;
+            const MarketSnapshot* quote = market.getSnapshot(entry.first.instrument);
+            std::optional<trttrade::CandleData> preview;
+            if (subscription.readers && quote && quote->error.isEmpty() && quote->ticker && !subscription.snapshot.candles.empty())
+            {
+                const trtdata::TickerData& ticker = *quote->ticker;
+                const qint64 expiry = ticker.ts + marketFeedTimeoutMs;
+                if (ticker.ts > subscription.snapshot.updatedAt && ticker.ts <= now + marketFeedTimeoutMs && expiry > now)
+                {
+                    trttrade::CandleData candle = subscription.snapshot.candles.back();
+                    if (candle.close != ticker.last && trtutils::applyLivePrice(candle, entry.first.timeframe, ticker))
+                    {
+                        preview = candle;
+                        if (!nextExpiry || expiry < nextExpiry)
+                            nextExpiry = expiry;
+                    }
+                }
+            }
+            const std::optional<double> previewPrice = preview ? std::optional<double>(preview->close) : std::nullopt;
+            if (!subscription.publishedSnapshot || subscription.publishedPrice != previewPrice)
+            {
+                CandleSnapshot display = subscription.snapshot;
+                if (preview)
+                    display.candles.back() = *preview;
+                subscription.publicationRevision++;
+                display.revision = subscription.publicationRevision;
+                subscription.publishedPrice = previewPrice;
+                subscription.publishedSnapshot = std::make_shared<const CandleSnapshot>(std::move(display));
+            }
             result.series.emplace(entry.first, entry.second.publishedSnapshot);
         }
-        return result;
+        if (nextExpiry)
+            previewExpiry.start(static_cast<int>(nextExpiry - now));
+        else
+            previewExpiry.stop();
+        if (!published || published->timeZone != result.timeZone || published->series != result.series)
+            published = std::make_shared<const CandlesSnapshot>(std::move(result));
+        return published;
     }
 
 }

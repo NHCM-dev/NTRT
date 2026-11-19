@@ -4,18 +4,32 @@
 
 namespace trtcore
 {
-    DataMonitor::Worker::Worker(std::atomic<std::shared_ptr<const DataSnapshot>>& destination, const trtdata::AccountManager& accounts)
-        : destination(destination), accountData(accounts)
+    DataMonitor::Worker::Worker(DataMonitor& monitor, const trtdata::AccountManager& accounts)
+        : monitor(monitor), accountData(accounts)
     {
         accountTimer.setInterval(AccountSnapshot::refreshIntervalMs);
         accountTimer.setTimerType(Qt::PreciseTimer);
         QObject::connect(&accountTimer, &QTimer::timeout, &accountTimer, [this] { accountData.refresh(); });
-        publicationTimer.setInterval(100);
-        QObject::connect(&publicationTimer, &QTimer::timeout, &publicationTimer, [this]
+        connect(&marketData, &MarketData::snapshotChanged, this, [this]
         {
-            publish();
+            marketChanged = true;
+            schedulePublication();
         });
-        publicationTimer.start();
+        connect(&candlesManager, &CandlesManager::snapshotChanged, this, [this]
+        {
+            candlesChanged = true;
+            schedulePublication();
+        });
+        connect(&accountData, &AccountData::snapshotChanged, this, [this]
+        {
+            accountChanged = true;
+            schedulePublication();
+        });
+        connect(&instrumentIcons, &InstrumentIconManager::snapshotChanged, this, [this]
+        {
+            iconsChanged = true;
+            schedulePublication();
+        });
     }
 
     void DataMonitor::Worker::enableAccounts()
@@ -52,7 +66,7 @@ namespace trtcore
 
     DataMonitor::Worker::~Worker()
     {
-        publicationTimer.stop();
+        instrumentIcons.stop();
         marketData.stop();
         candlesManager.stop();
     }
@@ -60,47 +74,85 @@ namespace trtcore
     void DataMonitor::Worker::setInstruments(const std::vector<std::shared_ptr<trtdata::Instrument>>& instruments)
     {
         marketData.setInstruments(instruments);
+        instrumentIcons.setInstruments(instruments);
         candlesManager.setInstruments(instruments);
-        publish();
+        marketChanged = candlesChanged = true;
+        schedulePublication();
     }
 
     void DataMonitor::Worker::setBookInstruments(const BookStream::Instruments& instruments)
     {
         marketData.setBookInstruments(instruments);
-        publish();
+        marketChanged = true;
+        schedulePublication();
     }
 
     void DataMonitor::Worker::setTimeZone(trtdata::TradingTimeZone zone)
     {
         candlesManager.setTimeZone(zone);
-        publish();
+        candlesChanged = true;
+        schedulePublication();
     }
 
     void DataMonitor::Worker::acquireSeries(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe)
     {
         candlesManager.subscribe(instrument, timeframe);
-        publish();
+        candlesChanged = true;
+        schedulePublication();
     }
 
     void DataMonitor::Worker::releaseSeries(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe)
     {
         candlesManager.unsubscribe(instrument, timeframe);
-        publish();
+        candlesChanged = true;
+        schedulePublication();
     }
 
     void DataMonitor::Worker::requestHistory(const trtdata::InstIdentifier& instrument, trttrade::CandleTimeframe timeframe)
     {
         candlesManager.requestHistory(instrument, timeframe);
-        publish();
+        candlesChanged = true;
+        schedulePublication();
+    }
+
+    void DataMonitor::Worker::schedulePublication()
+    {
+        if (publicationPending)
+            return;
+        publicationPending = true;
+        QMetaObject::invokeMethod(this, &Worker::publish, Qt::QueuedConnection);
     }
 
     void DataMonitor::Worker::publish()
     {
-        destination.store(std::make_shared<const DataSnapshot>(DataSnapshot{
-            marketData.getSnapshot(),
-            candlesManager.getReadSnapshot(),
-            accountData.getSnapshot()
-        }));
+        publicationPending = false;
+        if (marketChanged)
+        {
+            const std::shared_ptr<const MarketDataSnapshot> next = std::make_shared<const MarketDataSnapshot>(marketData.getSnapshot());
+            candlesChanged |= next->getTickerRevision() != published.marketData->getTickerRevision();
+            published.marketData = next;
+        }
+        if (candlesChanged)
+            published.candles = candlesManager.getReadSnapshot(*published.marketData);
+        if (accountChanged)
+            published.account = std::make_shared<const AccountSnapshot>(accountData.getSnapshot());
+        if (iconsChanged)
+            published.icons = std::make_shared<const QHash<QString, QImage>>(instrumentIcons.getImages());
+        marketChanged = candlesChanged = accountChanged = iconsChanged = false;
+        monitor.publishSnapshot(published);
+    }
+
+    void DataMonitor::publishSnapshot(const DataSnapshot& data)
+    {
+        snapshot.store(std::make_shared<const DataSnapshot>(data));
+        if (notificationPending.exchange(true))
+            return;
+        QMetaObject::invokeMethod(this, [this]
+        {
+            notificationPending.store(false);
+            if (running)
+                emit snapshotChanged();
+        }, Qt::QueuedConnection);
     }
 
     DataMonitor::DataMonitor(const trtdata::ConfigManager& configManager)
@@ -142,7 +194,7 @@ namespace trtcore
         const bool enableAccounts = accountsEnabled;
         QMetaObject::invokeMethod(workerContext, [this, readers, enableAccounts]
         {
-            worker = std::make_unique<Worker>(snapshot, *configManager.getAccountManager());
+            worker = std::make_unique<Worker>(*this, *configManager.getAccountManager());
             if (enableAccounts) worker->enableAccounts();
             for (const std::pair<const CandleSeriesKey, std::size_t>& entry : readers)
             {
@@ -161,7 +213,6 @@ namespace trtcore
             return;
         running = false;
         subscriptionTimer.stop();
-        instrumentIconManager.stop();
         // Drain commands and destroy sockets, timers and watchers on their owning thread.
         QMetaObject::invokeMethod(workerContext, [this]
         {
@@ -178,7 +229,6 @@ namespace trtcore
             return;
         const std::span<const std::shared_ptr<trtdata::Instrument>> configured = configManager.getInstruments();
         const std::vector<std::shared_ptr<trtdata::Instrument>> instruments(configured.begin(), configured.end());
-        instrumentIconManager.setInstruments(instruments);
         QMetaObject::invokeMethod(workerContext, [this, instruments]
         {
             worker->setInstruments(instruments);
@@ -273,23 +323,22 @@ namespace trtcore
 
     std::shared_ptr<const MarketDataSnapshot> DataMonitor::getMarketData() const
     {
-        const std::shared_ptr<const DataSnapshot> current = getSnapshot();
-        return std::shared_ptr<const MarketDataSnapshot>(current, &current->marketData);
+        return getSnapshot()->marketData;
     }
 
     std::shared_ptr<const CandlesSnapshot> DataMonitor::getCandlesManager() const
     {
-        const std::shared_ptr<const DataSnapshot> current = getSnapshot();
-        return std::shared_ptr<const CandlesSnapshot>(current, &current->candles);
+        return getSnapshot()->candles;
     }
 
-    const InstrumentIconManager& DataMonitor::getInstrumentIconManager() const
+    void DataMonitor::Worker::requestCatalog(trtdata::Exchange exchange, trttrade::InstType type)
     {
-        return instrumentIconManager;
+        marketData.requestCatalog(exchange, type);
+        marketChanged = true;
+        schedulePublication();
     }
 }
 
-void trtcore::DataMonitor::Worker::requestCatalog(trtdata::Exchange exchange, trttrade::InstType type) { marketData.requestCatalog(exchange, type); publish(); }
 void trtcore::DataMonitor::requestCatalog(trtdata::Exchange exchange, trttrade::InstType type)
 {
     if (running) QMetaObject::invokeMethod(workerContext, [this, exchange, type] { worker->requestCatalog(exchange, type); }, Qt::QueuedConnection);

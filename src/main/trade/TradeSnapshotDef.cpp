@@ -4,10 +4,10 @@
 
 namespace trtcore
 {
-    const trttrade::BookSnapshot* MarketDataSnapshot::getBook(const trtdata::InstIdentifier& identifier) const
+    std::shared_ptr<const trttrade::BookSnapshot> MarketDataSnapshot::getBook(const trtdata::InstIdentifier& identifier) const
     {
-        const std::map<trtdata::InstIdentifier, trttrade::BookSnapshot>::const_iterator found = books.find(identifier);
-        return found == books.end() ? nullptr : &found->second;
+        const std::map<trtdata::InstIdentifier, std::shared_ptr<const trttrade::BookSnapshot>>::const_iterator found = books.find(identifier);
+        return found == books.end() ? nullptr : found->second;
     }
 
     const MarketSnapshot* MarketDataSnapshot::getSnapshot(const trtdata::InstIdentifier& identifier) const

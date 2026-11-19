@@ -5,6 +5,7 @@
 #ifndef NTRT_QTUTIL_H
 #define NTRT_QTUTIL_H
 #include <QTableWidget>
+#include <QTimer>
 #include <QWheelEvent>
 #include <qwidget.h>
 #include <optional>
@@ -14,6 +15,8 @@ namespace trtutils
 {
     std::optional<QString> selectListSingle(QWidget* parent, const QString& title, const QStringList& names, const QString& actionText = "Select");
     std::optional<QStringList> selectListMulti(QWidget* parent, const QString& title, const QStringList& names, const QString& actionText = "Select");
+
+    void scheduleDeadline(QTimer& timer, qint64 deadline);
 
     double wheelZoomFactor(const QWheelEvent& event);
 

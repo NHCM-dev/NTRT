@@ -30,6 +30,8 @@
 #include <QCursor>
 #include <QTimer>
 #include <QDateTime>
+#include <QImage>
+#include <QPixmap>
 
 #include "main/util/QtUtil.h"
 #include "main/util/NumberUtil.h"
@@ -72,7 +74,7 @@ namespace trtui
             const double difference = ticker.previousLast ? ticker.last - *ticker.previousLast : 0;
             const qint64 age = snapshot.priceChangeAge.isValid() ? snapshot.priceChangeAge.elapsed() : -1;
             const QString price = item->text();
-            const bool stale = !snapshot.error.isEmpty() || QDateTime::currentMSecsSinceEpoch() - ticker.ts > 15000;
+            const bool stale = !snapshot.error.isEmpty() || QDateTime::currentMSecsSinceEpoch() - ticker.ts >= trtcore::marketFeedTimeoutMs;
             const qsizetype start = trtutils::priceFlashOffset(price, difference, age, flashEnabled && !stale);
             const QColor color = difference > 0 ? trtutils::risingColor(palette) : trtutils::fallingColor(palette);
             if (start >= 0 && start < price.size())
@@ -119,6 +121,13 @@ namespace trtui
         initFilters(page, layout);
         initTable(page, layout);
         initActions(page, layout);
+        displayDeadline.setSingleShot(true);
+        displayDeadline.setTimerType(Qt::PreciseTimer);
+        connect(&displayDeadline, &QTimer::timeout, page, [this, page]
+        {
+            if (page->isVisible() && !page->window()->isMinimized())
+                update();
+        });
 
         return page;
     }
@@ -362,8 +371,8 @@ namespace trtui
         updateColumnVisibility();
         const std::span<const std::shared_ptr<trtdata::Instrument>> instruments = ntrt::configManager->getInstruments();
         const std::shared_ptr<const trtcore::DataSnapshot> data = ntrt::dataMonitor->getSnapshot();
-        const trtcore::MarketDataSnapshot& marketData = data->marketData;
-        const trtcore::CandlesSnapshot& candles = data->candles;
+        const trtcore::MarketDataSnapshot& marketData = *data->marketData;
+        const trtcore::CandlesSnapshot& candles = *data->candles;
         const QString timeZone = QString::fromUtf8(trtdata::tradingDataTimeZoneName(candles.getTimeZone()));
         table->horizontalHeaderItem(6)->setToolTip("Latest price minus daily open; day starts at 00:00 " + timeZone + ".");
         table->horizontalHeaderItem(5)->
@@ -374,6 +383,8 @@ namespace trtui
         const int filter = typeFilter->currentData().toInt();
         const QLocale locale(QLocale::English);
         const bool flashEnabled = ntrt::configManager->getAppearanceManager()->isPriceFlashEnabled();
+        const qint64 now = QDateTime::currentMSecsSinceEpoch();
+        qint64 deadline = trtutils::startOfTradingDay(now, candles.getTimeZone()) + 86400000;
         int row = 0;
         for (const std::shared_ptr<trtdata::Instrument>& instrument : instruments)
         {
@@ -396,10 +407,13 @@ namespace trtui
                 icon->setAlignment(Qt::AlignCenter);
                 table->setCellWidget(row, 2, icon);
             }
-            const QIcon image = ntrt::dataMonitor->getInstrumentIconManager().getIcon(symbol);
-            if (icon->property("iconCacheKey").toLongLong() != image.cacheKey())
+            const QString base = symbol.section('-', 0, 0).toUpper();
+            const QImage image = data->icons->value(base);
+            if (icon->property("iconSymbol").toString() != base || icon->property("iconCacheKey").toLongLong() != image.cacheKey())
             {
-                icon->setPixmap(image.pixmap(QSize(20, 20)));
+                icon->setPixmap(image.isNull() ? trtutils::createLetterIcon(base).pixmap(QSize(20, 20))
+                                               : QPixmap::fromImage(image.scaled(QSize(20, 20), Qt::KeepAspectRatio, Qt::SmoothTransformation)));
+                icon->setProperty("iconSymbol", base);
                 icon->setProperty("iconCacheKey", image.cacheKey());
             }
             QTableWidgetItem* symbolItem = trtutils::updateTableItem(table, row, 3, symbol);
@@ -420,6 +434,14 @@ namespace trtui
                 const trtdata::TickerData& data = *snapshot->ticker;
                 priceItem->setText(trtutils::formatPrice(data.last));
                 PriceDelegate::setMovement(priceItem, *snapshot, table->palette(), flashEnabled);
+                if (flashEnabled && snapshot->error.isEmpty() && data.previousLast && data.last != *data.previousLast)
+                {
+                    const qint64 expiry = data.ts + trtcore::marketFeedTimeoutMs;
+                    const qint64 age = snapshot->priceChangeAge.isValid() ? snapshot->priceChangeAge.elapsed() : -1;
+                    const qint64 phaseDelay = trtutils::nextPriceFlashDelay(age);
+                    if (phaseDelay > 0 && expiry > now)
+                        deadline = std::min({deadline, expiry, now + phaseDelay});
+                }
             }
             if (snapshot && !snapshot->error.isEmpty())
                 priceItem->setToolTip("Market feed: " + snapshot->error);
@@ -478,6 +500,7 @@ namespace trtui
             }
             row++;
         }
+        trtutils::scheduleDeadline(displayDeadline, deadline);
         table->setRowCount(row);
         if (selectedRow >= 0 && table->currentRow() != selectedRow)
             table->setCurrentCell(selectedRow, 3);

@@ -1,5 +1,7 @@
 #include "ChartPanel.h"
 #include "main/util/TimeUtil.h"
+#include "main/util/QtUtil.h"
+#include <QMdiSubWindow>
 #include "main/util/TradeUtil.h"
 #include "main/NTRT.h"
 #include "main/ui/chart/ChartView.h"
@@ -26,6 +28,14 @@ namespace trtui
         initToolbar(layout);
         initContent(layout);
         initStatus(layout);
+        displayDeadline.setSingleShot(true);
+        displayDeadline.setTimerType(Qt::PreciseTimer);
+        connect(&displayDeadline, &QTimer::timeout, this, [this]
+        {
+            const QMdiSubWindow* subWindow = qobject_cast<QMdiSubWindow*>(parentWidget());
+            if (isVisible() && !window()->isMinimized() && (!subWindow || !subWindow->isMinimized()))
+                updateData();
+        });
         rebuildInstruments();
         connect(ntrt::configManager.get(), &trtdata::ConfigManager::instrumentsChanged, this, [this]
         {
@@ -293,6 +303,7 @@ namespace trtui
 
     void ChartPanel::updateData()
     {
+        displayDeadline.stop();
         if (!instrument)
             return;
         if (!renderingError.isEmpty())
@@ -312,10 +323,10 @@ namespace trtui
         if (!snapshot)
             return;
         chart->setHistoryState(snapshot->historyLoading, snapshot->historyExhausted);
-        if (displayedUpdate != snapshot->updatedAt)
+        if (displayedUpdate != snapshot->revision)
         {
             chart->setCandles(snapshot->candles);
-            displayedUpdate = snapshot->updatedAt;
+            displayedUpdate = snapshot->revision;
         }
         const QString zone = QString::fromStdString(ntrt::configManager->getDisplayTimeZone());
         QString text;
@@ -331,11 +342,13 @@ namespace trtui
             chart->setMessage("Loading candles…");
         } else
         {
-            const qint64 age = QDateTime::currentMSecsSinceEpoch() - snapshot->updatedAt;
+            const qint64 expiry = snapshot->updatedAt + trtcore::marketFeedTimeoutMs;
             if (snapshot->historyLoading)
                 text = "Loading history…";
-            if (age > 15000)
+            if (expiry <= QDateTime::currentMSecsSinceEpoch())
                 text = "Waiting for feed";
+            else
+                trtutils::scheduleDeadline(displayDeadline, expiry);
         }
         if (status->text() != text)
             status->setText(text);

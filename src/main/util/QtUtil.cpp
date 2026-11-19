@@ -6,6 +6,8 @@
 #include "main/ui/dialog/ListManagerDialog.h"
 
 #include <QHeaderView>
+#include <QDateTime>
+#include <limits>
 #include <QScreen>
 #include <QPointingDevice>
 #include <algorithm>
@@ -43,6 +45,17 @@ namespace trtutils
     std::optional<QStringList> selectListMulti(QWidget* parent, const QString& title, const QStringList& names, const QString& actionText)
     {
         return selectList(parent, title, names, actionText, true);
+    }
+
+    void scheduleDeadline(QTimer& timer, qint64 deadline)
+    {
+        if (deadline == 0)
+        {
+            timer.stop();
+            return;
+        }
+        const qint64 remaining = deadline - QDateTime::currentMSecsSinceEpoch();
+        timer.start(static_cast<int>(std::clamp<qint64>(remaining, 1, std::numeric_limits<int>::max())));
     }
 
     double wheelZoomFactor(const QWheelEvent& event)

@@ -331,6 +331,7 @@ namespace trtdata
             marketConfig.tradingData.displayTimeZone = previous;
             return false;
         }
+        emit tradingDataChanged();
         return true;
     }
 

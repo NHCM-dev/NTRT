@@ -16,6 +16,7 @@ namespace trtcore
                 snapshot.balance.timestamp = QDateTime::currentMSecsSinceEpoch();
                 snapshot.balance.error.clear();
             } catch (const std::exception& error) { snapshot.balance.error = QString::fromUtf8(error.what()); failureCooldown.restart(); }
+            emit snapshotChanged();
         });
         connect(&positions, &QFutureWatcher<std::vector<trttrade::PositionData>>::finished, this, [this]
         {
@@ -26,6 +27,7 @@ namespace trtcore
                 snapshot.positions.timestamp = QDateTime::currentMSecsSinceEpoch();
                 snapshot.positions.error.clear();
             } catch (const std::exception& error) { snapshot.positions.error = QString::fromUtf8(error.what()); failureCooldown.restart(); }
+            emit snapshotChanged();
         });
         connect(&orders, &QFutureWatcher<std::vector<trttrade::OrderData>>::finished, this, &AccountData::finishOrders);
     }
@@ -33,15 +35,24 @@ namespace trtcore
     void AccountData::queryHistory(const QString& id, const trttrade::AccountHistoryQuery& query, bool append)
     {
         std::unique_ptr<AccountHistoryData>& history = histories[id];
-        if (!history) history = std::make_unique<AccountHistoryData>(manager);
+        if (!history)
+        {
+            history = std::make_unique<AccountHistoryData>(manager);
+            const AccountHistoryData* source = history.get();
+            connect(source, &AccountHistoryData::snapshotChanged, this, [this, id, source]
+            {
+                snapshot.histories.insert_or_assign(id, source->getSnapshot());
+                emit snapshotChanged();
+            });
+        }
         history->setQuery(query, append);
-        snapshot.histories[id] = history->getSnapshot();
     }
 
     void AccountData::releaseHistory(const QString& id)
     {
         histories.erase(id);
-        snapshot.histories.erase(id);
+        if (snapshot.histories.erase(id) != 0)
+            emit snapshotChanged();
     }
 
     void AccountData::refreshHistory()
@@ -50,7 +61,6 @@ namespace trtcore
         for (const std::pair<const QString, std::unique_ptr<AccountHistoryData>>& entry : histories)
         {
             if (!submitted && entry.second->submit()) { historyThrottle.restart(); submitted = true; }
-            snapshot.histories[entry.first] = entry.second->getSnapshot();
         }
     }
 
@@ -73,6 +83,7 @@ namespace trtcore
             snapshot.positions = {};
             snapshot.orders = {};
             snapshot.balance.error = snapshot.positions.error = snapshot.orders.error = "Configure complete OKX credentials in Settings > API.";
+            emit snapshotChanged();
             return;
         }
         try
@@ -88,6 +99,7 @@ namespace trtcore
             snapshot.balance.loading = snapshot.positions.loading = snapshot.orders.loading = false;
             snapshot.balance.error = snapshot.positions.error = snapshot.orders.error = QString::fromUtf8(error.what()); failureCooldown.restart();
         }
+        emit snapshotChanged();
     }
 
     void AccountData::requestOrders()
@@ -117,6 +129,7 @@ namespace trtcore
                         snapshot.orders.error = QString::fromUtf8(error.what());
                         snapshot.orders.loading = false;
                         failureCooldown.restart();
+                        emit snapshotChanged();
                     }
                 });
                 return;
@@ -126,6 +139,7 @@ namespace trtcore
             snapshot.orders.error.clear();
         } catch (const std::exception& error) { snapshot.orders.error = QString::fromUtf8(error.what()); failureCooldown.restart(); }
         snapshot.orders.loading = false;
+        emit snapshotChanged();
     }
 
     const AccountSnapshot& AccountData::getSnapshot() const { return snapshot; }

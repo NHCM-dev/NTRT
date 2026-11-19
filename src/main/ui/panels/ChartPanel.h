@@ -1,6 +1,7 @@
 #ifndef NTRT_CHARTPANEL_H
 #define NTRT_CHARTPANEL_H
 #include <QFrame>
+#include <QTimer>
 #include "main/data/config/WorkspaceConfig.h"
 #include "main/trade/TradeDef.h"
 #include <memory>
@@ -30,6 +31,7 @@ namespace trtui
         QStackedWidget* content = nullptr;
         ChartView* chart = nullptr;
         QLabel* status = nullptr;
+        QTimer displayDeadline;
         qint64 displayedUpdate = -1;
         QString renderingError;
 
