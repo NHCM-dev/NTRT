@@ -26,6 +26,8 @@ namespace trttrade
         qint64 begin = 0;
         qint64 end = 0;
         bool archive = true;
+
+        bool operator==(const AccountHistoryQuery&) const = default;
     };
     struct OrderIdentifier
     {

@@ -30,7 +30,7 @@ namespace trtcore
     public:
         explicit AccountData(const trtdata::AccountManager& manager);
         void refresh();
-        void queryHistory(const QString& id, const trttrade::AccountHistoryQuery& query, bool append);
+        void queryHistory(const QString& id, const trttrade::AccountHistoryQuery& query);
         void releaseHistory(const QString& id);
         const AccountSnapshot& getSnapshot() const;
     signals:

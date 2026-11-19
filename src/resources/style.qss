@@ -292,3 +292,45 @@ QDialog#listManagerDialog QPushButton:disabled {
     color: palette(placeholder-text);
     border-color: palette(midlight);
 }
+
+QDateEdit#historyDate {
+    min-width: 116px;
+    padding: 4px 6px;
+    border: 1px solid palette(mid);
+    border-radius: 4px;
+    color: palette(text);
+    background: palette(base);
+}
+QDateEdit#historyDate:hover, QDateEdit#historyDate:focus {
+    border-color: palette(highlight);
+}
+QCalendarWidget#historyCalendar QWidget#qt_calendar_navigationbar {
+    background: palette(window);
+    padding: 3px;
+}
+QCalendarWidget#historyCalendar QToolButton {
+    padding: 5px 7px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    color: palette(window-text);
+    background: palette(window);
+}
+QCalendarWidget#historyCalendar QToolButton:enabled:hover {
+    background: palette(midlight);
+    border-color: palette(highlight);
+}
+QCalendarWidget#historyCalendar QToolButton#qt_calendar_prevmonth,
+QCalendarWidget#historyCalendar QToolButton#qt_calendar_nextmonth {
+    min-width: 16px;
+    font-size: 16px;
+    padding: 1px 5px;
+}
+QCalendarWidget#historyCalendar QToolButton:disabled {
+    color: palette(placeholder-text);
+}
+QCalendarWidget#historyCalendar QTableView {
+    background: palette(base);
+    selection-background-color: palette(highlight);
+    selection-color: palette(highlighted-text);
+    outline: 0;
+}

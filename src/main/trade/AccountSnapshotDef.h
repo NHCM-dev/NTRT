@@ -20,8 +20,6 @@ namespace trtcore
         QString error;
         qint64 revision = 0;
         bool loading = false;
-        bool hasMore = false;
-        std::string cursor;
     };
     struct AccountSnapshot
     {

@@ -39,17 +39,17 @@ namespace trtcore
         accountTimer.start();
     }
 
-    void DataMonitor::Worker::queryAccountHistory(const QString& id, const trttrade::AccountHistoryQuery& query, bool append)
+    void DataMonitor::Worker::queryAccountHistory(const QString& id, const trttrade::AccountHistoryQuery& query)
     {
-        accountData.queryHistory(id, query, append);
+        accountData.queryHistory(id, query);
     }
 
     void DataMonitor::Worker::releaseAccountHistory(const QString& id) { accountData.releaseHistory(id); }
 
-    void DataMonitor::queryAccountHistory(const QString& id, const trttrade::AccountHistoryQuery& query, bool append)
+    void DataMonitor::queryAccountHistory(const QString& id, const trttrade::AccountHistoryQuery& query)
     {
         enableAccountMonitoring();
-        if (running) QMetaObject::invokeMethod(workerContext, [this, id, query, append] { worker->queryAccountHistory(id, query, append); }, Qt::QueuedConnection);
+        if (running) QMetaObject::invokeMethod(workerContext, [this, id, query] { worker->queryAccountHistory(id, query); }, Qt::QueuedConnection);
     }
 
     void DataMonitor::releaseAccountHistory(const QString& id)

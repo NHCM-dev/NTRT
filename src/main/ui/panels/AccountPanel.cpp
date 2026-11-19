@@ -11,6 +11,12 @@
 #include <QScrollBar>
 #include <QUuid>
 #include <QDateTime>
+#include <QCalendarWidget>
+#include <QIcon>
+#include <QLocale>
+#include <QSignalBlocker>
+#include <QTextCharFormat>
+#include <QToolButton>
 #include <QTimeZone>
 #include <QHBoxLayout>
 namespace trtui
@@ -82,48 +88,108 @@ namespace trtui
         historySource->setVisible(type == trtdata::WorkspaceWindowType::AccountOrderHistory);
         filters->addWidget(historySource);
         layout->addLayout(filters);
-        QHBoxLayout* dates = new QHBoxLayout;
-        const QDateTime now = QDateTime::currentDateTimeUtc();
-        beginTime = new QDateTimeEdit(now.addDays(-7), this);
-        endTime = new QDateTimeEdit(now, this);
-        for (QDateTimeEdit* control : {beginTime, endTime})
-        {
-            control->setTimeZone(QTimeZone::UTC);
-            control->setDisplayFormat("yyyy-MM-dd HH:mm 'UTC'");
-            control->setCalendarPopup(true);
-            control->setDateTimeRange(now.addMonths(-3), now.addDays(1));
-            dates->addWidget(control);
-        }
-        QPushButton* search = new QPushButton("Search", this);
-        older = new QPushButton("Load older", this);
-        older->setEnabled(false);
-        dates->addWidget(search);
-        dates->addWidget(older);
-        layout->addLayout(dates);
-        connect(search, &QPushButton::clicked, this, [this] { queryHistory(false); });
-        connect(instrument, &QLineEdit::returnPressed, this, [this] { queryHistory(false); });
-        connect(older, &QPushButton::clicked, this, [this] { queryHistory(true); });
+        initHistoryDates(layout);
+
+        historyInputDelay.setSingleShot(true);
+        historyInputDelay.setInterval(350);
+        connect(&historyInputDelay, &QTimer::timeout, this, &AccountPanel::queryHistory);
+        connect(instrumentType, &QComboBox::currentIndexChanged, this, &AccountPanel::scheduleHistoryQuery);
+        connect(instrument, &QLineEdit::textChanged, this, &AccountPanel::scheduleHistoryQuery);
         connect(historySource, &QComboBox::currentIndexChanged, this, [this]
         {
-            const QDateTime now = QDateTime::currentDateTimeUtc();
-            beginTime->setMinimumDateTime(historySource->currentData().toBool() ? now.addMonths(-3) : now.addDays(-7));
+            const QDate today = QDateTime::currentDateTimeUtc().date();
+            const QDate minimum = historySource->currentData().toBool() ? today.addMonths(-3) : today.addDays(-7);
+            beginDate->setMinimumDate(minimum);
+            endDate->setMinimumDate(minimum);
+            scheduleHistoryQuery();
         });
-        QTimer::singleShot(0, this, [this] { queryHistory(false); });
+        QTimer::singleShot(0, this, &AccountPanel::queryHistory);
     }
 
-    void AccountPanel::queryHistory(bool append)
+    void AccountPanel::initHistoryDates(QVBoxLayout* layout)
     {
-        if (!append)
+        QHBoxLayout* dates = new QHBoxLayout;
+        const QDate today = QDateTime::currentDateTimeUtc().date();
+        beginDate = new QDateEdit(today.addDays(-7), this);
+        endDate = new QDateEdit(today, this);
+        QLabel* from = new QLabel("From", this);
+        QLabel* to = new QLabel("To", this);
+        from->setBuddy(beginDate);
+        to->setBuddy(endDate);
+        dates->addWidget(from);
+        dates->addWidget(beginDate);
+        dates->addWidget(to);
+        dates->addWidget(endDate);
+        dates->addWidget(new QLabel(historySource->isHidden() ? "Updated date · UTC" : "Created date · UTC", this));
+        dates->addStretch();
+
+        for (QDateEdit* control : {beginDate, endDate})
         {
-            historyQuery.positions = type == trtdata::WorkspaceWindowType::AccountPositionHistory;
-            historyQuery.instType = static_cast<trttrade::InstType>(instrumentType->currentData().toInt());
-            historyQuery.instId = instrument->text().trimmed().toUpper().toStdString();
-            historyQuery.begin = beginTime->dateTime().toMSecsSinceEpoch();
-            historyQuery.end = endTime->dateTime().toMSecsSinceEpoch();
-            historyQuery.archive = historySource->currentData().toBool();
+            control->setObjectName("historyDate");
+            control->setLocale(QLocale::English);
+            control->setDisplayFormat("dd MMM yyyy");
+            control->setKeyboardTracking(false);
+            control->setDateRange(today.addMonths(-3), today);
+            control->setCalendarPopup(true);
+            QCalendarWidget* calendar = control->calendarWidget();
+            calendar->setObjectName("historyCalendar");
+            calendar->setLocale(QLocale::English);
+            calendar->setFirstDayOfWeek(Qt::Monday);
+            calendar->setHorizontalHeaderFormat(QCalendarWidget::ShortDayNames);
+            calendar->setVerticalHeaderFormat(QCalendarWidget::NoVerticalHeader);
+            calendar->setGridVisible(false);
+            calendar->setMinimumSize(260, 180);
+            calendar->setWeekdayTextFormat(Qt::Saturday, QTextCharFormat());
+            calendar->setWeekdayTextFormat(Qt::Sunday, QTextCharFormat());
+            QToolButton* previous = calendar->findChild<QToolButton*>("qt_calendar_prevmonth");
+            QToolButton* next = calendar->findChild<QToolButton*>("qt_calendar_nextmonth");
+            if (previous && next)
+            {
+                previous->setIcon(QIcon());
+                next->setIcon(QIcon());
+                previous->setToolButtonStyle(Qt::ToolButtonTextOnly);
+                next->setToolButtonStyle(Qt::ToolButtonTextOnly);
+                previous->setText("‹");
+                next->setText("›");
+            }
         }
-        older->setEnabled(false);
-        ntrt::dataMonitor->queryAccountHistory(historyId, historyQuery, append);
+        connect(beginDate, &QDateEdit::dateChanged, this, [this](const QDate& date)
+        {
+            if (date > endDate->date())
+            {
+                const QSignalBlocker blocker(endDate);
+                endDate->setDate(date);
+            }
+            scheduleHistoryQuery();
+        });
+        connect(endDate, &QDateEdit::dateChanged, this, [this](const QDate& date)
+        {
+            if (date < beginDate->date())
+            {
+                const QSignalBlocker blocker(beginDate);
+                beginDate->setDate(date);
+            }
+            scheduleHistoryQuery();
+        });
+        layout->addLayout(dates);
+    }
+
+    void AccountPanel::scheduleHistoryQuery()
+    {
+        historyInputDelay.start();
+    }
+
+    void AccountPanel::queryHistory()
+    {
+        const trttrade::AccountHistoryQuery query{
+            .positions = type == trtdata::WorkspaceWindowType::AccountPositionHistory,
+            .instType = static_cast<trttrade::InstType>(instrumentType->currentData().toInt()),
+            .instId = instrument->text().trimmed().toUpper().toStdString(),
+            .begin = beginDate->date().startOfDay(QTimeZone::UTC).toMSecsSinceEpoch(),
+            .end = endDate->date().endOfDay(QTimeZone::UTC).toMSecsSinceEpoch(),
+            .archive = historySource->currentData().toBool()
+        };
+        ntrt::dataMonitor->queryAccountHistory(historyId, query);
     }
 
     void AccountPanel::displayRows(const std::vector<QStringList>& rows)
@@ -232,7 +298,6 @@ namespace trtui
         const trtcore::AccountHistorySnapshot emptyHistory;
         const std::map<QString, trtcore::AccountHistorySnapshot>::const_iterator found = account.histories.find(historyId);
         const trtcore::AccountHistorySnapshot& history = found == account.histories.end() ? emptyHistory : found->second;
-        if (older) older->setEnabled(history.hasMore && !history.loading);
         const std::function<QString(const std::string&)> text = [](const std::string& value) { return QString::fromStdString(value); };
         const std::function<QString(const std::string&)> number = [](const std::string& value) { return trttrade::accountNumber(value); };
         const std::function<QString(const std::string&)> calculatedPrice = [](const std::string& value) { return trttrade::accountNumber(value, false, 2); };

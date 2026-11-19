@@ -32,7 +32,7 @@ namespace trtcore
         connect(&orders, &QFutureWatcher<std::vector<trttrade::OrderData>>::finished, this, &AccountData::finishOrders);
     }
 
-    void AccountData::queryHistory(const QString& id, const trttrade::AccountHistoryQuery& query, bool append)
+    void AccountData::queryHistory(const QString& id, const trttrade::AccountHistoryQuery& query)
     {
         std::unique_ptr<AccountHistoryData>& history = histories[id];
         if (!history)
@@ -45,7 +45,7 @@ namespace trtcore
                 emit snapshotChanged();
             });
         }
-        history->setQuery(query, append);
+        history->setQuery(query);
     }
 
     void AccountData::releaseHistory(const QString& id)

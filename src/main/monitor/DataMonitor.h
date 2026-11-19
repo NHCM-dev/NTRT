@@ -39,7 +39,7 @@ namespace trtcore
             explicit Worker(DataMonitor& monitor, const trtdata::AccountManager& accounts);
             void requestCatalog(trtdata::Exchange exchange, trttrade::InstType type);
             void enableAccounts();
-            void queryAccountHistory(const QString& id, const trttrade::AccountHistoryQuery& query, bool append);
+            void queryAccountHistory(const QString& id, const trttrade::AccountHistoryQuery& query);
             void releaseAccountHistory(const QString& id);
 
             ~Worker();
@@ -89,7 +89,7 @@ namespace trtcore
         std::vector<trtdata::Exchange> getExchanges() const;
 
         void enableAccountMonitoring();
-        void queryAccountHistory(const QString& id, const trttrade::AccountHistoryQuery& query, bool append = false);
+        void queryAccountHistory(const QString& id, const trttrade::AccountHistoryQuery& query);
         void releaseAccountHistory(const QString& id);
 
         void stop();

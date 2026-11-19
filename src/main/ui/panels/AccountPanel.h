@@ -6,10 +6,10 @@
 #include <QLabel>
 #include <QEvent>
 #include <QTableWidget>
-#include <QDateTimeEdit>
+#include <QDateEdit>
+#include <QTimer>
 #include <QComboBox>
 #include <QLineEdit>
-#include <QPushButton>
 #include <QVBoxLayout>
 #include "main/trade/AccountDef.h"
 #include "main/data/core/WorkspaceDef.h"
@@ -22,15 +22,16 @@ namespace trtui
         QTableWidget* table = nullptr;
         qint64 displayedTimestamp = -1;
         QString historyId;
-        QDateTimeEdit* beginTime = nullptr;
-        QDateTimeEdit* endTime = nullptr;
+        QDateEdit* beginDate = nullptr;
+        QDateEdit* endDate = nullptr;
         QComboBox* instrumentType = nullptr;
         QComboBox* historySource = nullptr;
         QLineEdit* instrument = nullptr;
-        QPushButton* older = nullptr;
-        trttrade::AccountHistoryQuery historyQuery;
+        QTimer historyInputDelay;
         void initHistoryUi(QVBoxLayout* layout);
-        void queryHistory(bool append);
+        void initHistoryDates(QVBoxLayout* layout);
+        void scheduleHistoryQuery();
+        void queryHistory();
         void initUi();
         void updateColumnWidths();
         void updateColors();
